@@ -73,7 +73,6 @@ When a user provides a statement, you must:
 3.  **Remove Demands:** Eliminate direct commands and obligation words ("need to," "must," "please do X").
 4.  **Reframe Declaratively:** Generate 3-4 varied alternatives (Observation, Self-Narrate, Invitation, Problem-Solving).
 5.  **Filter for Authenticity:** Discard any phrasing that sounds manipulative or like a "test."
-6.  **Provide a "Why":** For each suggestion, provide a brief explanation of why it works for the PDA profile, specifically how it addresses the user's multi-part request without adding pressure.
 
 Your output must be a valid JSON array of objects.`;
 
@@ -142,9 +141,8 @@ app.post('/api/translate', async (req, res) => {
                         type: Type.OBJECT,
                         properties: {
                             translation: { type: Type.STRING },
-                            reason: { type: Type.STRING },
                         },
-                        required: ['translation', 'reason'],
+                        required: ['translation'],
                     },
                 },
             },

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { getDeclarativeTranslations } from '../services/geminiService';
 import type { Translation, HistoryItem } from '../types';
-import { LightbulbIcon, CopyIcon, CheckIcon, SpeechBubbleIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon } from './icons/Icons';
+import { CopyIcon, CheckIcon, SpeechBubbleIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon } from './icons/Icons';
 
 interface TranslatorProps {
   history: HistoryItem[];
@@ -10,7 +10,6 @@ interface TranslatorProps {
 }
 
 const TranslationItem: React.FC<{ item: Translation }> = ({ item }) => {
-  const [isReasonVisible, setIsReasonVisible] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
 
   const handleCopy = () => {
@@ -25,14 +24,6 @@ const TranslationItem: React.FC<{ item: Translation }> = ({ item }) => {
         <p className="flex-grow text-lg text-gray-700 leading-relaxed">{item.translation}</p>
         <div className="flex-shrink-0 flex items-center space-x-2">
           <button
-            onClick={() => setIsReasonVisible(!isReasonVisible)}
-            className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400 ${isReasonVisible ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
-            aria-label="Why this works"
-          >
-            <LightbulbIcon className="w-5 h-5" />
-          </button>
-          <button
             onClick={handleCopy}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
             aria-label="Copy to clipboard"
@@ -41,11 +32,6 @@ const TranslationItem: React.FC<{ item: Translation }> = ({ item }) => {
           </button>
         </div>
       </div>
-      {isReasonVisible && (
-        <div className="mt-4 pt-4 border-t border-gray-200/80">
-          <p className="text-sm text-amber-900 bg-amber-100/60 p-3 rounded-lg">{item.reason}</p>
-        </div>
-      )}
     </div>
   );
 };
@@ -84,10 +70,22 @@ const TONE_OPTIONS = [
   },
 ];
 
+const LOADING_MESSAGES = [
+  "Forming recommendations. This only takes a few seconds...",
+  "Translating your statement. Deep breath, you're almost there.",
+  "Analyzing the demand. Hang tight, help is on the way.",
+  "Crafting connecting ideas. Just a moment...",
+  "Reframing the request. You're doing a great job.",
+  "Generating gentle alternatives. Take a slow breath...",
+  "Preparing declarative options. Almost done...",
+  "Gathering suggestions. This will just be a few seconds."
+];
+
 export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate, onClearHistory }) => {
   const [inputValue, setInputValue] = useState('');
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(LOADING_MESSAGES[0]);
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tone, setTone] = useState(TONE_OPTIONS[0].name);
@@ -128,6 +126,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
   const handleTranslate = useCallback(async () => {
     if (!inputValue.trim() || isLoading) return;
+    setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
     setIsLoading(true);
     setError(null);
     setTranslations([]);
@@ -267,8 +266,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
                   onClick={() => setTone(name)}
                   disabled={isLoading}
                   className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${tone === name
-                      ? 'bg-sky-50/70 border-sky-500 shadow-sm'
-                      : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'bg-sky-50/70 border-sky-500 shadow-sm'
+                    : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                 >
                   <Icon className={`w-5 h-5 mb-1 ${iconClassName}`} />
@@ -399,7 +398,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span className="text-lg">Analyzing your statement...</span>
+          <span className="text-lg">{loadingMessage}</span>
         </div>
       )}
       {error && (
@@ -428,8 +427,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
               <button
                 onClick={handleShareTool}
                 className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-full font-semibold transition-all duration-300 border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 ${hasCopiedShareLink
-                    ? 'bg-green-50 text-green-700 border-green-200'
-                    : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
                   }`}
               >
                 {hasCopiedShareLink ? <CheckIcon className="w-4 h-4" /> : <ShareIcon className="w-4 h-4" />}

@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 
 export interface Translation {
   translation: string;
-  reason: string;
 }
 
 export interface LearningArticle {
