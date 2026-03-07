@@ -316,11 +316,10 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
           <div className="pt-4 flex justify-end">
             <button
-              onClick={handleTranslate}
-              disabled={isLoading || !inputValue.trim()}
-              className="w-full md:w-auto px-8 py-3 bg-sky-600 text-white font-bold rounded-full hover:bg-sky-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-300 transform md:hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-sky-500/50 shadow-lg shadow-sky-600/20"
+              disabled={true}
+              className="w-full md:w-auto px-8 py-3 bg-gray-300 text-gray-500 font-bold rounded-full cursor-not-allowed"
             >
-              {isLoading ? 'Thinking...' : 'Translate'}
+              Out of Order
             </button>
           </div>
         </div>

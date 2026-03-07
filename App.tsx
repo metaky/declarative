@@ -113,6 +113,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-transparent font-sans text-gray-800 flex flex-col relative">
+      {/* Maintenance Banner */}
+      <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-center">
+        <p className="text-amber-800 font-semibold text-sm md:text-base">
+          🔧 This site is currently undergoing maintenance updates. Some features may be temporarily unavailable. Thank you for your patience!
+        </p>
+      </div>
       <Header currentView={currentView} setCurrentView={setCurrentView} />
       <main className="flex-grow container mx-auto p-4 md:p-8 lg:p-10 w-full max-w-4xl">
         {currentView === 'translator' && <Translator history={history} onHistoryUpdate={handleHistoryUpdate} onClearHistory={handleClearHistory} />}
