@@ -24,6 +24,7 @@ if (fs.existsSync(envPath)) {
 
 const app = express();
 app.use(express.json());
+app.set('trust proxy', true); // Trust the proxy (Cloud Run) to accurately determine req.ip
 
 // --- Server-Side Rate Limiting ---
 const RATE_LIMIT_WINDOW_MS = 60000;
@@ -78,7 +79,8 @@ Your output must be a valid JSON array of objects.`;
 
 // --- API Endpoint ---
 app.post('/api/translate', async (req, res) => {
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    // req.ip works reliably here because 'trust proxy' is set to true
+    const clientIp = req.ip;
     const limit = checkRateLimit(clientIp);
     if (limit.limited) {
         return res.status(429).json({
@@ -94,6 +96,10 @@ app.post('/api/translate', async (req, res) => {
     const { text, existingTranslations = [], tone, interest, useFewerWords } = req.body;
     if (!text || typeof text !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid "text" field.' });
+    }
+
+    if (text.length > 500) {
+        return res.status(400).json({ error: 'Input text exceeds the maximum limit of 500 characters.' });
     }
 
     // Build tone instruction
