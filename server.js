@@ -3,6 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { Redis } from '@upstash/redis';
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +27,14 @@ if (fs.existsSync(envPath)) {
 const app = express();
 app.use(express.json());
 app.set('trust proxy', true); // Trust the proxy (Cloud Run) to accurately determine req.ip
+
+// Initialize Redis for challenge storage
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+const redis = redisUrl && redisToken ? new Redis({
+    url: redisUrl,
+    token: redisToken,
+}) : null;
 
 // --- Server-Side Rate Limiting ---
 const RATE_LIMIT_WINDOW_MS = 60000;
@@ -59,6 +69,35 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000);
 
+// --- API Endpoints ---
+app.get('/api/challenge', async (req, res) => {
+    const clientIp = req.ip;
+    const limit = checkRateLimit(clientIp);
+    if (limit.limited) {
+        return res.status(429).json({
+            error: `Rate limit reached. Please wait ${limit.wait} seconds before trying again.`
+        });
+    }
+
+    try {
+        if (!redis) {
+            console.warn("Redis not configured for /api/challenge");
+            return res.status(503).json({ error: "Service unavailable" });
+        }
+
+        const challengeId = uuidv4();
+
+        // Store the challenge ID in Redis with a 15-minute TTL
+        // Every hit to this endpoint creates a one-time-use token for a human session
+        await redis.set(`declarative:challenge:${challengeId}`, "valid", { ex: 900 });
+
+        return res.json({ challengeId });
+    } catch (error) {
+        console.error("Failed to generate challenge token:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 // --- System Prompt ---
 const systemInstruction = `You are an AI assistant named "Declarative," designed as a co-regulation tool for parents and caregivers of children with a Pathological Demand Avoidance (PDA) profile. Your primary goal is to help users rephrase their imperative commands (demands) into gentle, connecting, and non-demanding declarative language.
 
@@ -79,6 +118,31 @@ Your output must be a valid JSON array of objects.`;
 
 // --- API Endpoint ---
 app.post('/api/translate', async (req, res) => {
+    // 1. Challenge Token Verification (Primary Bot Defense)
+    const challengeId = req.headers['x-challenge-id'];
+
+    if (!challengeId || !redis) {
+        console.warn("Request missing challenge ID or Redis not configured");
+        return res.status(403).json({ error: "Access denied. Please use the official website." });
+    }
+
+    try {
+        const challengeKey = `declarative:challenge:${challengeId}`;
+        const isValid = await redis.exists(challengeKey);
+
+        if (!isValid) {
+            console.warn(`Invalid or expired challenge ID: ${challengeId}`);
+            return res.status(403).json({ error: "Invalid or expired session. Please refresh the page." });
+        }
+
+        // Single-use: Delete the token immediately after verification
+        await redis.del(challengeKey);
+    } catch (err) {
+        console.error("Challenge verification failed:", err);
+        // Fail closed for security - strictly require challenge token
+        return res.status(403).json({ error: "Security verification failed." });
+    }
+
     // req.ip works reliably here because 'trust proxy' is set to true
     const clientIp = req.ip;
     const limit = checkRateLimit(clientIp);
@@ -178,6 +242,10 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // SPA fallback — serve index.html for any non-API, non-static route
 app.get('{*path}', (req, res) => {
+    // Prevent sending index.html for missing file assets (.js, .css, etc)
+    if (req.path.includes('.')) {
+        return res.status(404).send('Not Found');
+    }
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 

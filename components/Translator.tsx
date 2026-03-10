@@ -90,6 +90,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
   const [error, setError] = useState<string | null>(null);
   const [tone, setTone] = useState(TONE_OPTIONS[0].name);
   const [hasCopiedShareLink, setHasCopiedShareLink] = useState(false);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
 
   const [interest, setInterest] = useState(() => {
     try {
@@ -114,6 +115,23 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
     }
   }, [interest]);
 
+  const fetchChallengeToken = async () => {
+    try {
+      const res = await fetch("/api/challenge");
+      const data = await res.json();
+      if (data.challengeId) {
+        setChallengeId(data.challengeId);
+      }
+    } catch (e) {
+      console.error("Failed to fetch challenge", e);
+    }
+  };
+
+  // Fetch token on mount
+  useEffect(() => {
+    fetchChallengeToken();
+  }, []);
+
   // Auto-scroll to results when translations are populated and loading is finished
   useEffect(() => {
     if (!isLoading && translations.length > 0 && shouldScrollToResults.current) {
@@ -134,7 +152,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
     try {
       const currentInterest = tone === 'Interest Based' ? interest : undefined;
-      const results = await getDeclarativeTranslations(inputValue, [], tone, currentInterest, useFewerWords);
+      const results = await getDeclarativeTranslations(inputValue, [], tone, currentInterest, useFewerWords, challengeId);
       setTranslations(results);
       onHistoryUpdate(inputValue, results, false, tone, currentInterest, useFewerWords);
     } catch (e: unknown) {
@@ -145,8 +163,9 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
       }
     } finally {
       setIsLoading(false);
+      fetchChallengeToken(); // Refresh token for next request
     }
-  }, [inputValue, isLoading, onHistoryUpdate, tone, interest, useFewerWords]);
+  }, [inputValue, isLoading, onHistoryUpdate, tone, interest, useFewerWords, challengeId]);
 
   const handleGenerateMore = useCallback(async () => {
     if (!inputValue.trim() || isGeneratingMore) return;
@@ -155,7 +174,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
     try {
       const currentInterest = tone === 'Interest Based' ? interest : undefined;
-      const results = await getDeclarativeTranslations(inputValue, translations, tone, currentInterest, useFewerWords);
+      const results = await getDeclarativeTranslations(inputValue, translations, tone, currentInterest, useFewerWords, challengeId);
       setTranslations(prev => [...prev, ...results]);
       onHistoryUpdate(inputValue, results, true, tone, currentInterest, useFewerWords);
     } catch (e: unknown) {
@@ -166,8 +185,9 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
       }
     } finally {
       setIsGeneratingMore(false);
+      fetchChallengeToken(); // Refresh token for next request
     }
-  }, [inputValue, isGeneratingMore, translations, onHistoryUpdate, tone, interest, useFewerWords]);
+  }, [inputValue, isGeneratingMore, translations, onHistoryUpdate, tone, interest, useFewerWords, challengeId]);
 
   const handleShareTool = async () => {
     const shareData = {

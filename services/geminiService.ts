@@ -34,14 +34,18 @@ export const getDeclarativeTranslations = async (
   existingTranslations: Translation[] = [],
   tone?: string,
   interest?: string,
-  useFewerWords?: boolean
+  useFewerWords?: boolean,
+  challengeId?: string | null
 ): Promise<Translation[]> => {
   checkRateLimit();
 
   try {
     const response = await fetch('/api/translate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Challenge-Id': challengeId || '',
+      },
       body: JSON.stringify({
         text: imperativeText,
         existingTranslations,
