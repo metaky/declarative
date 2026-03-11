@@ -238,7 +238,18 @@ app.post('/api/translate', async (req, res) => {
 });
 
 // --- Static File Serving ---
-app.use(express.static(path.join(__dirname, 'dist')));
+// Aggressively cache hashed assets, but NEVER cache the main index.html file
+app.use(express.static(path.join(__dirname, 'dist'), {
+    setHeaders: (res, localPath) => {
+        if (localPath.endsWith('index.html')) {
+            // Never cache index.html
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (localPath.includes('/assets/')) {
+            // Aggressively cache hashed bundles for 1 year
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+    }
+}));
 
 // SPA fallback — serve index.html for any non-API, non-static route
 app.get('{*path}', (req, res) => {
@@ -246,6 +257,9 @@ app.get('{*path}', (req, res) => {
     if (req.path.includes('.')) {
         return res.status(404).send('Not Found');
     }
+    
+    // Also explicitly set no-cache for the SPA fallback
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
