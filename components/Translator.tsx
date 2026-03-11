@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { getDeclarativeTranslations } from '../services/geminiService';
 import type { Translation, HistoryItem } from '../types';
 import { CopyIcon, CheckIcon, SpeechBubbleIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon } from './icons/Icons';
+import { DonationCallout } from './DonationCallout';
 
 interface TranslatorProps {
   history: HistoryItem[];
@@ -242,6 +243,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
         </p>
       </div>
 
+      <DonationCallout />
+
       <div className="relative w-full bg-white p-6 md:p-8 rounded-3xl border border-gray-200 shadow-xl shadow-sky-100/50">
         <div className="flex flex-col space-y-6">
           <textarea
@@ -336,10 +339,11 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
           <div className="pt-4 flex justify-end">
             <button
-              disabled={true}
-              className="w-full md:w-auto px-8 py-3 bg-gray-300 text-gray-500 font-bold rounded-full cursor-not-allowed"
+              onClick={handleTranslate}
+              disabled={isLoading || !inputValue.trim()}
+              className="w-full md:w-auto px-8 py-3 bg-sky-600 text-white font-bold rounded-full hover:bg-sky-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
             >
-              Out of Order
+              {isLoading ? 'Translating...' : 'Get Ideas'}
             </button>
           </div>
         </div>

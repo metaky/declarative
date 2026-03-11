@@ -84,7 +84,7 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
         </div>
 
         {/* Donation Widget */}
-        <div className="flex flex-col">
+        <div id="donate-section" className="flex flex-col scroll-mt-24">
              <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-8 rounded-3xl border border-amber-100 shadow-lg flex-grow flex flex-col justify-center">
                 <div className="text-center mb-8">
                      <div className="inline-block p-4 bg-white rounded-full shadow-sm mb-4">

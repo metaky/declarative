@@ -5,12 +5,15 @@ import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import posthog from 'posthog-js';
 
-// Initialize PostHog for analytics
-posthog.init('phc_pvFdBKNfNPtBnedh7BuUFSNW2hYqbjb2N6kWgRdagOg', {
-  api_host: 'https://app.posthog.com',
-  autocapture: true, // Enable autocapture as requested
-});
-
+// Initialize PostHog for analytics safely
+try {
+  posthog.init('phc_pvFdBKNfNPtBnedh7BuUFSNW2hYqbjb2N6kWgRdagOg', {
+    api_host: 'https://app.posthog.com',
+    autocapture: true, // Enable autocapture as requested
+  });
+} catch (error) {
+  console.warn('PostHog initialization failed or was blocked:', error);
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
