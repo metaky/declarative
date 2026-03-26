@@ -238,7 +238,13 @@ app.post('/api/translate', async (req, res) => {
 });
 
 // --- Static File Serving ---
-// Aggressively cache hashed assets, but NEVER cache the main index.html file
+// ============================================================================
+// CRITICAL: SPA CACHING RULES - DO NOT REMOVE OR MODIFY THESE CACHE HEADERS
+// ============================================================================
+// The live site experiences a "blank white screen" error after deployments if 
+// index.html is allowed to be cached by browsers. Ensure index.html ALWAYS gets 
+// `no-cache`, while the hashed bundles in `/assets/` get aggressively cached.
+// ============================================================================
 app.use(express.static(path.join(__dirname, 'dist'), {
     setHeaders: (res, localPath) => {
         if (localPath.endsWith('index.html')) {

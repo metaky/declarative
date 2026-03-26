@@ -61,8 +61,13 @@ export const getDeclarativeTranslations = async (
     }
 
     return await response.json();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Translation Error:', error);
+
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Could not reach the translation service. If you are developing locally, make sure both the web app and API server are running.');
+    }
+
     throw new Error(error instanceof Error ? error.message : 'AI translation unavailable.');
   }
 };

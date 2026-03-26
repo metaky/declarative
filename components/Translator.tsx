@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { getDeclarativeTranslations } from '../services/geminiService';
 import type { Translation, HistoryItem } from '../types';
-import { CopyIcon, CheckIcon, SpeechBubbleIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon } from './icons/Icons';
+import { CopyIcon, CheckIcon, SpeechBubbleIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon, QuestionMarkCircleIcon } from './icons/Icons';
 import { DonationCallout } from './DonationCallout';
 
 interface TranslatorProps {
@@ -92,6 +92,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
   const [tone, setTone] = useState(TONE_OPTIONS[0].name);
   const [hasCopiedShareLink, setHasCopiedShareLink] = useState(false);
   const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [openToneHelp, setOpenToneHelp] = useState<string | null>(null);
+  const [supportsHover, setSupportsHover] = useState(false);
 
   const [interest, setInterest] = useState(() => {
     try {
@@ -107,6 +109,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const shouldScrollToResults = useRef(false);
+  const toneSectionRef = useRef<HTMLDivElement>(null);
+  const toneHelpPointerIntentRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -133,6 +137,20 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
     fetchChallengeToken();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+
+    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const updateSupportsHover = () => setSupportsHover(mediaQuery.matches);
+
+    updateSupportsHover();
+    mediaQuery.addEventListener('change', updateSupportsHover);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateSupportsHover);
+    };
+  }, []);
+
   // Auto-scroll to results when translations are populated and loading is finished
   useEffect(() => {
     if (!isLoading && translations.length > 0 && shouldScrollToResults.current) {
@@ -142,6 +160,43 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
       }
     }
   }, [translations, isLoading]);
+
+  useEffect(() => {
+    const handlePointerDownOutsideToneHelp = (event: PointerEvent) => {
+      if (!toneSectionRef.current?.contains(event.target as Node)) {
+        setOpenToneHelp(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenToneHelp(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDownOutsideToneHelp);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownOutsideToneHelp);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  const handleToneSelect = useCallback((toneName: string) => {
+    setTone(toneName);
+    setOpenToneHelp(null);
+  }, []);
+
+  const handleToneHelpToggle = useCallback((toneName: string) => {
+    setOpenToneHelp(current => current === toneName ? null : toneName);
+  }, []);
+
+  const handleToneHelpBlur = useCallback((event: React.FocusEvent<HTMLButtonElement>) => {
+    if (!event.currentTarget.parentElement?.contains(event.relatedTarget as Node | null)) {
+      setOpenToneHelp(null);
+    }
+  }, []);
 
   const handleTranslate = useCallback(async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -269,7 +324,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
             ))}
           </div>
 
-          <div className="space-y-4 pt-5 border-t border-gray-200 mt-2 animate-fade-in">
+          <div ref={toneSectionRef} className="space-y-4 pt-5 border-t border-gray-200 mt-2 animate-fade-in">
             <div className="flex justify-between items-center mb-2">
               <label className="block font-semibold text-gray-800">Choose a Tone</label>
               <button
@@ -283,22 +338,92 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-              {TONE_OPTIONS.map(({ name, Icon, iconClassName }) => (
-                <button
-                  key={name}
-                  onClick={() => setTone(name)}
-                  disabled={isLoading}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${tone === name
-                    ? 'bg-sky-50/70 border-sky-500 shadow-sm'
-                    : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                >
-                  <Icon className={`w-5 h-5 mb-1 ${iconClassName}`} />
-                  <span className="text-xs md:text-sm font-semibold text-gray-700 text-center">
-                    {name}
-                  </span>
-                </button>
-              ))}
+              {TONE_OPTIONS.map(({ name, Icon, iconClassName, description }) => {
+                const isHelpOpen = openToneHelp === name;
+                const toneHelpId = `tone-help-${name.toLowerCase().replace(/\s+/g, '-')}`;
+                const hasDescription = Boolean(description);
+
+                return (
+                  <div key={name} className="relative">
+                    <button
+                      onClick={() => handleToneSelect(name)}
+                      disabled={isLoading}
+                      className={`relative flex w-full min-h-[88px] flex-col items-center justify-center rounded-2xl border-2 p-3 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${tone === name
+                        ? 'bg-sky-50/70 border-sky-500 shadow-sm'
+                        : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                    >
+                      <Icon className={`w-5 h-5 mb-1 ${iconClassName}`} />
+                      <span className="text-xs md:text-sm font-semibold text-gray-700 text-center">
+                        {name}
+                      </span>
+                    </button>
+
+                    {hasDescription && (
+                      <div
+                        className="absolute right-2 top-2 z-20"
+                        onMouseEnter={() => {
+                          if (supportsHover) {
+                            setOpenToneHelp(name);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          if (supportsHover) {
+                            setOpenToneHelp(current => current === name ? null : current);
+                          }
+                        }}
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Learn more about the ${name} tone`}
+                          aria-expanded={isHelpOpen}
+                          aria-controls={toneHelpId}
+                          onPointerDown={(event) => {
+                            toneHelpPointerIntentRef.current = true;
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!supportsHover && toneHelpPointerIntentRef.current) {
+                              handleToneHelpToggle(name);
+                            }
+                            window.setTimeout(() => {
+                              toneHelpPointerIntentRef.current = false;
+                            }, 0);
+                          }}
+                          onFocus={(event) => {
+                            if (!toneHelpPointerIntentRef.current && event.currentTarget.matches(':focus-visible')) {
+                              setOpenToneHelp(name);
+                            }
+                          }}
+                          onBlur={(event) => {
+                            toneHelpPointerIntentRef.current = false;
+                            handleToneHelpBlur(event);
+                          }}
+                          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 md:h-8 md:w-8 ${isHelpOpen
+                            ? 'border-sky-200 bg-white text-sky-700 shadow-sm shadow-sky-100/70'
+                            : 'border-transparent bg-transparent text-sky-500 hover:bg-sky-50/90 hover:text-sky-700'
+                            }`}
+                        >
+                          <QuestionMarkCircleIcon className="h-4 w-4" />
+                        </button>
+
+                        {isHelpOpen && (
+                          <div
+                            id={toneHelpId}
+                            role="tooltip"
+                            onPointerDown={(event) => event.stopPropagation()}
+                            className="absolute right-0 top-full z-30 mt-2 w-56 max-w-[calc(100vw-3rem)] rounded-2xl border border-sky-100 bg-white/95 p-3 text-left text-sm leading-relaxed text-slate-600 shadow-xl shadow-sky-100/70 backdrop-blur-sm"
+                          >
+                            <div className="absolute -top-1 right-3 h-2.5 w-2.5 rotate-45 border-l border-t border-sky-100 bg-white" aria-hidden="true" />
+                            <p className="italic">{description}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {tone === 'Interest Based' && (
@@ -330,14 +455,9 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
               </button>
             </div>
 
-            {TONE_OPTIONS.find(t => t.name === tone)?.description && (
-              <div className="mt-2 p-3 bg-sky-50 rounded-xl border border-sky-100 text-sm text-slate-600 leading-relaxed animate-fade-in text-center italic">
-                {TONE_OPTIONS.find(t => t.name === tone)?.description}
-              </div>
-            )}
           </div>
 
-          <div className="pt-4 flex justify-end">
+          <div className="pt-2 md:pt-3 flex justify-end">
             <button
               onClick={handleTranslate}
               disabled={isLoading || !inputValue.trim()}

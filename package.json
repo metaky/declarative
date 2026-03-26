@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "vite",
+    "dev:api": "PORT=3002 node server.js",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc",
@@ -17,7 +19,7 @@
     "@types/uuid": "^10.0.0",
     "@upstash/redis": "^1.36.4",
     "express": "^5.2.1",
-    "posthog-js": "^1.155.0",
+    "posthog-js": "^1.363.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "uuid": "^13.0.0"

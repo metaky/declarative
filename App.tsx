@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useHashRouter } from './hooks/useHashRouter';
+import { useSEO } from './hooks/useSEO';
 import { Header } from './components/Header';
 import { Translator } from './components/Translator';
 import { LearningHub } from './components/LearningHub';
@@ -38,6 +39,13 @@ const App: React.FC = () => {
 
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showTermsOfService, setShowTermsOfService] = useState(false);
+
+  // Initialize SEO management
+  useSEO({ 
+    currentView, 
+    showPrivacy: showPrivacyPolicy, 
+    showTerms: showTermsOfService 
+  });
 
   // Fix: Corrected the malformed try-catch block in useEffect. This syntax error was causing the component scope to close prematurely, leading to all subsequent errors.
   useEffect(() => {
