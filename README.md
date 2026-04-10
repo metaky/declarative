@@ -20,6 +20,42 @@ View your app in AI Studio: https://ai.studio/apps/880cdadb-59a1-4aa7-9e3c-ba84d
    `npm run dev`
    This now starts both the Vite frontend and the Express API used by the translator.
 
+### Local Development Modes
+
+#### Real Gemini + Dev Bypass
+
+Recommended for normal local work. Add this to [`.env.local`](/Users/kyle.wegner/Dev Projects/declarative/.env.local):
+
+`DEV_BYPASS_CHALLENGE=true`
+
+In this mode:
+- `/api/translate` still runs through the local Express API and uses your local `GEMINI_API_KEY`
+- `/api/challenge` returns a harmless dev response instead of requiring Redis
+- production security stays unchanged because bypass mode is ignored when `NODE_ENV=production`
+
+#### Real Gemini + Full Challenge Parity
+
+If you want local behavior to match production more closely, leave `DEV_BYPASS_CHALLENGE` unset or set it to `false`, and provide:
+- `GEMINI_API_KEY`
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+
+In this mode:
+- `/api/challenge` creates one-time challenge IDs in Redis
+- `/api/translate` strictly requires a valid challenge ID
+- you can verify the full production-style anti-abuse flow locally
+
+#### Mock Translations Without Gemini
+
+If you want to test the translator UI and raw API responses without a working Gemini key, add this to [`.env.local`](/Users/kyle.wegner/Dev Projects/declarative/.env.local):
+
+`DEV_USE_MOCK_TRANSLATIONS=true`
+
+Then restart `npm run dev`. In this mode:
+- `/api/translate` returns deterministic mock suggestions
+- the browser Translate flow still works end-to-end
+- production is unaffected because mock mode is disabled when `NODE_ENV=production`
+
 ### Running Services Individually
 
 - Frontend only: `npm run dev:client`

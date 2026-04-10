@@ -19,7 +19,7 @@ const onboardingSteps = [
   },
   {
     title: 'Customize Your Tone',
-    description: 'Tailor suggestions to your child. Use a humorous tone or even theme them around interests like Pokémon or Minecraft!',
+    description: 'Tailor suggestions to your child. Keep things straightforward, use a humorous tone, or theme them around interests like Pokémon or Minecraft!',
     icon: '🎨',
   },
   {

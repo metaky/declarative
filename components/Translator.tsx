@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { getDeclarativeTranslations } from '../services/geminiService';
 import type { Translation, HistoryItem } from '../types';
-import { CopyIcon, CheckIcon, SpeechBubbleIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon, QuestionMarkCircleIcon } from './icons/Icons';
+import { CopyIcon, CheckIcon, SpeechBubbleIcon, AlignLeftIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon, QuestionMarkCircleIcon } from './icons/Icons';
 import { DonationCallout } from './DonationCallout';
 
 interface TranslatorProps {
@@ -38,10 +38,22 @@ const TranslationItem: React.FC<{ item: Translation }> = ({ item }) => {
 };
 
 const examplePrompts = [
-  "Get your backpack",
-  "It's time for dinner",
-  "Stop yelling",
-  "Do your homework",
+  {
+    label: 'Get ready for school',
+    inputText: 'Get your backpack and get your shoes on so we can get ready for school',
+  },
+  {
+    label: "It's time for dinner",
+    inputText: "Please come down and wash your hands. It's dinner time.",
+  },
+  {
+    label: 'No more yelling',
+    inputText: 'You are being way too loud right now. Please stop.',
+  },
+  {
+    label: 'Do your homework',
+    inputText: 'You have a lot of homework tonight, so we need to get started now',
+  },
 ];
 
 const TONE_OPTIONS = [
@@ -50,6 +62,12 @@ const TONE_OPTIONS = [
     Icon: SpeechBubbleIcon,
     iconClassName: 'text-gray-500',
     description: ""
+  },
+  {
+    name: 'Straightforward',
+    Icon: AlignLeftIcon,
+    iconClassName: 'text-slate-500',
+    description: "Short, clear, and low-pressure phrasing that gets to the point without sounding bossy, playful, or overexplained."
   },
   {
     name: 'Humorous',
@@ -123,11 +141,20 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
   const fetchChallengeToken = async () => {
     try {
       const res = await fetch("/api/challenge");
+      if (!res.ok) {
+        setChallengeId(null);
+        return;
+      }
+
       const data = await res.json();
       if (data.challengeId) {
         setChallengeId(data.challengeId);
+        return;
       }
+
+      setChallengeId(null);
     } catch (e) {
+      setChallengeId(null);
       console.error("Failed to fetch challenge", e);
     }
   };
@@ -314,12 +341,12 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
             <span className="text-sm text-gray-500 font-medium mr-1">Try:</span>
             {examplePrompts.map((prompt) => (
               <button
-                key={prompt}
-                onClick={() => setInputValue(prompt)}
+                key={prompt.label}
+                onClick={() => setInputValue(prompt.inputText)}
                 disabled={isLoading}
                 className="px-3 py-1 text-xs md:text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
-                {prompt}
+                {prompt.label}
               </button>
             ))}
           </div>
@@ -337,7 +364,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
               {TONE_OPTIONS.map(({ name, Icon, iconClassName, description }) => {
                 const isHelpOpen = openToneHelp === name;
                 const toneHelpId = `tone-help-${name.toLowerCase().replace(/\s+/g, '-')}`;

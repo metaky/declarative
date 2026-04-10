@@ -1,9 +1,24 @@
 import type { Translation } from '../types';
+import posthog from 'posthog-js';
 
 // Client-Side Rate Limiting (UX guard, not a security measure)
 const RATE_LIMIT_WINDOW_MS = 60000;
 const MAX_REQUESTS_PER_WINDOW = 5;
 const STORAGE_KEY = 'api_request_timestamps';
+
+const captureRateLimitEvent = (source: 'client' | 'server', waitSeconds: number) => {
+  try {
+    posthog.capture('rate_limit_hit', {
+      source,
+      action: 'translate',
+      wait_seconds: waitSeconds,
+      window_ms: RATE_LIMIT_WINDOW_MS,
+      max_requests_per_window: source === 'client' ? MAX_REQUESTS_PER_WINDOW : 10,
+    });
+  } catch (error) {
+    console.warn('PostHog rate limit capture failed:', error);
+  }
+};
 
 const checkRateLimit = (): void => {
   try {
@@ -16,6 +31,7 @@ const checkRateLimit = (): void => {
     if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
       const oldestTimestamp = validTimestamps[0];
       const waitTimeSeconds = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - oldestTimestamp)) / 1000);
+      captureRateLimitEvent('client', waitTimeSeconds);
       throw new Error(`Rate limit reached. Please wait ${waitTimeSeconds} seconds before trying again.`);
     }
 
@@ -57,6 +73,14 @@ export const getDeclarativeTranslations = async (
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Request failed.' }));
+      if (response.status === 429) {
+        const waitMatch = typeof errorData.error === 'string'
+          ? errorData.error.match(/Please wait (\d+) seconds/i)
+          : null;
+        if (waitMatch) {
+          captureRateLimitEvent('server', Number(waitMatch[1]));
+        }
+      }
       throw new Error(errorData.error || `Server error: ${response.status}`);
     }
 
