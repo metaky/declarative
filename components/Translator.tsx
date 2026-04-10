@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { getDeclarativeTranslations } from '../services/geminiService';
-import type { Translation, HistoryItem } from '../types';
+import type { Translation, HistoryEntryInput, HistoryItem } from '../types';
 import { CopyIcon, CheckIcon, SpeechBubbleIcon, AlignLeftIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon, QuestionMarkCircleIcon } from './icons/Icons';
 import { DonationCallout } from './DonationCallout';
 
 interface TranslatorProps {
   history: HistoryItem[];
-  onHistoryUpdate: (imperativeText: string, translations: Translation[], isAppending: boolean, tone?: string, interest?: string, useFewerWords?: boolean) => void;
+  onHistorySave: (entry: HistoryEntryInput) => void;
   onClearHistory: () => void;
 }
 
@@ -100,7 +100,16 @@ const LOADING_MESSAGES = [
   "Gathering suggestions. This will just be a few seconds."
 ];
 
-export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate, onClearHistory }) => {
+const historyDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+const formatHistoryTimestamp = (createdAt: string) => historyDateFormatter.format(new Date(createdAt));
+
+export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, onClearHistory }) => {
   const [inputValue, setInputValue] = useState('');
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -227,6 +236,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
   const handleTranslate = useCallback(async () => {
     if (!inputValue.trim() || isLoading) return;
+    const requestText = inputValue.trim();
     setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
     setIsLoading(true);
     setError(null);
@@ -235,9 +245,15 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
 
     try {
       const currentInterest = tone === 'Interest Based' ? interest : undefined;
-      const results = await getDeclarativeTranslations(inputValue, [], tone, currentInterest, useFewerWords, challengeId);
+      const results = await getDeclarativeTranslations(requestText, [], tone, currentInterest, useFewerWords, challengeId);
       setTranslations(results);
-      onHistoryUpdate(inputValue, results, false, tone, currentInterest, useFewerWords);
+      onHistorySave({
+        imperativeText: requestText,
+        translations: results,
+        tone,
+        interest: currentInterest,
+        useFewerWords,
+      });
     } catch (e: unknown) {
       if (e instanceof Error) {
         setError(e.message);
@@ -248,18 +264,26 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
       setIsLoading(false);
       fetchChallengeToken(); // Refresh token for next request
     }
-  }, [inputValue, isLoading, onHistoryUpdate, tone, interest, useFewerWords, challengeId]);
+  }, [inputValue, isLoading, onHistorySave, tone, interest, useFewerWords, challengeId]);
 
   const handleGenerateMore = useCallback(async () => {
     if (!inputValue.trim() || isGeneratingMore) return;
+    const requestText = inputValue.trim();
     setIsGeneratingMore(true);
     setError(null);
 
     try {
       const currentInterest = tone === 'Interest Based' ? interest : undefined;
-      const results = await getDeclarativeTranslations(inputValue, translations, tone, currentInterest, useFewerWords, challengeId);
-      setTranslations(prev => [...prev, ...results]);
-      onHistoryUpdate(inputValue, results, true, tone, currentInterest, useFewerWords);
+      const results = await getDeclarativeTranslations(requestText, translations, tone, currentInterest, useFewerWords, challengeId);
+      const combinedTranslations = [...translations, ...results];
+      setTranslations(combinedTranslations);
+      onHistorySave({
+        imperativeText: requestText,
+        translations: combinedTranslations,
+        tone,
+        interest: currentInterest,
+        useFewerWords,
+      });
     } catch (e: unknown) {
       if (e instanceof Error) {
         setError(e.message);
@@ -270,7 +294,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
       setIsGeneratingMore(false);
       fetchChallengeToken(); // Refresh token for next request
     }
-  }, [inputValue, isGeneratingMore, translations, onHistoryUpdate, tone, interest, useFewerWords, challengeId]);
+  }, [inputValue, isGeneratingMore, translations, onHistorySave, tone, interest, useFewerWords, challengeId]);
 
   const handleShareTool = async () => {
     const shareData = {
@@ -332,6 +356,12 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleTranslate();
+              }
+            }}
             placeholder="e.g., 'Brush your teeth'"
             className="w-full p-4 text-lg bg-gray-50 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow placeholder:text-gray-400"
             rows={3}
@@ -500,7 +530,10 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">Recent Translations</h3>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Recent Translations</h3>
+                <p className="mt-1 text-sm text-gray-500">Each saved run keeps its own tone and output set.</p>
+              </div>
               <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
                 <CloseIcon className="w-6 h-6" />
               </button>
@@ -512,16 +545,33 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistoryUpdate
                     <li key={item.id}>
                       <button
                         onClick={() => handleSelectHistory(item)}
-                        className="w-full text-left p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-sky-50 hover:border-sky-300 transition-all"
+                        className="w-full text-left p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:bg-sky-50 hover:border-sky-300 transition-all"
                       >
-                        <p className="font-semibold text-gray-800 truncate">{item.imperativeText}</p>
-                        <p className="text-sm text-gray-500 mt-1">{item.translations.length} suggestion{item.translations.length === 1 ? '' : 's'}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                          <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-sky-700 border border-sky-100">
+                            {item.tone || 'Default'}
+                          </span>
+                          {item.interest && (
+                            <span className="rounded-full bg-white px-2.5 py-1 font-medium text-indigo-700 border border-indigo-100">
+                              {item.interest}
+                            </span>
+                          )}
+                          {item.useFewerWords && (
+                            <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-600 border border-slate-200">
+                              Fewer words
+                            </span>
+                          )}
+                          <span>{formatHistoryTimestamp(item.createdAt)}</span>
+                        </div>
+                        <p className="mt-3 font-semibold text-gray-800">{item.imperativeText}</p>
+                        <p className="text-sm text-gray-600 mt-2 leading-relaxed">{item.translations[0]?.translation || 'No suggestions saved.'}</p>
+                        <p className="text-sm text-gray-500 mt-3">{item.translations.length} suggestion{item.translations.length === 1 ? '' : 's'} saved in this run</p>
                       </button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-center text-gray-500 py-8">Your translation history will appear here.</p>
+                <p className="text-center text-gray-500 py-8">Your recent translation runs will appear here, including tone-specific versions of the same prompt.</p>
               )}
             </div>
             {history.length > 0 && (

@@ -13,6 +13,15 @@ export interface LearningArticle {
 
 export interface HistoryItem {
   id: string;
+  createdAt: string;
+  imperativeText: string;
+  translations: Translation[];
+  tone?: string;
+  interest?: string;
+  useFewerWords?: boolean;
+}
+
+export interface HistoryEntryInput {
   imperativeText: string;
   translations: Translation[];
   tone?: string;

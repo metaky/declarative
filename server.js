@@ -126,6 +126,7 @@ Your core principles are:
 2.  **Calm by Design:** Your tone must be gentle, supportive, and understanding.
 3.  **Authenticity First:** Actively warn against manipulative phrasing. Your suggestions must be authentic invitations, not passive-aggressive commands. Prioritize the "Give Over Get" mindset.
 4.  **Empathy-Driven AI:** Always offer options, not directives. Root suggestions in autonomy and respect.
+5.  **Objective Situational Framing:** Prefer environment-first or task-first observations over caregiver-first framing. Describe what is happening in the situation before describing anyone's internal state.
 
 When a user provides a statement, you must:
 1.  **Address the Whole Statement:** CRITICAL: If the user provides a statement with multiple distinct parts or tasks (e.g., "Wash your hands and sit at the table"), ensure your declarative suggestions gracefully address ALL parts of the request. Do not omit details; instead, weave them together into a coherent, non-demanding narrative that acknowledges the full context.
@@ -133,6 +134,10 @@ When a user provides a statement, you must:
 3.  **Remove Demands:** Eliminate direct commands and obligation words ("need to," "must," "please do X").
 4.  **Reframe Declaratively:** Generate 3-4 varied alternatives (Observation, Self-Narrate, Invitation, Problem-Solving).
 5.  **Filter for Authenticity:** Discard any phrasing that sounds manipulative or like a "test."
+6.  **Lead With the Situation:** Favor objective observations about the environment, task, timing, or sensory context over statements centered on the caregiver's body, emotions, preferences, or concerns.
+7.  **Neutralize Perspective:** Avoid relying on narrator-led setups such as "I'm noticing...", "I need...", "I want...", "My body feels...", or "I'm worried..." when the same idea can be expressed as an objective description of the situation.
+8.  **Reduce Emotional Demand:** Minimize language that highlights the caregiver's internal state, personal need, disappointment, urgency, or stress, because this can function like an implicit emotional demand.
+9.  **Use 'I' Sparingly:** Aim for roughly a 3:1 ratio of objective observations to "I" statements. Use "I" statements only when they add natural variety, soften a collaborative idea, or express a genuine shared thought such as "I wonder if...".
 
 Your output must be a valid JSON array of objects.`;
 
@@ -211,40 +216,40 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
 
     const toneTemplates = {
         Default: [
-            `I notice ${joinedTasks}${interestSuffix}.`,
-            `I am thinking about ${joinedTasks}${interestSuffix}.`,
-            `Maybe we could figure out ${joinedTasks}${interestSuffix}.`,
+            `${taskPhrases[0]} is part of what's happening${interestSuffix}.`,
+            `It looks like ${joinedTasks}${interestSuffix} is part of the plan.`,
+            `The situation includes ${joinedTasks}${interestSuffix}.`,
             `I wonder what would make ${joinedTasks}${interestSuffix} feel easier.`,
         ],
         Straightforward: [
-            `I notice ${joinedTasks}.`,
+            `${taskPhrases[0]} is what's next.`,
             secondTask
-                ? `I am getting ready for ${firstTask} and ${secondTask}.`
-                : `I am getting ready for ${firstTask}.`,
+                ? `${firstTask} and ${secondTask} are both part of this moment.`
+                : `${firstTask} is part of this moment.`,
             secondTask
-                ? `I set things up for ${firstTask} and ${secondTask} if you are ready.`
-                : `I set things up for ${firstTask} if you are ready.`,
+                ? `Everything for ${firstTask} and ${secondTask} is ready when it works.`
+                : `Everything for ${firstTask} is ready when it works.`,
             secondTask
-                ? `It came up quickly. Everything for ${firstTask} and ${secondTask} is ready when you want it.`
+                ? `It came up quickly. ${firstTask} and ${secondTask} are both set up.`
                 : `It came up quickly. ${taskPhrases[0]} is ready when you want it.`,
         ],
         Humorous: [
-            `I think ${joinedTasks} may be staging a comeback tour.`,
-            `Uh oh, ${joinedTasks} is back on today's plot line.`,
+            `${joinedTasks} appears to be back for an encore.`,
+            `Uh oh, ${joinedTasks} made it into today's plot line.`,
             `It looks like ${joinedTasks} did not magically disappear.`,
-            `I am wondering whether ${joinedTasks} is the sneaky side quest today.`,
+            `${joinedTasks} may be the sneaky side quest today.`,
         ],
         Equalizing: [
-            `I may need your help with ${joinedTasks}.`,
-            `You probably know a better way to handle ${joinedTasks} than I do.`,
-            `I think you are more qualified than me for ${joinedTasks}.`,
-            `I could use your expert opinion on ${joinedTasks}.`,
+            `${joinedTasks} might benefit from an expert eye.`,
+            `There may be a smarter way through ${joinedTasks}.`,
+            `You might have a better read on ${joinedTasks} than this setup does.`,
+            `I wonder what an expert would notice about ${joinedTasks}.`,
         ],
         'Interest Based': [
-            `I notice ${joinedTasks}${interestSuffix}.`,
+            `${taskPhrases[0]}${interestSuffix} is part of what's happening.`,
             `I wonder how ${joinedTasks}${interestSuffix} would go today.`,
-            `Maybe we could try ${joinedTasks}${interestSuffix}.`,
-            `It looks like ${joinedTasks}${interestSuffix} is the next part.`,
+            `The next part looks like ${joinedTasks}${interestSuffix}.`,
+            `It looks like ${joinedTasks}${interestSuffix} is on the map.`,
         ],
     };
 
@@ -314,32 +319,32 @@ app.post('/api/translate', async (req, res) => {
     }
 
     // Build tone instruction
-    let toneInstruction = 'Please use a neutral, warm, and observational tone that focuses on sharing information.';
+    let toneInstruction = `Please use a neutral, warm, and observational tone that focuses on sharing information. Prefer environment-first or task-first phrasing over caregiver-centered phrasing. Lead with objective descriptions of what is happening, what is needed, or what the situation is like. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.`;
     if (tone && tone !== 'Default') {
         switch (tone) {
             case 'Straightforward':
-                toneInstruction = `Please use a "Straightforward" tone. Keep suggestions calm, plainspoken, and to the point with a low emotional temperature, but make them clearly recognisable as declarative language. Prioritize observation-first phrasing, simple self-narration, low-pressure statements of what is happening, and gentle availability cues over questions or prompts. Across the 3-4 suggestions, include a mix: 1-2 concise options and at least 1 slightly fuller option that still sounds natural and low-pressure. Use simple everyday wording and keep the suggestions meaningfully varied so they do not all sound like short label statements. Preserve felt safety and connection: the goal is to share information, reduce demand, and leave room for autonomy, not to push for compliance. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, obligation words, praise used as pressure, urgency, and any disguised command. Avoid sounding clipped, bossy, manipulative, or like you are testing the child.`;
+                toneInstruction = `Please use a "Straightforward" tone. Keep suggestions calm, plainspoken, and to the point with a low emotional temperature, but make them clearly recognisable as declarative language. Prioritize observation-first phrasing, environment-first framing, simple low-pressure statements of what is happening, and gentle availability cues over questions or prompts. Across the 3-4 suggestions, include a mix: 1-2 concise options and at least 1 slightly fuller option that still sounds natural and low-pressure. Use simple everyday wording and keep the suggestions meaningfully varied so they do not all sound like short label statements. Preserve felt safety and connection: the goal is to share information, reduce demand, and leave room for autonomy, not to push for compliance. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, obligation words, and clipped or bossy phrasing.`;
                 break;
             case 'Interest Based':
                 toneInstruction = interest
-                    ? `Please incorporate the theme of "${interest}" in a fun and engaging way. Use specific terminology or concepts related to it.`
-                    : `Please use a fun, engaging, and high-energy tone.`;
+                    ? `Please use an "Interest Based" tone. Incorporate the theme of "${interest}" in a fun and engaging way using specific terminology, imagery, or concepts related to it. Keep the suggestions grounded in declarative language and lead with objective observations about the environment, task, or situation rather than the caregiver's internal state. Let the interest add connection and momentum without turning the line into a performance, a gimmick, or a disguised command. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or references that overpower the core meaning of the statement.`
+                    : `Please use an "Interest Based" tone that is playful, engaging, and energizing while still staying grounded and low-pressure. Lead with objective descriptions of the environment, task, or situation rather than the caregiver's internal state. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or playfulness that distracts from the core meaning of the statement.`;
                 break;
             case 'Equalizing':
-                toneInstruction = `Please use an "Equalizing" tone. Frame the statement as if the child is the expert/leader, or playfully position the adult as needing correction, help, or being "silly" and forgetful.`;
+                toneInstruction = `Please use an "Equalizing" tone. Gently frame the situation as collaborative, leveling, or as if the child has useful perspective, while still keeping the language rooted in objective observations about the environment, task, or situation. If you position the adult as needing help, correction, or a different point of view, keep it warm and light. Do not make the adult sound mocking, helpless, performatively foolish, or dependent on the child for emotional regulation. Preserve dignity, warmth, and real felt safety. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.`;
                 break;
             case 'Humorous':
-                toneInstruction = `Please use a "Humorous" and playful tone to lower defenses. Use lighthearted jokes or "absurd" observations to break the demand cycle.`;
+                toneInstruction = `Please use a "Humorous" tone. Use lighthearted playfulness or gentle absurdity to lower pressure while keeping the suggestions rooted in objective observations about the environment, task, or situation. Humor should support connection and reduce defensiveness, not distract from the meaning. Keep it warm, low-stakes, and easy to understand. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, ridicule, teasing, overstimulation, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.`;
                 break;
         }
     }
 
-    const lengthInstruction = useFewerWords ? ' CRITICAL: Keep all suggestions extremely short (under 7 words if possible).' : '';
+    const lengthInstruction = useFewerWords ? ' CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.' : '';
     const existingList = existingTranslations.length > 0
         ? `\nAvoid repeating these specific ideas: ${existingTranslations.map(t => t.translation).join(', ')}`
         : '';
 
-    const prompt = `Convert the ENTIRETY of this demand: "${text}" into declarative language. Ensure all parts of the user's request are addressed gracefully in each suggestion. Tone: ${toneInstruction}${lengthInstruction}${existingList}`;
+    const basePrompt = `Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: "${text}". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with "I", "I'm", "I am", "my", "we", or "our". Tone: ${toneInstruction}${lengthInstruction}${existingList}`;
 
     try {
         const ai = new GoogleGenAI({ apiKey });
@@ -351,7 +356,7 @@ app.post('/api/translate', async (req, res) => {
 
         const apiPromise = ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: basePrompt,
             config: {
                 systemInstruction,
                 responseMimeType: 'application/json',
@@ -369,7 +374,6 @@ app.post('/api/translate', async (req, res) => {
         });
 
         const response = await Promise.race([apiPromise, timeoutPromise]);
-
         const responseText = response.text;
         if (!responseText) {
             return res.status(500).json({ error: 'Empty response from AI.' });

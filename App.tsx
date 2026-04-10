@@ -10,21 +10,14 @@ import { Onboarding } from './components/Onboarding';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { CoffeePage } from './components/CoffeePage';
-import type { HistoryItem, Translation } from './types';
+import { clearHistoryEntries, loadHistoryEntries, prependHistoryEntry, saveHistoryEntries } from './services/historyStorage';
+import type { HistoryEntryInput, HistoryItem } from './types';
 
 export type View = 'translator' | 'learn' | 'other-tools' | 'coffee';
 
 const App: React.FC = () => {
   const { currentView, navigate: setCurrentView } = useHashRouter();
-  const [history, setHistory] = useState<HistoryItem[]>(() => {
-    try {
-      const savedHistory = localStorage.getItem('translationHistory');
-      return savedHistory ? JSON.parse(savedHistory) : [];
-    } catch (error) {
-      console.error('Could not load history from localStorage', error);
-      return [];
-    }
-  });
+  const [history, setHistory] = useState<HistoryItem[]>(() => loadHistoryEntries());
 
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try {
@@ -47,13 +40,8 @@ const App: React.FC = () => {
     showTerms: showTermsOfService 
   });
 
-  // Fix: Corrected the malformed try-catch block in useEffect. This syntax error was causing the component scope to close prematurely, leading to all subsequent errors.
   useEffect(() => {
-    try {
-      localStorage.setItem('translationHistory', JSON.stringify(history));
-    } catch (error) {
-      console.error('Could not save history to localStorage', error);
-    }
+    saveHistoryEntries(history);
   }, [history]);
 
 
@@ -70,43 +58,13 @@ const App: React.FC = () => {
   };
 
 
-  const handleHistoryUpdate = (imperativeText: string, newTranslations: Translation[], isAppending: boolean, tone?: string, interest?: string, useFewerWords?: boolean) => {
-    setHistory(prevHistory => {
-      const existingIndex = prevHistory.findIndex(item => item.imperativeText.toLowerCase() === imperativeText.toLowerCase());
-
-      if (existingIndex !== -1) {
-        // Item exists, update it and move to front
-        const updatedHistory = [...prevHistory];
-        const existingItem = updatedHistory.splice(existingIndex, 1)[0];
-
-        const combinedTranslations = isAppending
-          ? [...existingItem.translations, ...newTranslations]
-          : newTranslations;
-
-        const updatedItem = { ...existingItem, translations: combinedTranslations, tone, interest, useFewerWords };
-        return [updatedItem, ...updatedHistory];
-      } else {
-        // New item, add to front
-        const newItem: HistoryItem = {
-          id: new Date().toISOString(),
-          imperativeText,
-          translations: newTranslations,
-          tone,
-          interest,
-          useFewerWords,
-        };
-        return [newItem, ...prevHistory];
-      }
-    });
+  const handleHistorySave = (entry: HistoryEntryInput) => {
+    setHistory(prevHistory => prependHistoryEntry(prevHistory, entry));
   };
 
   const handleClearHistory = () => {
     setHistory([]);
-    try {
-      localStorage.removeItem('translationHistory');
-    } catch (error) {
-      console.error('Could not clear history from localStorage', error);
-    }
+    clearHistoryEntries();
   };
 
   // Show privacy policy page
@@ -124,7 +82,7 @@ const App: React.FC = () => {
       {/* Maintenance Banner Removed */}
       <Header currentView={currentView} setCurrentView={setCurrentView} />
       <main className="flex-grow container mx-auto p-4 md:p-8 lg:p-10 w-full max-w-4xl">
-        {currentView === 'translator' && <Translator history={history} onHistoryUpdate={handleHistoryUpdate} onClearHistory={handleClearHistory} />}
+        {currentView === 'translator' && <Translator history={history} onHistorySave={handleHistorySave} onClearHistory={handleClearHistory} />}
         {currentView === 'learn' && <LearningHub onNavigate={setCurrentView} />}
         {currentView === 'other-tools' && <OtherTools />}
         {currentView === 'coffee' && (
