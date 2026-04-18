@@ -1,0 +1,161 @@
+[
+  {
+    "id": "default-short-transition",
+    "label": "Default tone short transition",
+    "text": "Put your shoes on.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Low-pressure phrasing",
+      "No disguised command language",
+      "Natural everyday wording"
+    ]
+  },
+  {
+    "id": "default-multipart-dinner",
+    "label": "Default tone multi-part dinner flow",
+    "text": "Please come downstairs, wash your hands, and sit at the table for dinner.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Full task coverage",
+      "Environment-first framing",
+      "Authenticity without pressure"
+    ]
+  },
+  {
+    "id": "straightforward-cleanup",
+    "label": "Straightforward tone cleanup",
+    "text": "Pick up your backpack and put your lunchbox in the kitchen.",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Plainspoken clarity",
+      "Concise but not clipped",
+      "Multi-part completeness"
+    ]
+  },
+  {
+    "id": "straightforward-fewer-words",
+    "label": "Straightforward tone with fewer words",
+    "text": "Turn off the TV and head upstairs for bath time.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Brevity without losing both tasks",
+      "Low emotional temperature",
+      "No bossy shortcuts"
+    ]
+  },
+  {
+    "id": "humorous-homework",
+    "label": "Humorous tone homework start",
+    "text": "We need to start homework before it gets too late.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Humor reduces pressure",
+      "No sarcasm or ridicule",
+      "Still clearly understandable"
+    ]
+  },
+  {
+    "id": "humorous-bedtime-multipart",
+    "label": "Humorous tone bedtime sequence",
+    "text": "Brush your teeth, put on pajamas, and get into bed.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Gentle playfulness",
+      "All tasks still present",
+      "No overstimulation"
+    ]
+  },
+  {
+    "id": "equalizing-errand",
+    "label": "Equalizing tone errand preparation",
+    "text": "Get your coat and help me check if we have everything for the car.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Leveling without incompetence theater",
+      "Warmth and dignity",
+      "Task clarity"
+    ]
+  },
+  {
+    "id": "equalizing-fewer-words",
+    "label": "Equalizing tone shorter prompt",
+    "text": "Come look at this and tell me if I missed a step for bedtime.",
+    "tone": "Equalizing",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Collaborative framing",
+      "No pressure hidden in praise",
+      "Short but natural"
+    ]
+  },
+  {
+    "id": "interest-based-minecraft",
+    "label": "Interest Based with explicit interest",
+    "text": "Please put your socks on and grab your backpack so we can leave for school.",
+    "tone": "Interest Based",
+    "interest": "Minecraft",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Interest integration feels natural",
+      "No gimmicky overload",
+      "Full task coverage"
+    ]
+  },
+  {
+    "id": "interest-based-pokemon-fewer",
+    "label": "Interest Based with fewer words",
+    "text": "Wash your hands and come to the kitchen for lunch.",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact but complete",
+      "Interest remains supportive",
+      "No hype that overwhelms meaning"
+    ]
+  },
+  {
+    "id": "generate-more-follow-up",
+    "label": "Generate more follow-up case",
+    "text": "Get your shoes on and come to the car.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "existingTranslations": [
+      { "translation": "The car is ready, and shoes are part of getting out the door." },
+      { "translation": "It looks like shoes and heading to the car are the next part." },
+      { "translation": "The driveway is waiting, and shoes help with getting there." },
+      { "translation": "I wonder what would make shoes and the walk to the car feel easier." }
+    ],
+    "reviewFocus": [
+      "Distinct follow-up ideas",
+      "No repeated wording",
+      "Still low-pressure"
+    ]
+  },
+  {
+    "id": "generate-more-interest-follow-up",
+    "label": "Generate more follow-up with interest",
+    "text": "Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.",
+    "tone": "Interest Based",
+    "interest": "Dinosaurs",
+    "useFewerWords": false,
+    "existingTranslations": [
+      { "translation": "The bathroom is the next stop, and the dinosaur can head to bed after teeth are done." },
+      { "translation": "It looks like toothbrush time came before the dinosaur bedtime expedition." },
+      { "translation": "The sink is ready, and the dinosaur can travel to bed when teeth are sorted out." },
+      { "translation": "I wonder how the dinosaur bedtime route goes once teeth are taken care of." }
+    ],
+    "reviewFocus": [
+      "Follow-up distinctness",
+      "Interest stays grounded",
+      "Multi-part fidelity"
+    ]
+  }
+]

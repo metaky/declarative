@@ -10,6 +10,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc",
+    "check:gemini-models": "node scripts/check-gemini-models.mjs",
+    "check:get-more-ideas-prompts": "node scripts/check-get-more-ideas-prompts.mjs",
+    "check:get-more-ideas-multiround": "node scripts/check-get-more-ideas-multiround.mjs",
     "start": "node server.js",
     "start:api": "PORT=3002 node server.js",
     "deploy": "gcloud run deploy declarative --source . --project gen-lang-client-0598048123 --region us-west1 --allow-unauthenticated"

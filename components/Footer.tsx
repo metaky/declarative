@@ -16,7 +16,15 @@ export const Footer: React.FC<FooterProps> = ({ onShowPrivacy, onShowTerms, onNa
         </div>
         <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <p>
-            Built with care for the PDA community by Kyle Wegner
+            Built with care for the PDA community by{' '}
+            <a
+              href="https://www.kylewegner.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-gray-700 transition-colors"
+            >
+              Kyle Wegner
+            </a>
             </p>
             <span className="hidden sm:inline text-gray-400">|</span>
             <button onClick={() => onNavigate('coffee')} className="underline hover:text-gray-700 transition-colors">

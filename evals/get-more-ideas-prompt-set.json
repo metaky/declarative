@@ -1,0 +1,75 @@
+[
+  {
+    "id": "follow-up-default-shoes-car",
+    "label": "Default follow-up",
+    "text": "Get your shoes on and come to the car.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "existingTranslations": [
+      { "translation": "The car is ready, and shoes are part of getting out the door." },
+      { "translation": "It looks like shoes and heading to the car are the next part." },
+      { "translation": "The driveway is waiting, and shoes help with getting there." },
+      { "translation": "I wonder what would make shoes and the walk to the car feel easier." }
+    ],
+    "reviewFocus": [
+      "Distinct follow-up ideas",
+      "No generic rewordings",
+      "Still low-pressure"
+    ]
+  },
+  {
+    "id": "follow-up-interest-bedtime-dinosaur",
+    "label": "Interest Based follow-up",
+    "text": "Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.",
+    "tone": "Interest Based",
+    "interest": "Dinosaurs",
+    "useFewerWords": false,
+    "existingTranslations": [
+      { "translation": "The bathroom is the next stop, and the dinosaur can head to bed after teeth are done." },
+      { "translation": "It looks like toothbrush time came before the dinosaur bedtime expedition." },
+      { "translation": "The sink is ready, and the dinosaur can travel to bed when teeth are sorted out." },
+      { "translation": "I wonder how the dinosaur bedtime route goes once teeth are taken care of." }
+    ],
+    "reviewFocus": [
+      "Interest stays grounded",
+      "Multi-part fidelity",
+      "Distinctness without gimmicks"
+    ]
+  },
+  {
+    "id": "follow-up-fewer-words-lunch",
+    "label": "Fewer Words follow-up",
+    "text": "Wash your hands and come to the kitchen for lunch.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "existingTranslations": [
+      { "translation": "Hands first, then the kitchen for lunch." },
+      { "translation": "The sink is next, and lunch is waiting in the kitchen." },
+      { "translation": "Looks like handwashing and the kitchen go together right now." },
+      { "translation": "Lunch is nearly ready once hands are sorted out." }
+    ],
+    "reviewFocus": [
+      "Compact but complete",
+      "No clipped or bossy drift",
+      "Fresh follow-up angles"
+    ]
+  },
+  {
+    "id": "follow-up-multipart-bed-bathroom",
+    "label": "Multi-part follow-up",
+    "text": "Please come to the bathroom, get your pajamas on, and bring your book to bed.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "existingTranslations": [
+      { "translation": "The bathroom is the first stop, and pajamas plus a book seem to be part of the path to bed." },
+      { "translation": "It looks like bathroom, pajamas, and book are all teaming up for bedtime." },
+      { "translation": "I could use a second set of eyes on the bedtime order: bathroom, pajamas, then book to bed." },
+      { "translation": "The bed seems to be waiting on a bathroom stop, pajamas, and a book." }
+    ],
+    "reviewFocus": [
+      "All parts stay present",
+      "Equalizing tone stays natural",
+      "Distinctness across follow-up rounds"
+    ]
+  }
+]

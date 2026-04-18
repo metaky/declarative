@@ -1,0 +1,933 @@
+[
+  {
+    "id": "default-short-transition",
+    "label": "Default tone short transition",
+    "text": "Put your shoes on.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Low-pressure phrasing",
+      "No disguised command language",
+      "Natural everyday wording"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Put your shoes on.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a neutral, warm, and observational tone that focuses on sharing information. Prefer environment-first or task-first phrasing over caregiver-centered phrasing. Lead with objective descriptions of what is happening, what is needed, or what the situation is like. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1326,
+        "usageMetadata": {
+          "promptTokenCount": 854,
+          "candidatesTokenCount": 91,
+          "totalTokenCount": 945,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 854
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Shoes are for putting on feet."
+          },
+          {
+            "translation": "It's shoe-wearing time now."
+          },
+          {
+            "translation": "Those shoes are ready to go on someone's feet."
+          },
+          {
+            "translation": "I wonder if feet want shoes on them for our adventure."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 787,
+        "usageMetadata": {
+          "promptTokenCount": 854,
+          "candidatesTokenCount": 103,
+          "totalTokenCount": 957,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 854
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The shoes are by the door, waiting to go on."
+          },
+          {
+            "translation": "It looks like it's time to get our shoes on for going outside."
+          },
+          {
+            "translation": "I wonder if your feet are ready for their shoes."
+          },
+          {
+            "translation": "The shoes seem to be ready for feet to slide into them."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "default-multipart-dinner",
+    "label": "Default tone multi-part dinner flow",
+    "text": "Please come downstairs, wash your hands, and sit at the table for dinner.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Full task coverage",
+      "Environment-first framing",
+      "Authenticity without pressure"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come downstairs, wash your hands, and sit at the table for dinner.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a neutral, warm, and observational tone that focuses on sharing information. Prefer environment-first or task-first phrasing over caregiver-centered phrasing. Lead with objective descriptions of what is happening, what is needed, or what the situation is like. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1344,
+        "usageMetadata": {
+          "promptTokenCount": 865,
+          "candidatesTokenCount": 150,
+          "totalTokenCount": 1015,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 865
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner is ready on the table and the soap is by the sink, if you're feeling hungry. It might be helpful to wash hands before eating."
+          },
+          {
+            "translation": "The table is set for dinner. Hand washing is often part of getting ready to eat."
+          },
+          {
+            "translation": "I'm just about to head to the table for dinner; the water's running in the bathroom if anyone's ready to wash hands before joining."
+          },
+          {
+            "translation": "Dinner is getting served downstairs, and clean hands are a good way to start a meal."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1058,
+        "usageMetadata": {
+          "promptTokenCount": 865,
+          "candidatesTokenCount": 149,
+          "totalTokenCount": 1014,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 865
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner is ready downstairs, and the table is set. The sink is ready for hand washing when you get here."
+          },
+          {
+            "translation": "I notice the plates are out for dinner downstairs. The water is running in the bathroom for washing hands."
+          },
+          {
+            "translation": "The kitchen is warm and smells like dinner. There's a spot at the table, and the soap is by the sink."
+          },
+          {
+            "translation": "I wonder if we could head downstairs for dinner soon. We can wash our hands when we get there, and then sit at the table."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "straightforward-cleanup",
+    "label": "Straightforward tone cleanup",
+    "text": "Pick up your backpack and put your lunchbox in the kitchen.",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Plainspoken clarity",
+      "Concise but not clipped",
+      "Multi-part completeness"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Pick up your backpack and put your lunchbox in the kitchen.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a \"Straightforward\" tone. Keep suggestions calm, plainspoken, and to the point with a low emotional temperature, but make them clearly recognisable as declarative language. Prioritize observation-first phrasing, environment-first framing, simple low-pressure statements of what is happening, and gentle availability cues over questions or prompts. Across the 3-4 suggestions, include a mix: 1-2 concise options and at least 1 slightly fuller option that still sounds natural and low-pressure. Use simple everyday wording and keep the suggestions meaningfully varied so they do not all sound like short label statements. Preserve felt safety and connection: the goal is to share information, reduce demand, and leave room for autonomy, not to push for compliance. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, obligation words, and clipped or bossy phrasing.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1150,
+        "usageMetadata": {
+          "promptTokenCount": 989,
+          "candidatesTokenCount": 125,
+          "totalTokenCount": 1114,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 989
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The backpack is still by the door and the lunchbox is in there."
+          },
+          {
+            "translation": "The lunchbox needs to get to the kitchen and the backpack is here."
+          },
+          {
+            "translation": "The kitchen counter is clear for the lunchbox when it's ready, and the backpack is right here."
+          },
+          {
+            "translation": "I notice the backpack and the lunchbox are still out; the kitchen is the spot for the lunchbox."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 999,
+        "usageMetadata": {
+          "promptTokenCount": 989,
+          "candidatesTokenCount": 116,
+          "totalTokenCount": 1105,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 989
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The backpack is by the door. The lunchbox is ready for the kitchen."
+          },
+          {
+            "translation": "I notice the backpack and the lunchbox. They are ready to be moved."
+          },
+          {
+            "translation": "Backpack and lunchbox are waiting to be taken to their spots."
+          },
+          {
+            "translation": "There's a backpack to be picked up and a lunchbox to go to the kitchen."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "straightforward-fewer-words",
+    "label": "Straightforward tone with fewer words",
+    "text": "Turn off the TV and head upstairs for bath time.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Brevity without losing both tasks",
+      "Low emotional temperature",
+      "No bossy shortcuts"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Turn off the TV and head upstairs for bath time.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a \"Straightforward\" tone. Keep suggestions calm, plainspoken, and to the point with a low emotional temperature, but make them clearly recognisable as declarative language. Prioritize observation-first phrasing, environment-first framing, simple low-pressure statements of what is happening, and gentle availability cues over questions or prompts. Across the 3-4 suggestions, include a mix: 1-2 concise options and at least 1 slightly fuller option that still sounds natural and low-pressure. Use simple everyday wording and keep the suggestions meaningfully varied so they do not all sound like short label statements. Preserve felt safety and connection: the goal is to share information, reduce demand, and leave room for autonomy, not to push for compliance. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, obligation words, and clipped or bossy phrasing. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1123,
+        "usageMetadata": {
+          "promptTokenCount": 1013,
+          "candidatesTokenCount": 120,
+          "totalTokenCount": 1133,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1013
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The TV is on; bath time is coming up next."
+          },
+          {
+            "translation": "It's bath time. The TV is playing, and upstairs is where the bath is."
+          },
+          {
+            "translation": "Bath time is getting close. I wonder if the TV could be off, and we could go upstairs soon."
+          },
+          {
+            "translation": "The TV is on, and it's almost time for a bath upstairs."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 884,
+        "usageMetadata": {
+          "promptTokenCount": 1013,
+          "candidatesTokenCount": 103,
+          "totalTokenCount": 1116,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1013
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The TV is on and the bath is ready upstairs."
+          },
+          {
+            "translation": "Bath time is upstairs and the TV is currently playing."
+          },
+          {
+            "translation": "The screen is on, and the water is running upstairs for a bath."
+          },
+          {
+            "translation": "Upstairs is prepped for a bath, and the TV is on."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humorous-homework",
+    "label": "Humorous tone homework start",
+    "text": "We need to start homework before it gets too late.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Humor reduces pressure",
+      "No sarcasm or ridicule",
+      "Still clearly understandable"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"We need to start homework before it gets too late.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a \"Humorous\" tone. Use lighthearted playfulness or gentle absurdity to lower pressure while keeping the suggestions rooted in objective observations about the environment, task, or situation. Humor should support connection and reduce defensiveness, not distract from the meaning. Keep it warm, low-stakes, and easy to understand. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, ridicule, teasing, overstimulation, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1713,
+        "usageMetadata": {
+          "promptTokenCount": 881,
+          "candidatesTokenCount": 175,
+          "totalTokenCount": 1056,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 881
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Oh no, look at that clock! It's trying to sneak past our homework window like a ninja, isn't it?"
+          },
+          {
+            "translation": "The homework gremlins are probably wondering if we're ever going to open their books for an adventure. And soon it will be bedtime for them!"
+          },
+          {
+            "translation": "It seems like the evening is playing a trick on us, zooming by at light speed. We'll want to get those homework muscles warmed up before it disappears completely!"
+          },
+          {
+            "translation": "I wonder if our brains are ready for some homework fun. It's getting to the point where they might decide to switch off and dream of snacks instead!"
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1358,
+        "usageMetadata": {
+          "promptTokenCount": 881,
+          "candidatesTokenCount": 233,
+          "totalTokenCount": 1114,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 881
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The clock is doing its tick-tock dance, and the homework beast is stirring. I wonder if we could outsmart it with a quick quest before its bedtime story?"
+          },
+          {
+            "translation": "Look at the sunbeams starting to pack their bags for the day! It looks like the homework assignments are lining up, ready for their grand adventure. Shall we embark on this chapter of discovery before the shadows grow too long?"
+          },
+          {
+            "translation": "It appears the homework monsters are preparing their quiet time, and the clock's hands are doing a speedy little waltz. What if we wove a little bit of this learning magic into our current adventure before the 'too late' alarm goes off?"
+          },
+          {
+            "translation": "Hmm, the homework portal is open, and the minutes are flitting by like playful butterflies. I'm curious if we could tackle a few of these brain-ticklers together before the 'oops, too late' gremlins show up?"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humorous-bedtime-multipart",
+    "label": "Humorous tone bedtime sequence",
+    "text": "Brush your teeth, put on pajamas, and get into bed.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Gentle playfulness",
+      "All tasks still present",
+      "No overstimulation"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Brush your teeth, put on pajamas, and get into bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a \"Humorous\" tone. Use lighthearted playfulness or gentle absurdity to lower pressure while keeping the suggestions rooted in objective observations about the environment, task, or situation. Humor should support connection and reduce defensiveness, not distract from the meaning. Keep it warm, low-stakes, and easy to understand. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, ridicule, teasing, overstimulation, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1922,
+        "usageMetadata": {
+          "promptTokenCount": 883,
+          "candidatesTokenCount": 203,
+          "totalTokenCount": 1086,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 883
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Oh, look at that! It seems the teeth-brushing adventure, the cozy pajama quest, and the comfy bed mission are all waiting for us right about now. What a trio of evening fun!"
+          },
+          {
+            "translation": "The bathroom light is still on, and I'm spotting pajamas on the bed, which often means teeth are ready for their sparkle scrub and bodies are ready for their soft, sleepy covers."
+          },
+          {
+            "translation": "I see sleepy-time things are popping up! There's a toothbrush looking lonely, pajamas lying ready, and a bed just begging to be snuggled into."
+          },
+          {
+            "translation": "It looks like the day is winding down, and the evening routine items are staging a little rally: the toothbrush is calling, the pajamas are waving, and the bed is sending out sleepy signals!"
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1114,
+        "usageMetadata": {
+          "promptTokenCount": 883,
+          "candidatesTokenCount": 181,
+          "totalTokenCount": 1064,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 883
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The toothbrush is waiting for its turn to tickle some teeth, and the pajama parade is about to begin! After that, the bed is ready for its nightly snuggle session."
+          },
+          {
+            "translation": "It looks like the toothbrush and pajamas are whispering about bedtime adventures. The bed is also getting cozy, ready for a sleepy explorer."
+          },
+          {
+            "translation": "Operation Pajama Power-Up and Toothbrush Tango is a go! Following that, the grand finale is a triumphant entry into the sleepy-time zone: the bed."
+          },
+          {
+            "translation": "I wonder if the toothbrush is feeling a bit lonely and the pajamas are ready for a change of scenery? The bed seems to be doing a silent countdown for sleepyheads."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "equalizing-errand",
+    "label": "Equalizing tone errand preparation",
+    "text": "Get your coat and help me check if we have everything for the car.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Leveling without incompetence theater",
+      "Warmth and dignity",
+      "Task clarity"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Get your coat and help me check if we have everything for the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use an \"Equalizing\" tone. Gently frame the situation as collaborative, leveling, or as if the child has useful perspective, while still keeping the language rooted in objective observations about the environment, task, or situation. If you position the adult as needing help, correction, or a different point of view, keep it warm and light. Do not make the adult sound mocking, helpless, performatively foolish, or dependent on the child for emotional regulation. Preserve dignity, warmth, and real felt safety. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1460,
+        "usageMetadata": {
+          "promptTokenCount": 915,
+          "candidatesTokenCount": 162,
+          "totalTokenCount": 1077,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 915
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The coat is by the door; we could also check if we have everything for the car."
+          },
+          {
+            "translation": "The car looks like it's waiting for us; it would be so helpful to double-check our supplies and grab a coat if it's chilly out there."
+          },
+          {
+            "translation": "It might be time to put a coat on for outside; I'm also wondering if we have everything for the car."
+          },
+          {
+            "translation": "I'm not sure if we're all ready for the car. Sometimes I forget things, and I also notice coats are often helpful when we go out."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 793,
+        "usageMetadata": {
+          "promptTokenCount": 915,
+          "candidatesTokenCount": 153,
+          "totalTokenCount": 1068,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 915
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The coats are by the door and there are a few things we might need to bring to the car."
+          },
+          {
+            "translation": "The coats are hanging by the door, and I'm wondering what else we might need for the car."
+          },
+          {
+            "translation": "It looks like coat weather, and it's time to get ready for the car. Could you check if we have everything?"
+          },
+          {
+            "translation": "Before we head to the car, let's put on our coats. I'm not sure if we have everything, could you take a quick look around?"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "equalizing-fewer-words",
+    "label": "Equalizing tone shorter prompt",
+    "text": "Come look at this and tell me if I missed a step for bedtime.",
+    "tone": "Equalizing",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Collaborative framing",
+      "No pressure hidden in praise",
+      "Short but natural"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Come look at this and tell me if I missed a step for bedtime.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use an \"Equalizing\" tone. Gently frame the situation as collaborative, leveling, or as if the child has useful perspective, while still keeping the language rooted in objective observations about the environment, task, or situation. If you position the adult as needing help, correction, or a different point of view, keep it warm and light. Do not make the adult sound mocking, helpless, performatively foolish, or dependent on the child for emotional regulation. Preserve dignity, warmth, and real felt safety. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1184,
+        "usageMetadata": {
+          "promptTokenCount": 941,
+          "candidatesTokenCount": 121,
+          "totalTokenCount": 1062,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 941
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bedtime checklist is ready for a second pair of eyes."
+          },
+          {
+            "translation": "There might be a missed step on the bedtime chart. I wonder if you see it."
+          },
+          {
+            "translation": "Bedtime steps are all laid out. It would be super helpful to get your view on them."
+          },
+          {
+            "translation": "I just went through the bedtime routine. Sometimes I miss things; a fresh perspective would be great."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1015,
+        "usageMetadata": {
+          "promptTokenCount": 941,
+          "candidatesTokenCount": 128,
+          "totalTokenCount": 1069,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 941
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bedtime routine is set up here. I'm wondering if all the steps are in place."
+          },
+          {
+            "translation": "This is the bedtime sequence. What do you notice about it?"
+          },
+          {
+            "translation": "I've laid out the bedtime steps. Could you help me see if anything looks out of order?"
+          },
+          {
+            "translation": "Let's look over the bedtime steps together. I want to make sure I haven't forgotten anything important."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "interest-based-minecraft",
+    "label": "Interest Based with explicit interest",
+    "text": "Please put your socks on and grab your backpack so we can leave for school.",
+    "tone": "Interest Based",
+    "interest": "Minecraft",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Interest integration feels natural",
+      "No gimmicky overload",
+      "Full task coverage"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please put your socks on and grab your backpack so we can leave for school.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use an \"Interest Based\" tone. Incorporate the theme of \"Minecraft\" in a fun and engaging way using specific terminology, imagery, or concepts related to it. Keep the suggestions grounded in declarative language and lead with objective observations about the environment, task, or situation rather than the caregiver's internal state. Let the interest add connection and momentum without turning the line into a performance, a gimmick, or a disguised command. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or references that overpower the core meaning of the statement.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1433,
+        "usageMetadata": {
+          "promptTokenCount": 919,
+          "candidatesTokenCount": 158,
+          "totalTokenCount": 1077,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 919
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Socks are waiting to be equipped for our adventure, and the backpack is ready to be loaded up with supplies. The portal to school will open soon."
+          },
+          {
+            "translation": "Our school mission is about to begin. It's time for some armor and our inventory pack before we can teleport."
+          },
+          {
+            "translation": "I wonder if we could get geared up with socks and the backpack for school, like preparing for a big building project."
+          },
+          {
+            "translation": "The clock is ticking down to school departure. Those socks look like they're ready for action, and the backpack is looking quite empty."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1811,
+        "usageMetadata": {
+          "promptTokenCount": 919,
+          "candidatesTokenCount": 248,
+          "totalTokenCount": 1167,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 919
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The sun is up, and the school day is about to begin, like starting a new Minecraft world. Your socks are waiting by the door, ready to be equipped like armor, and your backpack looks like a trusty chest full of supplies for the adventure ahead."
+          },
+          {
+            "translation": "It's time to get ready for school. We can think of getting dressed as preparing our character. Putting on socks is like putting on boots, and then the backpack is like carrying our inventory for the day's quests."
+          },
+          {
+            "translation": "Outside, the world is waking up, and the school adventure is calling. The socks are on the floor, like a crafting recipe for warm feet, and the backpack is packed and ready, like our Ender Chest for a long journey."
+          },
+          {
+            "translation": "The morning light is here, signaling the start of a new day, a bit like spawning into a fresh Minecraft biome. Getting our socks on is the first step in preparing for the journey, and gathering our backpack is like collecting our essential tools before heading out."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "interest-based-pokemon-fewer",
+    "label": "Interest Based with fewer words",
+    "text": "Wash your hands and come to the kitchen for lunch.",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact but complete",
+      "Interest remains supportive",
+      "No hype that overwhelms meaning"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Wash your hands and come to the kitchen for lunch.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use an \"Interest Based\" tone. Incorporate the theme of \"Pokemon\" in a fun and engaging way using specific terminology, imagery, or concepts related to it. Keep the suggestions grounded in declarative language and lead with objective observations about the environment, task, or situation rather than the caregiver's internal state. Let the interest add connection and momentum without turning the line into a performance, a gimmick, or a disguised command. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or references that overpower the core meaning of the statement. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1555,
+        "usageMetadata": {
+          "promptTokenCount": 940,
+          "candidatesTokenCount": 165,
+          "totalTokenCount": 1105,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 940
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Lunch is ready in the kitchen, and it looks like it's time to power up by washing our hands for a Pokémon trainer's feast!"
+          },
+          {
+            "translation": "The kitchen has lunch waiting, and hands could use a quick Potion to get them clean before we enjoy it."
+          },
+          {
+            "translation": "I see the kitchen table is set for lunch, and it's a good time to make sure our hands are squeaky clean for our meal, just like a Pokémon getting ready for battle."
+          },
+          {
+            "translation": "The scent of lunch is wafting from the kitchen, and clean hands help us enjoy all the delicious flavors."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1168,
+        "usageMetadata": {
+          "promptTokenCount": 940,
+          "candidatesTokenCount": 211,
+          "totalTokenCount": 1151,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 940
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The sink is ready for a hand-washing quest, and lunch is waiting in the kitchen – maybe a Potion for your hands and then refueling like a speedy Eevee!"
+          },
+          {
+            "translation": "I notice the water is running, and the smell of lunch is drifting from the kitchen. It seems like a good moment for a quick hand cleanse, perhaps as quick as a Pikachu's Thunderbolt, before we head to the kitchen."
+          },
+          {
+            "translation": "Washing hands is like preparing your trainer gear before heading to the Pokémon Center for a meal. The kitchen is where lunch is getting ready, and the sink is right here for a quick cleanse."
+          },
+          {
+            "translation": "The lunch adventure is about to begin in the kitchen. Before we embark, there's a cleansing ritual at the sink, preparing for the feast, like a Pokémon getting ready for battle!"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "generate-more-follow-up",
+    "label": "Generate more follow-up case",
+    "text": "Get your shoes on and come to the car.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "existingTranslations": [
+      {
+        "translation": "The car is ready, and shoes are part of getting out the door."
+      },
+      {
+        "translation": "It looks like shoes and heading to the car are the next part."
+      },
+      {
+        "translation": "The driveway is waiting, and shoes help with getting there."
+      },
+      {
+        "translation": "I wonder what would make shoes and the walk to the car feel easier."
+      }
+    ],
+    "reviewFocus": [
+      "Distinct follow-up ideas",
+      "No repeated wording",
+      "Still low-pressure"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Get your shoes on and come to the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use a neutral, warm, and observational tone that focuses on sharing information. Prefer environment-first or task-first phrasing over caregiver-centered phrasing. Lead with objective descriptions of what is happening, what is needed, or what the situation is like. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.\nAvoid repeating these specific ideas: The car is ready, and shoes are part of getting out the door., It looks like shoes and heading to the car are the next part., The driveway is waiting, and shoes help with getting there., I wonder what would make shoes and the walk to the car feel easier.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1262,
+        "usageMetadata": {
+          "promptTokenCount": 922,
+          "candidatesTokenCount": 121,
+          "totalTokenCount": 1043,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 922
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The shoes are right by the door, and the car will be ready for us when you are."
+          },
+          {
+            "translation": "Our adventure to the store involves shoes and then joining me in the car."
+          },
+          {
+            "translation": "The car door opens with a click, after shoes are on and we step outside."
+          },
+          {
+            "translation": "It's time to put shoes on; then we can head to the car together."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 884,
+        "usageMetadata": {
+          "promptTokenCount": 922,
+          "candidatesTokenCount": 119,
+          "totalTokenCount": 1041,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 922
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The shoes are by the door, and the car is outside when we're ready to go."
+          },
+          {
+            "translation": "It seems like it's time for shoes and then heading out to the car."
+          },
+          {
+            "translation": "The outside air is waiting, and shoes are part of stepping out."
+          },
+          {
+            "translation": "I notice the shoes and the car are part of our next step in heading out."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "generate-more-interest-follow-up",
+    "label": "Generate more follow-up with interest",
+    "text": "Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.",
+    "tone": "Interest Based",
+    "interest": "Dinosaurs",
+    "useFewerWords": false,
+    "existingTranslations": [
+      {
+        "translation": "The bathroom is the next stop, and the dinosaur can head to bed after teeth are done."
+      },
+      {
+        "translation": "It looks like toothbrush time came before the dinosaur bedtime expedition."
+      },
+      {
+        "translation": "The sink is ready, and the dinosaur can travel to bed when teeth are sorted out."
+      },
+      {
+        "translation": "I wonder how the dinosaur bedtime route goes once teeth are taken care of."
+      }
+    ],
+    "reviewFocus": [
+      "Follow-up distinctness",
+      "Interest stays grounded",
+      "Multi-part fidelity"
+    ],
+    "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Please use an \"Interest Based\" tone. Incorporate the theme of \"Dinosaurs\" in a fun and engaging way using specific terminology, imagery, or concepts related to it. Keep the suggestions grounded in declarative language and lead with objective observations about the environment, task, or situation rather than the caregiver's internal state. Let the interest add connection and momentum without turning the line into a performance, a gimmick, or a disguised command. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or references that overpower the core meaning of the statement.\nAvoid repeating these specific ideas: The bathroom is the next stop, and the dinosaur can head to bed after teeth are done., It looks like toothbrush time came before the dinosaur bedtime expedition., The sink is ready, and the dinosaur can travel to bed when teeth are sorted out., I wonder how the dinosaur bedtime route goes once teeth are taken care of.",
+    "outputs": [
+      {
+        "model": "gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "durationMs": 1358,
+        "usageMetadata": {
+          "promptTokenCount": 992,
+          "candidatesTokenCount": 166,
+          "totalTokenCount": 1158,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 992
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The water is running for tooth-brushing time, and then the dinosaur will be ready for its nightly journey to bed."
+          },
+          {
+            "translation": "Toothpaste is on the counter for the nightly tooth scrub, and the dinosaur seems to be waiting for its ride to dreamland."
+          },
+          {
+            "translation": "I notice the toothbrush is out, and the dinosaur looks like it's getting ready to find its cozy spot in bed when the teeth are all clean."
+          },
+          {
+            "translation": "The bathroom lights are on, and the tooth-brushing adventure is about to begin, then it's off to bed for a deep sleep for the dinosaur."
+          }
+        ]
+      },
+      {
+        "model": "gemini-2.5-flash-lite",
+        "label": "Gemini 2.5 Flash-Lite",
+        "durationMs": 1592,
+        "usageMetadata": {
+          "promptTokenCount": 992,
+          "candidatesTokenCount": 280,
+          "totalTokenCount": 1272,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 992
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bathroom is ready for some pre-bedtime routines. I see the toothbrush and toothpaste are waiting for some serious cleaning action, and the dinosaur is ready for its own journey to dreamland. Perhaps the dinosaur could have a quick wash-up too before heading to bed?"
+          },
+          {
+            "translation": "Look at the sink all set up, a perfect spot for some powerful toothbrushing to get those teeth sparkling. And the dinosaur is here too, maybe ready for a little rest after a day of adventures. I wonder if the dinosaur's bedtime route includes a quick stop at the sink first?"
+          },
+          {
+            "translation": "The bathroom has a special glow tonight, inviting us for a quick brushing expedition. It's a good time for teeth to get that clean feeling. And the dinosaur, an intrepid explorer, might be ready for its own cozy bed once this little cleaning quest is complete."
+          },
+          {
+            "translation": "The journey to bed seems to be on the horizon! First, a quick stop at the bathroom might be in order, with toothbrushes ready for some cleaning action. And what about the dinosaur? It might be getting ready for its own slumber, perhaps after a little dental care moment for its human companion."
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,354 @@
+[
+  {
+    "id": "follow-up-default-shoes-car",
+    "label": "Default follow-up",
+    "text": "Get your shoes on and come to the car.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "existingTranslations": [
+      {
+        "translation": "The car is ready, and shoes are part of getting out the door."
+      },
+      {
+        "translation": "It looks like shoes and heading to the car are the next part."
+      },
+      {
+        "translation": "The driveway is waiting, and shoes help with getting there."
+      },
+      {
+        "translation": "I wonder what would make shoes and the walk to the car feel easier."
+      }
+    ],
+    "reviewFocus": [
+      "Distinct follow-up ideas",
+      "No generic rewordings",
+      "Still low-pressure"
+    ],
+    "outputs": [
+      {
+        "variant": "current",
+        "label": "Current follow-up prompt",
+        "durationMs": 2120,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Get your shoes on and come to the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use a neutral, warm, observational tone with simple everyday wording.\nAvoid repeating these specific ideas: The car is ready, and shoes are part of getting out the door., It looks like shoes and heading to the car are the next part., The driveway is waiting, and shoes help with getting there., I wonder what would make shoes and the walk to the car feel easier.",
+        "usageMetadata": {
+          "promptTokenCount": 826,
+          "candidatesTokenCount": 101,
+          "totalTokenCount": 927,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 826
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The shoes are here by the door; the car is outside ready for us."
+          },
+          {
+            "translation": "Shoes are usually helpful for walking to the car."
+          },
+          {
+            "translation": "It's time for shoes and then the car."
+          },
+          {
+            "translation": "I'm thinking about shoes and getting to the car now."
+          }
+        ]
+      },
+      {
+        "variant": "proposed",
+        "label": "Proposed follow-up prompt",
+        "durationMs": 1216,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Get your shoes on and come to the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use a neutral, warm, observational tone with simple everyday wording.\nThese earlier suggestions have already been shown to the user: The car is ready, and shoes are part of getting out the door., It looks like shoes and heading to the car are the next part., The driveway is waiting, and shoes help with getting there., I wonder what would make shoes and the walk to the car feel easier.\n\nGenerate 3-4 new declarative alternatives that are meaningfully different from the earlier suggestions in framing and sentence shape, not just in word choice.\nTreat the earlier suggestions as already covered. Do not reuse their core sentence patterns.\nAvoid obvious repeats, near-duplicates, shallow synonym swaps, and generic fallback phrasing.\n\nAcross the 3-4 new suggestions, vary the framing on purpose:\n- one can foreground the environment or location\n- one can foreground the sequence or transition between parts\n- one can foreground a practical setup or object involved\n- one can foreground a calm collaborative or matter-of-fact shared perspective\n\nDo not let multiple new suggestions use the same opening pattern or the same sentence skeleton.\nAvoid overusing generic frames such as \"it's time for...\", \"X is ready\", \"X is next\", \"after that...\", or \"I wonder...\" unless one of them is unusually natural and clearly different from the earlier set.\n\nKeep every suggestion authentic, low-pressure, and useful in a real caregiver moment.\nDifferent must not mean more emotionally loaded, more praising, more performative, or more manipulative.\nIf the original request has multiple important parts, preserve all of them in every suggestion.\nStay grounded in the same real situation. Do not invent playful details, emotional stakes, or extra context just to make the lines feel new.",
+        "usageMetadata": {
+          "promptTokenCount": 1110,
+          "candidatesTokenCount": 107,
+          "totalTokenCount": 1217,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1110
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The car is out front, and shoes go on our feet for walking outside."
+          },
+          {
+            "translation": "Walking to the car happens right after shoes are on."
+          },
+          {
+            "translation": "Shoes are over here by the door, and the car is waiting."
+          },
+          {
+            "translation": "We're heading to the car; shoes are usually part of that."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "follow-up-interest-bedtime-dinosaur",
+    "label": "Interest Based follow-up",
+    "text": "Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.",
+    "tone": "Interest Based",
+    "interest": "Dinosaurs",
+    "useFewerWords": false,
+    "existingTranslations": [
+      {
+        "translation": "The bathroom is the next stop, and the dinosaur can head to bed after teeth are done."
+      },
+      {
+        "translation": "It looks like toothbrush time came before the dinosaur bedtime expedition."
+      },
+      {
+        "translation": "The sink is ready, and the dinosaur can travel to bed when teeth are sorted out."
+      },
+      {
+        "translation": "I wonder how the dinosaur bedtime route goes once teeth are taken care of."
+      }
+    ],
+    "reviewFocus": [
+      "Interest stays grounded",
+      "Multi-part fidelity",
+      "Distinctness without gimmicks"
+    ],
+    "outputs": [
+      {
+        "variant": "current",
+        "label": "Current follow-up prompt",
+        "durationMs": 1222,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nAvoid repeating these specific ideas: The bathroom is the next stop, and the dinosaur can head to bed after teeth are done., It looks like toothbrush time came before the dinosaur bedtime expedition., The sink is ready, and the dinosaur can travel to bed when teeth are sorted out., I wonder how the dinosaur bedtime route goes once teeth are taken care of.",
+        "usageMetadata": {
+          "promptTokenCount": 879,
+          "candidatesTokenCount": 126,
+          "totalTokenCount": 1005,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 879
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Toothbrushing happens, and then the dinosaur goes to bed."
+          },
+          {
+            "translation": "The bathroom is open for teeth brushing; then, it's time for the dinosaur to snuggle into bed."
+          },
+          {
+            "translation": "I wonder if the dinosaur needs a ride to the bathroom for teeth brushing before heading to bed."
+          },
+          {
+            "translation": "The toothpaste is ready by the sink, and after that, the dinosaur can journey off to bed."
+          }
+        ]
+      },
+      {
+        "variant": "proposed",
+        "label": "Proposed follow-up prompt",
+        "durationMs": 1108,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nThese earlier suggestions have already been shown to the user: The bathroom is the next stop, and the dinosaur can head to bed after teeth are done., It looks like toothbrush time came before the dinosaur bedtime expedition., The sink is ready, and the dinosaur can travel to bed when teeth are sorted out., I wonder how the dinosaur bedtime route goes once teeth are taken care of.\n\nGenerate 3-4 new declarative alternatives that are meaningfully different from the earlier suggestions in framing and sentence shape, not just in word choice.\nTreat the earlier suggestions as already covered. Do not reuse their core sentence patterns.\nAvoid obvious repeats, near-duplicates, shallow synonym swaps, and generic fallback phrasing.\n\nAcross the 3-4 new suggestions, vary the framing on purpose:\n- one can foreground the environment or location\n- one can foreground the sequence or transition between parts\n- one can foreground a practical setup or object involved\n- one can foreground a calm collaborative or matter-of-fact shared perspective\n\nDo not let multiple new suggestions use the same opening pattern or the same sentence skeleton.\nAvoid overusing generic frames such as \"it's time for...\", \"X is ready\", \"X is next\", \"after that...\", or \"I wonder...\" unless one of them is unusually natural and clearly different from the earlier set.\n\nKeep every suggestion authentic, low-pressure, and useful in a real caregiver moment.\nDifferent must not mean more emotionally loaded, more praising, more performative, or more manipulative.\nIf the original request has multiple important parts, preserve all of them in every suggestion.\nStay grounded in the same real situation. Do not invent playful details, emotional stakes, or extra context just to make the lines feel new.",
+        "usageMetadata": {
+          "promptTokenCount": 1163,
+          "candidatesTokenCount": 91,
+          "totalTokenCount": 1254,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1163
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The toothbrush is waiting by the sink, and soon the dinosaur will be tucked in."
+          },
+          {
+            "translation": "The bathroom lights are on, and after teeth are clean, the dinosaur can go to bed."
+          },
+          {
+            "translation": "Toothbrushing happens, and then the dinosaur gets a cozy spot in bed."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "follow-up-fewer-words-lunch",
+    "label": "Fewer Words follow-up",
+    "text": "Wash your hands and come to the kitchen for lunch.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "existingTranslations": [
+      {
+        "translation": "Hands first, then the kitchen for lunch."
+      },
+      {
+        "translation": "The sink is next, and lunch is waiting in the kitchen."
+      },
+      {
+        "translation": "Looks like handwashing and the kitchen go together right now."
+      },
+      {
+        "translation": "Lunch is nearly ready once hands are sorted out."
+      }
+    ],
+    "reviewFocus": [
+      "Compact but complete",
+      "No clipped or bossy drift",
+      "Fresh follow-up angles"
+    ],
+    "outputs": [
+      {
+        "variant": "current",
+        "label": "Current follow-up prompt",
+        "durationMs": 1178,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Wash your hands and come to the kitchen for lunch.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.\nAvoid repeating these specific ideas: Hands first, then the kitchen for lunch., The sink is next, and lunch is waiting in the kitchen., Looks like handwashing and the kitchen go together right now., Lunch is nearly ready once hands are sorted out.",
+        "usageMetadata": {
+          "promptTokenCount": 923,
+          "candidatesTokenCount": 127,
+          "totalTokenCount": 1050,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 923
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Handwashing time, then the kitchen is ready for lunch."
+          },
+          {
+            "translation": "The kitchen table is set for lunch; it looks like hands might be ready for a wash first."
+          },
+          {
+            "translation": "Soap and water are here, and lunch is on the kitchen counter whenever you're ready."
+          },
+          {
+            "translation": "I'm heading to the kitchen with lunch; there's a good spot by the sink for washing hands before joining."
+          }
+        ]
+      },
+      {
+        "variant": "proposed",
+        "label": "Proposed follow-up prompt",
+        "durationMs": 1156,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Wash your hands and come to the kitchen for lunch.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.\nThese earlier suggestions have already been shown to the user: Hands first, then the kitchen for lunch., The sink is next, and lunch is waiting in the kitchen., Looks like handwashing and the kitchen go together right now., Lunch is nearly ready once hands are sorted out.\n\nGenerate 3-4 new declarative alternatives that are meaningfully different from the earlier suggestions in framing and sentence shape, not just in word choice.\nTreat the earlier suggestions as already covered. Do not reuse their core sentence patterns.\nAvoid obvious repeats, near-duplicates, shallow synonym swaps, and generic fallback phrasing.\n\nAcross the 3-4 new suggestions, vary the framing on purpose:\n- one can foreground the environment or location\n- one can foreground the sequence or transition between parts\n- one can foreground a practical setup or object involved\n- one can foreground a calm collaborative or matter-of-fact shared perspective\n\nDo not let multiple new suggestions use the same opening pattern or the same sentence skeleton.\nAvoid overusing generic frames such as \"it's time for...\", \"X is ready\", \"X is next\", \"after that...\", or \"I wonder...\" unless one of them is unusually natural and clearly different from the earlier set.\n\nKeep every suggestion authentic, low-pressure, and useful in a real caregiver moment.\nDifferent must not mean more emotionally loaded, more praising, more performative, or more manipulative.\nIf the original request has multiple important parts, preserve all of them in every suggestion.\nStay grounded in the same real situation. Do not invent playful details, emotional stakes, or extra context just to make the lines feel new.",
+        "usageMetadata": {
+          "promptTokenCount": 1207,
+          "candidatesTokenCount": 88,
+          "totalTokenCount": 1295,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1207
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The kitchen table is set for lunch, right after hands are clean."
+          },
+          {
+            "translation": "Handwashing helps us get ready for lunch in the kitchen."
+          },
+          {
+            "translation": "There's a spot for hands at the sink, then a spot for you at the kitchen table for lunch."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "follow-up-multipart-bed-bathroom",
+    "label": "Multi-part follow-up",
+    "text": "Please come to the bathroom, get your pajamas on, and bring your book to bed.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "existingTranslations": [
+      {
+        "translation": "The bathroom is the first stop, and pajamas plus a book seem to be part of the path to bed."
+      },
+      {
+        "translation": "It looks like bathroom, pajamas, and book are all teaming up for bedtime."
+      },
+      {
+        "translation": "I could use a second set of eyes on the bedtime order: bathroom, pajamas, then book to bed."
+      },
+      {
+        "translation": "The bed seems to be waiting on a bathroom stop, pajamas, and a book."
+      }
+    ],
+    "reviewFocus": [
+      "All parts stay present",
+      "Equalizing tone stays natural",
+      "Distinctness across follow-up rounds"
+    ],
+    "outputs": [
+      {
+        "variant": "current",
+        "label": "Current follow-up prompt",
+        "durationMs": 1169,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nAvoid repeating these specific ideas: The bathroom is the first stop, and pajamas plus a book seem to be part of the path to bed., It looks like bathroom, pajamas, and book are all teaming up for bedtime., I could use a second set of eyes on the bedtime order: bathroom, pajamas, then book to bed., The bed seems to be waiting on a bathroom stop, pajamas, and a book.",
+        "usageMetadata": {
+          "promptTokenCount": 896,
+          "candidatesTokenCount": 132,
+          "totalTokenCount": 1028,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 896
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bathroom is ready, and it looks like pajamas are next, with a book for bedtime."
+          },
+          {
+            "translation": "Pajamas and a book are looking forward to bedtime, right after a quick stop in the bathroom."
+          },
+          {
+            "translation": "It seems like the bathroom, pajamas, and a good book are all part of the journey to bed tonight."
+          },
+          {
+            "translation": "I wonder if we should tackle the bathroom, then pajamas, then grab a book for bed."
+          }
+        ]
+      },
+      {
+        "variant": "proposed",
+        "label": "Proposed follow-up prompt",
+        "durationMs": 913,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nThese earlier suggestions have already been shown to the user: The bathroom is the first stop, and pajamas plus a book seem to be part of the path to bed., It looks like bathroom, pajamas, and book are all teaming up for bedtime., I could use a second set of eyes on the bedtime order: bathroom, pajamas, then book to bed., The bed seems to be waiting on a bathroom stop, pajamas, and a book.\n\nGenerate 3-4 new declarative alternatives that are meaningfully different from the earlier suggestions in framing and sentence shape, not just in word choice.\nTreat the earlier suggestions as already covered. Do not reuse their core sentence patterns.\nAvoid obvious repeats, near-duplicates, shallow synonym swaps, and generic fallback phrasing.\n\nAcross the 3-4 new suggestions, vary the framing on purpose:\n- one can foreground the environment or location\n- one can foreground the sequence or transition between parts\n- one can foreground a practical setup or object involved\n- one can foreground a calm collaborative or matter-of-fact shared perspective\n\nDo not let multiple new suggestions use the same opening pattern or the same sentence skeleton.\nAvoid overusing generic frames such as \"it's time for...\", \"X is ready\", \"X is next\", \"after that...\", or \"I wonder...\" unless one of them is unusually natural and clearly different from the earlier set.\n\nKeep every suggestion authentic, low-pressure, and useful in a real caregiver moment.\nDifferent must not mean more emotionally loaded, more praising, more performative, or more manipulative.\nIf the original request has multiple important parts, preserve all of them in every suggestion.\nStay grounded in the same real situation. Do not invent playful details, emotional stakes, or extra context just to make the lines feel new.",
+        "usageMetadata": {
+          "promptTokenCount": 1180,
+          "candidatesTokenCount": 89,
+          "totalTokenCount": 1269,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1180
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The path to bed goes through the bathroom, then pajamas, then a good book."
+          },
+          {
+            "translation": "Getting ready for bed involves a stop in the bathroom, pajamas, and finding a book."
+          },
+          {
+            "translation": "Pajamas and a book are waiting for the bathroom part of bedtime."
+          }
+        ]
+      }
+    ]
+  }
+]

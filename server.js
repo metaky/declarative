@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Redis } from '@upstash/redis';
 import { v4 as uuidv4 } from 'uuid';
+import { buildTranslationPrompt, systemInstruction } from './services/translationPrompt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,6 +53,53 @@ function logRateLimitHit(endpoint, waitSeconds) {
         wait_seconds: waitSeconds,
         window_ms: RATE_LIMIT_WINDOW_MS,
         max_requests_per_window: MAX_REQUESTS_PER_WINDOW,
+        timestamp: new Date().toISOString(),
+    }));
+}
+
+function logGeminiUsageMetadata({
+    model,
+    tone,
+    useFewerWords,
+    existingTranslationsCount,
+    textLength,
+    durationMs,
+    usageMetadata,
+}) {
+    if (!usageMetadata) {
+        console.info(JSON.stringify({
+            event: 'gemini_usage_metadata',
+            source: 'server',
+            model,
+            tone: tone || 'Default',
+            use_fewer_words: Boolean(useFewerWords),
+            existing_translations_count: existingTranslationsCount,
+            text_length: textLength,
+            duration_ms: durationMs,
+            usage_metadata_available: false,
+            timestamp: new Date().toISOString(),
+        }));
+        return;
+    }
+
+    console.info(JSON.stringify({
+        event: 'gemini_usage_metadata',
+        source: 'server',
+        model,
+        tone: tone || 'Default',
+        use_fewer_words: Boolean(useFewerWords),
+        existing_translations_count: existingTranslationsCount,
+        text_length: textLength,
+        duration_ms: durationMs,
+        usage_metadata_available: true,
+        prompt_token_count: usageMetadata.promptTokenCount ?? null,
+        candidates_token_count: usageMetadata.candidatesTokenCount ?? null,
+        thoughts_token_count: usageMetadata.thoughtsTokenCount ?? null,
+        total_token_count: usageMetadata.totalTokenCount ?? null,
+        cached_content_token_count: usageMetadata.cachedContentTokenCount ?? null,
+        cache_tokens_details: usageMetadata.cacheTokensDetails ?? null,
+        prompt_tokens_details: usageMetadata.promptTokensDetails ?? null,
+        candidates_tokens_details: usageMetadata.candidatesTokensDetails ?? null,
         timestamp: new Date().toISOString(),
     }));
 }
@@ -117,29 +165,6 @@ app.get('/api/challenge', async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 });
-
-// --- System Prompt ---
-const systemInstruction = `You are an AI assistant named "Declarative," designed as a co-regulation tool for parents and caregivers of children with a Pathological Demand Avoidance (PDA) profile. Your primary goal is to help users rephrase their imperative commands (demands) into gentle, connecting, and non-demanding declarative language.
-
-Your core principles are:
-1.  **Connection, Not Compliance:** Success is measured by building trust and "felt safety," not by achieving task completion.
-2.  **Calm by Design:** Your tone must be gentle, supportive, and understanding.
-3.  **Authenticity First:** Actively warn against manipulative phrasing. Your suggestions must be authentic invitations, not passive-aggressive commands. Prioritize the "Give Over Get" mindset.
-4.  **Empathy-Driven AI:** Always offer options, not directives. Root suggestions in autonomy and respect.
-5.  **Objective Situational Framing:** Prefer environment-first or task-first observations over caregiver-first framing. Describe what is happening in the situation before describing anyone's internal state.
-
-When a user provides a statement, you must:
-1.  **Address the Whole Statement:** CRITICAL: If the user provides a statement with multiple distinct parts or tasks (e.g., "Wash your hands and sit at the table"), ensure your declarative suggestions gracefully address ALL parts of the request. Do not omit details; instead, weave them together into a coherent, non-demanding narrative that acknowledges the full context.
-2.  **Recognize Intent:** Understand the underlying goal and context.
-3.  **Remove Demands:** Eliminate direct commands and obligation words ("need to," "must," "please do X").
-4.  **Reframe Declaratively:** Generate 3-4 varied alternatives (Observation, Self-Narrate, Invitation, Problem-Solving).
-5.  **Filter for Authenticity:** Discard any phrasing that sounds manipulative or like a "test."
-6.  **Lead With the Situation:** Favor objective observations about the environment, task, timing, or sensory context over statements centered on the caregiver's body, emotions, preferences, or concerns.
-7.  **Neutralize Perspective:** Avoid relying on narrator-led setups such as "I'm noticing...", "I need...", "I want...", "My body feels...", or "I'm worried..." when the same idea can be expressed as an objective description of the situation.
-8.  **Reduce Emotional Demand:** Minimize language that highlights the caregiver's internal state, personal need, disappointment, urgency, or stress, because this can function like an implicit emotional demand.
-9.  **Use 'I' Sparingly:** Aim for roughly a 3:1 ratio of objective observations to "I" statements. Use "I" statements only when they add natural variety, soften a collaborative idea, or express a genuine shared thought such as "I wonder if...".
-
-Your output must be a valid JSON array of objects.`;
 
 function normalizeText(text) {
     return text
@@ -318,36 +343,17 @@ app.post('/api/translate', async (req, res) => {
         return res.status(500).json({ error: 'API key not configured on server.' });
     }
 
-    // Build tone instruction
-    let toneInstruction = `Please use a neutral, warm, and observational tone that focuses on sharing information. Prefer environment-first or task-first phrasing over caregiver-centered phrasing. Lead with objective descriptions of what is happening, what is needed, or what the situation is like. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.`;
-    if (tone && tone !== 'Default') {
-        switch (tone) {
-            case 'Straightforward':
-                toneInstruction = `Please use a "Straightforward" tone. Keep suggestions calm, plainspoken, and to the point with a low emotional temperature, but make them clearly recognisable as declarative language. Prioritize observation-first phrasing, environment-first framing, simple low-pressure statements of what is happening, and gentle availability cues over questions or prompts. Across the 3-4 suggestions, include a mix: 1-2 concise options and at least 1 slightly fuller option that still sounds natural and low-pressure. Use simple everyday wording and keep the suggestions meaningfully varied so they do not all sound like short label statements. Preserve felt safety and connection: the goal is to share information, reduce demand, and leave room for autonomy, not to push for compliance. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, obligation words, and clipped or bossy phrasing.`;
-                break;
-            case 'Interest Based':
-                toneInstruction = interest
-                    ? `Please use an "Interest Based" tone. Incorporate the theme of "${interest}" in a fun and engaging way using specific terminology, imagery, or concepts related to it. Keep the suggestions grounded in declarative language and lead with objective observations about the environment, task, or situation rather than the caregiver's internal state. Let the interest add connection and momentum without turning the line into a performance, a gimmick, or a disguised command. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or references that overpower the core meaning of the statement.`
-                    : `Please use an "Interest Based" tone that is playful, engaging, and energizing while still staying grounded and low-pressure. Lead with objective descriptions of the environment, task, or situation rather than the caregiver's internal state. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child. Avoid overstimulation, relentless hype, or playfulness that distracts from the core meaning of the statement.`;
-                break;
-            case 'Equalizing':
-                toneInstruction = `Please use an "Equalizing" tone. Gently frame the situation as collaborative, leveling, or as if the child has useful perspective, while still keeping the language rooted in objective observations about the environment, task, or situation. If you position the adult as needing help, correction, or a different point of view, keep it warm and light. Do not make the adult sound mocking, helpless, performatively foolish, or dependent on the child for emotional regulation. Preserve dignity, warmth, and real felt safety. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.`;
-                break;
-            case 'Humorous':
-                toneInstruction = `Please use a "Humorous" tone. Use lighthearted playfulness or gentle absurdity to lower pressure while keeping the suggestions rooted in objective observations about the environment, task, or situation. Humor should support connection and reduce defensiveness, not distract from the meaning. Keep it warm, low-stakes, and easy to understand. No matter the tone, keep the language genuinely low-pressure, autonomy-supportive, and clearly non-manipulative. Avoid disguised commands, shame, sarcasm, ridicule, teasing, overstimulation, bribery, false urgency, pressure through praise, emotional burdening, and language that tests, corners, or traps the child.`;
-                break;
-        }
-    }
-
-    const lengthInstruction = useFewerWords ? ' CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.' : '';
-    const existingList = existingTranslations.length > 0
-        ? `\nAvoid repeating these specific ideas: ${existingTranslations.map(t => t.translation).join(', ')}`
-        : '';
-
-    const basePrompt = `Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: "${text}". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with "I", "I'm", "I am", "my", "we", or "our". Tone: ${toneInstruction}${lengthInstruction}${existingList}`;
+    const basePrompt = buildTranslationPrompt({
+        text,
+        existingTranslations,
+        tone,
+        interest,
+        useFewerWords,
+    });
 
     try {
         const ai = new GoogleGenAI({ apiKey });
+        const requestStartedAt = Date.now();
 
         // Race the API call against a 30-second timeout
         const timeoutPromise = new Promise((_, reject) =>
@@ -358,6 +364,9 @@ app.post('/api/translate', async (req, res) => {
             model: 'gemini-2.5-flash',
             contents: basePrompt,
             config: {
+                thinkingConfig: {
+                    thinkingBudget: 0,
+                },
                 systemInstruction,
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -380,6 +389,15 @@ app.post('/api/translate', async (req, res) => {
         }
 
         const translations = JSON.parse(responseText.trim());
+        logGeminiUsageMetadata({
+            model: 'gemini-2.5-flash',
+            tone,
+            useFewerWords,
+            existingTranslationsCount: existingTranslations.length,
+            textLength: text.length,
+            durationMs: Date.now() - requestStartedAt,
+            usageMetadata: response.usageMetadata,
+        });
         return res.json(translations);
     } catch (error) {
         console.error('Gemini API Error:', error);
