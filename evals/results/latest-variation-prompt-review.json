@@ -1,0 +1,1808 @@
+[
+  {
+    "id": "variation-default-dinner",
+    "label": "Default tone dinner transition",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "Dinner is almost ready. The sink is open for hands.",
+    "reviewFocus": [
+      "Stays grounded in the same moment",
+      "Warm changes do not become sweeter or more parent-centered",
+      "Shorter and playful versions still feel natural"
+    ],
+    "outputs": [
+      {
+        "variationKind": "shorter",
+        "label": "Shorter",
+        "durationMs": 1146,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come down and wash your hands. It's dinner time.\"\nSelected source suggestion: \"Dinner is almost ready. The sink is open for hands.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"Shorter\". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 882,
+          "candidatesTokenCount": 45,
+          "totalTokenCount": 927,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 882
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner is nearly ready. Hand-washing time."
+          },
+          {
+            "translation": "Almost dinner. Hands can be washed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Dinner is nearly ready. Hand-washing time.",
+            "wordCount": 6,
+            "wordCountDeltaVsSource": -4,
+            "openingKey": "dinner is nearly",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.25
+          },
+          {
+            "index": 1,
+            "translation": "Almost dinner. Hands can be washed.",
+            "wordCount": 6,
+            "wordCountDeltaVsSource": -4,
+            "openingKey": "almost dinner hands",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.25
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.09,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 1194,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come down and wash your hands. It's dinner time.\"\nSelected source suggestion: \"Dinner is almost ready. The sink is open for hands.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 885,
+          "candidatesTokenCount": 81,
+          "totalTokenCount": 966,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 885
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It looks like dinner will be on the table very soon. The sink is all clear if hands need a wash before eating."
+          },
+          {
+            "translation": "Dinner is just about ready now. It's often helpful to wash hands before we sit down at the table, and the sink is available."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It looks like dinner will be on the table very soon. The sink is all clear if hands need a wash before eating.",
+            "wordCount": 23,
+            "wordCountDeltaVsSource": 13,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.19
+          },
+          {
+            "index": 1,
+            "translation": "Dinner is just about ready now. It's often helpful to wash hands before we sit down at the table, and the sink is available.",
+            "wordCount": 24,
+            "wordCountDeltaVsSource": 14,
+            "openingKey": "dinner is just",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.24
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.22,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 936,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come down and wash your hands. It's dinner time.\"\nSelected source suggestion: \"Dinner is almost ready. The sink is open for hands.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 886,
+          "candidatesTokenCount": 58,
+          "totalTokenCount": 944,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 886
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner is on the table, and the tap is running for hands."
+          },
+          {
+            "translation": "The food is waiting. It looks like it might be time to get hands washed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Dinner is on the table, and the tap is running for hands.",
+            "wordCount": 12,
+            "wordCountDeltaVsSource": 2,
+            "openingKey": "dinner is on",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.36
+          },
+          {
+            "index": 1,
+            "translation": "The food is waiting. It looks like it might be time to get hands washed.",
+            "wordCount": 15,
+            "wordCountDeltaVsSource": 5,
+            "openingKey": "the food is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.15
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.14,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 959,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come down and wash your hands. It's dinner time.\"\nSelected source suggestion: \"Dinner is almost ready. The sink is open for hands.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 886,
+          "candidatesTokenCount": 48,
+          "totalTokenCount": 934,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 886
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner is ready. Time to wash hands."
+          },
+          {
+            "translation": "Hands could use a wash. Dinner is on the table."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Dinner is ready. Time to wash hands.",
+            "wordCount": 7,
+            "wordCountDeltaVsSource": -3,
+            "openingKey": "dinner is ready",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.33
+          },
+          {
+            "index": 1,
+            "translation": "Hands could use a wash. Dinner is on the table.",
+            "wordCount": 10,
+            "wordCountDeltaVsSource": 0,
+            "openingKey": "hands could use",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.27
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.31,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 1006,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come down and wash your hands. It's dinner time.\"\nSelected source suggestion: \"Dinner is almost ready. The sink is open for hands.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 898,
+          "candidatesTokenCount": 57,
+          "totalTokenCount": 955,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 898
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner magic is happening! Water's ready for hands at the sink."
+          },
+          {
+            "translation": "The dinner bell is ringing soon. Hands might like a little splash first."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Dinner magic is happening! Water's ready for hands at the sink.",
+            "wordCount": 11,
+            "wordCountDeltaVsSource": 1,
+            "openingKey": "dinner magic is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.54
+          },
+          {
+            "index": 1,
+            "translation": "The dinner bell is ringing soon. Hands might like a little splash first.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": 3,
+            "openingKey": "the dinner bell",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.22
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.2,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "variation-straightforward-school",
+    "label": "Straightforward school transition",
+    "text": "Get your backpack and get your shoes on so we can get ready for school",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "sourceTranslation": "Shoes and backpack are both part of getting out the door for school.",
+    "reviewFocus": [
+      "More straightforward does not become bossy",
+      "Shorter versions keep both tasks",
+      "Playful remains restrained"
+    ],
+    "outputs": [
+      {
+        "variationKind": "shorter",
+        "label": "Shorter",
+        "durationMs": 804,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Get your backpack and get your shoes on so we can get ready for school\"\nSelected source suggestion: \"Shoes and backpack are both part of getting out the door for school.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"Shorter\". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 968,
+          "candidatesTokenCount": 49,
+          "totalTokenCount": 1017,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 968
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Backpack and shoes are next for getting ready for school."
+          },
+          {
+            "translation": "Time for school. Backpack and shoes are waiting."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Backpack and shoes are next for getting ready for school.",
+            "wordCount": 10,
+            "wordCountDeltaVsSource": -3,
+            "openingKey": "backpack and shoes",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.47
+          },
+          {
+            "index": 1,
+            "translation": "Time for school. Backpack and shoes are waiting.",
+            "wordCount": 8,
+            "wordCountDeltaVsSource": -5,
+            "openingKey": "time for school",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.4
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.55,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 952,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Get your backpack and get your shoes on so we can get ready for school\"\nSelected source suggestion: \"Shoes and backpack are both part of getting out the door for school.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 971,
+          "candidatesTokenCount": 61,
+          "totalTokenCount": 1032,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 971
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It looks like gathering the backpack and putting on shoes both happen before we head out for school."
+          },
+          {
+            "translation": "Getting ready for school involves the backpack and shoes, so those are next."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It looks like gathering the backpack and putting on shoes both happen before we head out for school.",
+            "wordCount": 18,
+            "wordCountDeltaVsSource": 5,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.35
+          },
+          {
+            "index": 1,
+            "translation": "Getting ready for school involves the backpack and shoes, so those are next.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": 0,
+            "openingKey": "getting ready for",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.44
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.24,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 1122,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Get your backpack and get your shoes on so we can get ready for school\"\nSelected source suggestion: \"Shoes and backpack are both part of getting out the door for school.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 972,
+          "candidatesTokenCount": 69,
+          "totalTokenCount": 1041,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 972
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Backpack and shoes are next for school. The door will be open when you're ready."
+          },
+          {
+            "translation": "It's time to gather the backpack and get shoes on for school. I'll be over here."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Backpack and shoes are next for school. The door will be open when you're ready.",
+            "wordCount": 15,
+            "wordCountDeltaVsSource": 2,
+            "openingKey": "backpack and shoes",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.4
+          },
+          {
+            "index": 1,
+            "translation": "It's time to gather the backpack and get shoes on for school. I'll be over here.",
+            "wordCount": 16,
+            "wordCountDeltaVsSource": 3,
+            "openingKey": "its time to",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.26
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.29,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 1035,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Get your backpack and get your shoes on so we can get ready for school\"\nSelected source suggestion: \"Shoes and backpack are both part of getting out the door for school.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 972,
+          "candidatesTokenCount": 63,
+          "totalTokenCount": 1035,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 972
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "School is coming up; there's a backpack and shoes that often go with that."
+          },
+          {
+            "translation": "There's a backpack and shoes for school whenever you're ready to gather them."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "School is coming up; there's a backpack and shoes that often go with that.",
+            "wordCount": 14,
+            "wordCountDeltaVsSource": 1,
+            "openingKey": "school is coming",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.18
+          },
+          {
+            "index": 1,
+            "translation": "There's a backpack and shoes for school whenever you're ready to gather them.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": 0,
+            "openingKey": "theres a backpack",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.24
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.3,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 963,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Get your backpack and get your shoes on so we can get ready for school\"\nSelected source suggestion: \"Shoes and backpack are both part of getting out the door for school.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 984,
+          "candidatesTokenCount": 65,
+          "totalTokenCount": 1049,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 984
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It's time to gather the backpack and pop on some shoes so we can head out for school."
+          },
+          {
+            "translation": "School is coming up, and getting shoes and a backpack ready helps us move along."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It's time to gather the backpack and pop on some shoes so we can head out for school.",
+            "wordCount": 18,
+            "wordCountDeltaVsSource": 5,
+            "openingKey": "its time to",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.29
+          },
+          {
+            "index": 1,
+            "translation": "School is coming up, and getting shoes and a backpack ready helps us move along.",
+            "wordCount": 15,
+            "wordCountDeltaVsSource": 2,
+            "openingKey": "school is coming",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.23
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.14,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "variation-humorous-bedroom",
+    "label": "Humorous bedtime cleanup",
+    "text": "Please put your pajamas on and bring your book to bed.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "sourceTranslation": "Pajamas and a book seem to have made tonight's bedtime guest list.",
+    "reviewFocus": [
+      "Playful refinement does not tip into gimmick",
+      "Straightforward refinement stays in tone family",
+      "Coverage of both tasks remains intact"
+    ],
+    "outputs": [
+      {
+        "variationKind": "shorter",
+        "label": "Shorter",
+        "durationMs": 828,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your pajamas on and bring your book to bed.\"\nSelected source suggestion: \"Pajamas and a book seem to have made tonight's bedtime guest list.\"\nTone: Use a \"Humorous\" tone. Use light, gentle absurdity to lower pressure while keeping the meaning clear. Humor should support connection, not distract from the point. Keep it warm and easy to understand. Avoid sarcasm, ridicule, teasing, and overstimulation.\nVariation direction: \"Shorter\". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 924,
+          "candidatesTokenCount": 55,
+          "totalTokenCount": 979,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 924
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Looks like pajamas and a good book are waiting to join you in bed tonight."
+          },
+          {
+            "translation": "Tonight's agenda: pajamas and a book for bedtime."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Looks like pajamas and a good book are waiting to join you in bed tonight.",
+            "wordCount": 15,
+            "wordCountDeltaVsSource": 3,
+            "openingKey": "looks like pajamas",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.23
+          },
+          {
+            "index": 1,
+            "translation": "Tonight's agenda: pajamas and a book for bedtime.",
+            "wordCount": 8,
+            "wordCountDeltaVsSource": -4,
+            "openingKey": "tonights agenda pajamas",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.43
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.21,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 1108,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your pajamas on and bring your book to bed.\"\nSelected source suggestion: \"Pajamas and a book seem to have made tonight's bedtime guest list.\"\nTone: Use a \"Humorous\" tone. Use light, gentle absurdity to lower pressure while keeping the meaning clear. Humor should support connection, not distract from the point. Keep it warm and easy to understand. Avoid sarcasm, ridicule, teasing, and overstimulation.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 927,
+          "candidatesTokenCount": 76,
+          "totalTokenCount": 1003,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 927
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It looks like the cozy pajamas and a special bedtime book have been invited to join us for a snuggle adventure tonight."
+          },
+          {
+            "translation": "Oh, what's this? Pajamas and a good story seem to be making their grand entrance for our bedtime routine!"
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It looks like the cozy pajamas and a special bedtime book have been invited to join us for a snuggle adventure tonight.",
+            "wordCount": 22,
+            "wordCountDeltaVsSource": 10,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.27
+          },
+          {
+            "index": 1,
+            "translation": "Oh, what's this? Pajamas and a good story seem to be making their grand entrance for our bedtime routine!",
+            "wordCount": 19,
+            "wordCountDeltaVsSource": 7,
+            "openingKey": "oh whats this",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.24
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.18,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 1051,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your pajamas on and bring your book to bed.\"\nSelected source suggestion: \"Pajamas and a book seem to have made tonight's bedtime guest list.\"\nTone: Use a \"Humorous\" tone. Use light, gentle absurdity to lower pressure while keeping the meaning clear. Humor should support connection, not distract from the point. Keep it warm and easy to understand. Avoid sarcasm, ridicule, teasing, and overstimulation.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 928,
+          "candidatesTokenCount": 65,
+          "totalTokenCount": 993,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 928
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Looks like pajamas and a good book are waiting for a very special bedtime journey tonight."
+          },
+          {
+            "translation": "Tonight's agenda includes a cozy pajama party and a captivating storybook for the big adventure to bed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Looks like pajamas and a good book are waiting for a very special bedtime journey tonight.",
+            "wordCount": 16,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "looks like pajamas",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.23
+          },
+          {
+            "index": 1,
+            "translation": "Tonight's agenda includes a cozy pajama party and a captivating storybook for the big adventure to bed.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": 5,
+            "openingKey": "tonights agenda includes",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.17
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.11,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 827,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your pajamas on and bring your book to bed.\"\nSelected source suggestion: \"Pajamas and a book seem to have made tonight's bedtime guest list.\"\nTone: Use a \"Humorous\" tone. Use light, gentle absurdity to lower pressure while keeping the meaning clear. Humor should support connection, not distract from the point. Keep it warm and easy to understand. Avoid sarcasm, ridicule, teasing, and overstimulation.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 928,
+          "candidatesTokenCount": 55,
+          "totalTokenCount": 983,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 928
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Looks like the pajamas and that book are ready for our bedtime adventure."
+          },
+          {
+            "translation": "Our pajamas are waiting, and the book for bedtime is right here."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Looks like the pajamas and that book are ready for our bedtime adventure.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": 1,
+            "openingKey": "looks like the",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.19
+          },
+          {
+            "index": 1,
+            "translation": "Our pajamas are waiting, and the book for bedtime is right here.",
+            "wordCount": 12,
+            "wordCountDeltaVsSource": 0,
+            "openingKey": "our pajamas are",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.2
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.47,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 914,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your pajamas on and bring your book to bed.\"\nSelected source suggestion: \"Pajamas and a book seem to have made tonight's bedtime guest list.\"\nTone: Use a \"Humorous\" tone. Use light, gentle absurdity to lower pressure while keeping the meaning clear. Humor should support connection, not distract from the point. Keep it warm and easy to understand. Avoid sarcasm, ridicule, teasing, and overstimulation.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 940,
+          "candidatesTokenCount": 63,
+          "totalTokenCount": 1003,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 940
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Looks like pajamas and a good book are looking for their bedtime adventure buddy."
+          },
+          {
+            "translation": "Oh, it's time for pajamas to meet their favorite book, and off they go to bed!"
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Looks like pajamas and a good book are looking for their bedtime adventure buddy.",
+            "wordCount": 14,
+            "wordCountDeltaVsSource": 2,
+            "openingKey": "looks like pajamas",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.24
+          },
+          {
+            "index": 1,
+            "translation": "Oh, it's time for pajamas to meet their favorite book, and off they go to bed!",
+            "wordCount": 16,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "oh its time",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.17
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.21,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "variation-equalizing-bathroom",
+    "label": "Equalizing multi-part bedtime",
+    "text": "Please come to the bathroom, get your pajamas on, and bring your book to bed.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "sourceTranslation": "The bathroom, pajamas, and book all seem to be looking for a good bedtime order.",
+    "reviewFocus": [
+      "Equalizing stays natural and not performative",
+      "Multi-part coverage remains complete",
+      "Longer and warmer versions stay low-pressure"
+    ],
+    "outputs": [
+      {
+        "variationKind": "shorter",
+        "label": "Shorter",
+        "durationMs": 827,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\"\nSelected source suggestion: \"The bathroom, pajamas, and book all seem to be looking for a good bedtime order.\"\nTone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nVariation direction: \"Shorter\". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 933,
+          "candidatesTokenCount": 60,
+          "totalTokenCount": 993,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 933
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "I wonder what order the bathroom, pajamas, and book want to go in tonight."
+          },
+          {
+            "translation": "The bathroom, pajamas, and book seem to be wondering about the bedtime plan."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "I wonder what order the bathroom, pajamas, and book want to go in tonight.",
+            "wordCount": 14,
+            "wordCountDeltaVsSource": -1,
+            "openingKey": "i wonder what",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.32
+          },
+          {
+            "index": 1,
+            "translation": "The bathroom, pajamas, and book seem to be wondering about the bedtime plan.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": -2,
+            "openingKey": "the bathroom pajamas",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.5
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.3,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 1044,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\"\nSelected source suggestion: \"The bathroom, pajamas, and book all seem to be looking for a good bedtime order.\"\nTone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 936,
+          "candidatesTokenCount": 84,
+          "totalTokenCount": 1020,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 936
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "I wonder if the bathroom, pajamas, and book are all waiting to see what order feels best for tonight's bedtime routine."
+          },
+          {
+            "translation": "There's a bathroom, pajamas, and a book all here, and I'm curious what the best next step is for getting ready for bed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "I wonder if the bathroom, pajamas, and book are all waiting to see what order feels best for tonight's bedtime routine.",
+            "wordCount": 21,
+            "wordCountDeltaVsSource": 6,
+            "openingKey": "i wonder if",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.38
+          },
+          {
+            "index": 1,
+            "translation": "There's a bathroom, pajamas, and a book all here, and I'm curious what the best next step is for getting ready for bed.",
+            "wordCount": 23,
+            "wordCountDeltaVsSource": 8,
+            "openingKey": "theres a bathroom",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.3
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.28,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 924,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\"\nSelected source suggestion: \"The bathroom, pajamas, and book all seem to be looking for a good bedtime order.\"\nTone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 937,
+          "candidatesTokenCount": 68,
+          "totalTokenCount": 1005,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 937
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "I wonder what order feels best for the bathroom, pajamas, and the book before bed."
+          },
+          {
+            "translation": "The bathroom is ready, pajamas are waiting, and the book is here. What feels like a good next step?"
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "I wonder what order feels best for the bathroom, pajamas, and the book before bed.",
+            "wordCount": 15,
+            "wordCountDeltaVsSource": 0,
+            "openingKey": "i wonder what",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.32
+          },
+          {
+            "index": 1,
+            "translation": "The bathroom is ready, pajamas are waiting, and the book is here. What feels like a good next step?",
+            "wordCount": 19,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "the bathroom is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.28
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.29,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 947,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\"\nSelected source suggestion: \"The bathroom, pajamas, and book all seem to be looking for a good bedtime order.\"\nTone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 937,
+          "candidatesTokenCount": 65,
+          "totalTokenCount": 1002,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 937
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It looks like the bathroom, pajamas, and book are all part of getting ready for bed."
+          },
+          {
+            "translation": "The bathroom is ready, and it's time to find pajamas and a book for bed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It looks like the bathroom, pajamas, and book are all part of getting ready for bed.",
+            "wordCount": 16,
+            "wordCountDeltaVsSource": 1,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.29
+          },
+          {
+            "index": 1,
+            "translation": "The bathroom is ready, and it's time to find pajamas and a book for bed.",
+            "wordCount": 15,
+            "wordCountDeltaVsSource": 0,
+            "openingKey": "the bathroom is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.38
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.36,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 910,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\"\nSelected source suggestion: \"The bathroom, pajamas, and book all seem to be looking for a good bedtime order.\"\nTone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 949,
+          "candidatesTokenCount": 79,
+          "totalTokenCount": 1028,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 949
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "I wonder if the bathroom, pajamas, and book would like to arrange themselves for bedtime. What do you think?"
+          },
+          {
+            "translation": "There's a bathroom, pajamas, and a book all here. I wonder if there's a favorite order for those things at bedtime."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "I wonder if the bathroom, pajamas, and book would like to arrange themselves for bedtime. What do you think?",
+            "wordCount": 19,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "i wonder if",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.31
+          },
+          {
+            "index": 1,
+            "translation": "There's a bathroom, pajamas, and a book all here. I wonder if there's a favorite order for those things at bedtime.",
+            "wordCount": 21,
+            "wordCountDeltaVsSource": 6,
+            "openingKey": "theres a bathroom",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.38
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.32,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "variation-interest-dinosaur",
+    "label": "Interest-based bedtime with dinosaur",
+    "text": "Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.",
+    "tone": "Interest Based",
+    "interest": "Dinosaurs",
+    "useFewerWords": false,
+    "sourceTranslation": "The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.",
+    "reviewFocus": [
+      "Interest stays grounded and not gimmicky",
+      "All parts remain present",
+      "Warm and playful variants keep the dinosaur connection light"
+    ],
+    "outputs": [
+      {
+        "variationKind": "shorter",
+        "label": "Shorter",
+        "durationMs": 950,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\"\nSelected source suggestion: \"The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.\"\nTone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nVariation direction: \"Shorter\". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 931,
+          "candidatesTokenCount": 63,
+          "totalTokenCount": 994,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 931
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It looks like the bathroom is ready for teeth, and then the dinosaur can go to bed."
+          },
+          {
+            "translation": "Brushing teeth happens in the bathroom, and the dinosaur can join us for bed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It looks like the bathroom is ready for teeth, and then the dinosaur can go to bed.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": -1,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.28
+          },
+          {
+            "index": 1,
+            "translation": "Brushing teeth happens in the bathroom, and the dinosaur can join us for bed.",
+            "wordCount": 14,
+            "wordCountDeltaVsSource": -4,
+            "openingKey": "brushing teeth happens",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.26
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.38,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 1130,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\"\nSelected source suggestion: \"The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.\"\nTone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 934,
+          "candidatesTokenCount": 103,
+          "totalTokenCount": 1037,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 934
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bathroom is ready as the next dinosaur adventure stop, and after that, bedtime has a cozy spot waiting for teeth that are brushed and a dinosaur friend tucked in beside you."
+          },
+          {
+            "translation": "It looks like the bathroom might be the perfect next place for our dinosaur friend to visit, and then after that, we can think about getting teeth brushed and making sure the dinosaur is all settled for bedtime."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "The bathroom is ready as the next dinosaur adventure stop, and after that, bedtime has a cozy spot waiting for teeth that are brushed and a dinosaur friend tucked in beside you.",
+            "wordCount": 32,
+            "wordCountDeltaVsSource": 14,
+            "openingKey": "the bathroom is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.39
+          },
+          {
+            "index": 1,
+            "translation": "It looks like the bathroom might be the perfect next place for our dinosaur friend to visit, and then after that, we can think about getting teeth brushed and making sure the dinosaur is all settled for bedtime.",
+            "wordCount": 38,
+            "wordCountDeltaVsSource": 20,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.23
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.28,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 922,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\"\nSelected source suggestion: \"The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.\"\nTone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 935,
+          "candidatesTokenCount": 74,
+          "totalTokenCount": 1009,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 935
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bathroom is open for dinosaur explorers, and soon the teeth will be clean for bedtime, with a special dino friend ready too."
+          },
+          {
+            "translation": "It's time for the bathroom adventure, where teeth get cleaned and a dinosaur buddy waits for bed."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "The bathroom is open for dinosaur explorers, and soon the teeth will be clean for bedtime, with a special dino friend ready too.",
+            "wordCount": 23,
+            "wordCountDeltaVsSource": 5,
+            "openingKey": "the bathroom is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.32
+          },
+          {
+            "index": 1,
+            "translation": "It's time for the bathroom adventure, where teeth get cleaned and a dinosaur buddy waits for bed.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": -1,
+            "openingKey": "its time for",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.28
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.23,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 875,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\"\nSelected source suggestion: \"The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.\"\nTone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 935,
+          "candidatesTokenCount": 69,
+          "totalTokenCount": 1004,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 935
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It is time for teeth brushing, and the dinosaur can join you in the bathroom before you both head to bed."
+          },
+          {
+            "translation": "The bathroom is open for teeth brushing, and then the dinosaur friend is ready for bed too."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It is time for teeth brushing, and the dinosaur can join you in the bathroom before you both head to bed.",
+            "wordCount": 21,
+            "wordCountDeltaVsSource": 3,
+            "openingKey": "it is time",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.25
+          },
+          {
+            "index": 1,
+            "translation": "The bathroom is open for teeth brushing, and then the dinosaur friend is ready for bed too.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": -1,
+            "openingKey": "the bathroom is",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.3
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.38,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 951,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.\"\nSelected source suggestion: \"The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.\"\nTone: Use an \"Interest Based\" tone. Weave in \"Dinosaurs\" with specific but light references. Let the interest add connection without turning the line into a performance, gimmick, or the main point. Avoid overstimulation and references that overpower the meaning.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 947,
+          "candidatesTokenCount": 77,
+          "totalTokenCount": 1024,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 947
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Looks like the bathroom is ready for a dinosaur explorer, and then it's time for teeth and a special dino cuddle in bed."
+          },
+          {
+            "translation": "A little bit later, the bathroom adventure begins for teeth, and the dinosaur friend is ready for bed right after."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Looks like the bathroom is ready for a dinosaur explorer, and then it's time for teeth and a special dino cuddle in bed.",
+            "wordCount": 23,
+            "wordCountDeltaVsSource": 5,
+            "openingKey": "looks like the",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.29
+          },
+          {
+            "index": 1,
+            "translation": "A little bit later, the bathroom adventure begins for teeth, and the dinosaur friend is ready for bed right after.",
+            "wordCount": 20,
+            "wordCountDeltaVsSource": 2,
+            "openingKey": "a little bit",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.31
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.36,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "variation-fewer-words-lunch",
+    "label": "Fewer Words lunch transition",
+    "text": "Wash your hands and come to the kitchen for lunch.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "sourceTranslation": "Hands first, then the kitchen for lunch.",
+    "reviewFocus": [
+      "Longer becomes a true expansion option",
+      "Compact tone still sounds human",
+      "No task loss"
+    ],
+    "outputs": [
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 904,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Wash your hands and come to the kitchen for lunch.\"\nSelected source suggestion: \"Hands first, then the kitchen for lunch.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\nRespect the existing \"Fewer Words\" preference unless the chosen variation direction is \"Longer\", in which case slightly fuller wording is allowed while staying compact.\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 993,
+          "candidatesTokenCount": 67,
+          "totalTokenCount": 1060,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 993
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It looks like the next thing is washing hands, and then lunch is ready in the kitchen."
+          },
+          {
+            "translation": "Washing hands and then going to the kitchen for lunch, that's what's happening now."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It looks like the next thing is washing hands, and then lunch is ready in the kitchen.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": 10,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.29
+          },
+          {
+            "index": 1,
+            "translation": "Washing hands and then going to the kitchen for lunch, that's what's happening now.",
+            "wordCount": 14,
+            "wordCountDeltaVsSource": 7,
+            "openingKey": "washing hands and",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.4
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.32,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 908,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Wash your hands and come to the kitchen for lunch.\"\nSelected source suggestion: \"Hands first, then the kitchen for lunch.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\nRespect the existing \"Fewer Words\" preference unless the chosen variation direction is \"Longer\", in which case slightly fuller wording is allowed while staying compact.\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 994,
+          "candidatesTokenCount": 59,
+          "totalTokenCount": 1053,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 994
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It's time to wash hands, and then lunch is ready in the kitchen."
+          },
+          {
+            "translation": "Hands could use a wash, and then the kitchen is calling for lunch."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It's time to wash hands, and then lunch is ready in the kitchen.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": 6,
+            "openingKey": "its time to",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.33
+          },
+          {
+            "index": 1,
+            "translation": "Hands could use a wash, and then the kitchen is calling for lunch.",
+            "wordCount": 13,
+            "wordCountDeltaVsSource": 6,
+            "openingKey": "hands could use",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.43
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.44,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 767,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Wash your hands and come to the kitchen for lunch.\"\nSelected source suggestion: \"Hands first, then the kitchen for lunch.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\nRespect the existing \"Fewer Words\" preference unless the chosen variation direction is \"Longer\", in which case slightly fuller wording is allowed while staying compact.\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 994,
+          "candidatesTokenCount": 52,
+          "totalTokenCount": 1046,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 994
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "It's time to wash hands, then lunch in the kitchen."
+          },
+          {
+            "translation": "Hands need washing; lunch is ready in the kitchen."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "It's time to wash hands, then lunch in the kitchen.",
+            "wordCount": 10,
+            "wordCountDeltaVsSource": 3,
+            "openingKey": "its time to",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.42
+          },
+          {
+            "index": 1,
+            "translation": "Hands need washing; lunch is ready in the kitchen.",
+            "wordCount": 9,
+            "wordCountDeltaVsSource": 2,
+            "openingKey": "hands need washing",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.33
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.36,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 822,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Wash your hands and come to the kitchen for lunch.\"\nSelected source suggestion: \"Hands first, then the kitchen for lunch.\"\nTone: Use a \"Straightforward\" tone: calm, plainspoken, and to the point with a low emotional temperature. Prefer concise observation-first phrasing and gentle availability cues over questions. Across the 3-4 suggestions, include 1-2 concise options and at least 1 slightly fuller option. Use simple everyday wording and keep the suggestions varied. Avoid jokes, hype, slang, roleplay, exaggerated metaphors, faux-choice pressure, and clipped or bossy phrasing.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\nRespect the existing \"Fewer Words\" preference unless the chosen variation direction is \"Longer\", in which case slightly fuller wording is allowed while staying compact.\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 1006,
+          "candidatesTokenCount": 55,
+          "totalTokenCount": 1061,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 1006
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Hands need a wash, then lunch is ready in the kitchen."
+          },
+          {
+            "translation": "Time for hands to get clean; the kitchen's waiting for lunch."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Hands need a wash, then lunch is ready in the kitchen.",
+            "wordCount": 11,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "hands need a",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.38
+          },
+          {
+            "index": 1,
+            "translation": "Time for hands to get clean; the kitchen's waiting for lunch.",
+            "wordCount": 11,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "time for hands",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.31
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.17,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "variation-multipart-cleanup",
+    "label": "Multi-part cleanup and transition",
+    "text": "Please put your plate in the sink, wipe your hands, and come sit on the couch with me.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "The sink, clean hands, and the couch are all part of where this moment is headed.",
+    "reviewFocus": [
+      "Three-part requests remain complete",
+      "Shorter does not collapse into abstraction",
+      "Warmer does not add pressure"
+    ],
+    "outputs": [
+      {
+        "variationKind": "shorter",
+        "label": "Shorter",
+        "durationMs": 916,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your plate in the sink, wipe your hands, and come sit on the couch with me.\"\nSelected source suggestion: \"The sink, clean hands, and the couch are all part of where this moment is headed.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"Shorter\". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 896,
+          "candidatesTokenCount": 61,
+          "totalTokenCount": 957,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 896
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The plate could go to the sink, then hands wiped, and the couch is ready for sitting."
+          },
+          {
+            "translation": "Sink, clean hands, and the couch are next on the agenda."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "The plate could go to the sink, then hands wiped, and the couch is ready for sitting.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": 1,
+            "openingKey": "the plate could",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.25
+          },
+          {
+            "index": 1,
+            "translation": "Sink, clean hands, and the couch are next on the agenda.",
+            "wordCount": 11,
+            "wordCountDeltaVsSource": -5,
+            "openingKey": "sink clean hands",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.39
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.25,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "longer",
+        "label": "Longer",
+        "durationMs": 1308,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your plate in the sink, wipe your hands, and come sit on the couch with me.\"\nSelected source suggestion: \"The sink, clean hands, and the couch are all part of where this moment is headed.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"Longer\". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 899,
+          "candidatesTokenCount": 92,
+          "totalTokenCount": 991,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 899
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner plates often like to land in the sink when we're done, and it looks like clean hands and a cozy spot on the couch could be next."
+          },
+          {
+            "translation": "It can be nice when the plate finds its way to the sink after eating, and then it's time to get hands clean before settling in on the couch."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Dinner plates often like to land in the sink when we're done, and it looks like clean hands and a cozy spot on the couch could be next.",
+            "wordCount": 28,
+            "wordCountDeltaVsSource": 12,
+            "openingKey": "dinner plates often",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.18
+          },
+          {
+            "index": 1,
+            "translation": "It can be nice when the plate finds its way to the sink after eating, and then it's time to get hands clean before settling in on the couch.",
+            "wordCount": 29,
+            "wordCountDeltaVsSource": 13,
+            "openingKey": "it can be",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.18
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.32,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "warmer",
+        "label": "Warmer",
+        "durationMs": 1101,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your plate in the sink, wipe your hands, and come sit on the couch with me.\"\nSelected source suggestion: \"The sink, clean hands, and the couch are all part of where this moment is headed.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"Warmer\". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 900,
+          "candidatesTokenCount": 80,
+          "totalTokenCount": 980,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 900
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "I'm thinking about the plate finding its way to the sink, hands getting a quick wipe, and then settling onto the couch."
+          },
+          {
+            "translation": "Looks like the next steps involve the plate heading to the sink, hands getting clean, and then some time together on the couch."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "I'm thinking about the plate finding its way to the sink, hands getting a quick wipe, and then settling onto the couch.",
+            "wordCount": 22,
+            "wordCountDeltaVsSource": 6,
+            "openingKey": "im thinking about",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.17
+          },
+          {
+            "index": 1,
+            "translation": "Looks like the next steps involve the plate heading to the sink, hands getting clean, and then some time together on the couch.",
+            "wordCount": 23,
+            "wordCountDeltaVsSource": 7,
+            "openingKey": "looks like the",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.21
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.29,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_straightforward",
+        "label": "More straightforward",
+        "durationMs": 982,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your plate in the sink, wipe your hands, and come sit on the couch with me.\"\nSelected source suggestion: \"The sink, clean hands, and the couch are all part of where this moment is headed.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"More straightforward\". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 900,
+          "candidatesTokenCount": 78,
+          "totalTokenCount": 978,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 900
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Dinner plates often go to the sink when we're done, and then hands get wiped before moving to the couch."
+          },
+          {
+            "translation": "The next steps are for the plate to find the sink, hands to get wiped, and then there's time on the couch."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "Dinner plates often go to the sink when we're done, and then hands get wiped before moving to the couch.",
+            "wordCount": 20,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "dinner plates often",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.18
+          },
+          {
+            "index": 1,
+            "translation": "The next steps are for the plate to find the sink, hands to get wiped, and then there's time on the couch.",
+            "wordCount": 22,
+            "wordCountDeltaVsSource": 6,
+            "openingKey": "the next steps",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.22
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.33,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      },
+      {
+        "variationKind": "more_playful",
+        "label": "More playful",
+        "durationMs": 987,
+        "prompt": "Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: \"Please put your plate in the sink, wipe your hands, and come sit on the couch with me.\"\nSelected source suggestion: \"The sink, clean hands, and the couch are all part of where this moment is headed.\"\nTone: Use a neutral, warm, observational tone with simple everyday wording.\nVariation direction: \"More playful\". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.\n\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.",
+        "usageMetadata": {
+          "promptTokenCount": 912,
+          "candidatesTokenCount": 70,
+          "totalTokenCount": 982,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 912
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "I wonder what fun adventures the plate, clean hands, and the couch will get up to next."
+          },
+          {
+            "translation": "It looks like the plate, clean hands, and a cozy spot on the couch are all lined up for us."
+          }
+        ],
+        "heuristics": [
+          {
+            "index": 0,
+            "translation": "I wonder what fun adventures the plate, clean hands, and the couch will get up to next.",
+            "wordCount": 17,
+            "wordCountDeltaVsSource": 1,
+            "openingKey": "i wonder what",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.19
+          },
+          {
+            "index": 1,
+            "translation": "It looks like the plate, clean hands, and a cozy spot on the couch are all lined up for us.",
+            "wordCount": 20,
+            "wordCountDeltaVsSource": 4,
+            "openingKey": "it looks like",
+            "exactDuplicateWithSource": false,
+            "similarityToSource": 0.26
+          }
+        ],
+        "pairHeuristics": {
+          "pairSimilarity": 0.25,
+          "sameOpening": false,
+          "exactDuplicatePair": false
+        }
+      }
+    ]
+  }
+]

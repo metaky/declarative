@@ -1,0 +1,94 @@
+[
+  {
+    "id": "variation-default-dinner",
+    "label": "Default tone dinner transition",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "Dinner is almost ready. The sink is open for hands.",
+    "reviewFocus": [
+      "Stays grounded in the same moment",
+      "Warm changes do not become sweeter or more parent-centered",
+      "Shorter and playful versions still feel natural"
+    ]
+  },
+  {
+    "id": "variation-straightforward-school",
+    "label": "Straightforward school transition",
+    "text": "Get your backpack and get your shoes on so we can get ready for school",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "sourceTranslation": "Shoes and backpack are both part of getting out the door for school.",
+    "reviewFocus": [
+      "More straightforward does not become bossy",
+      "Shorter versions keep both tasks",
+      "Playful remains restrained"
+    ]
+  },
+  {
+    "id": "variation-humorous-bedroom",
+    "label": "Humorous bedtime cleanup",
+    "text": "Please put your pajamas on and bring your book to bed.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "sourceTranslation": "Pajamas and a book seem to have made tonight's bedtime guest list.",
+    "reviewFocus": [
+      "Playful refinement does not tip into gimmick",
+      "Straightforward refinement stays in tone family",
+      "Coverage of both tasks remains intact"
+    ]
+  },
+  {
+    "id": "variation-equalizing-bathroom",
+    "label": "Equalizing multi-part bedtime",
+    "text": "Please come to the bathroom, get your pajamas on, and bring your book to bed.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "sourceTranslation": "The bathroom, pajamas, and book all seem to be looking for a good bedtime order.",
+    "reviewFocus": [
+      "Equalizing stays natural and not performative",
+      "Multi-part coverage remains complete",
+      "Longer and warmer versions stay low-pressure"
+    ]
+  },
+  {
+    "id": "variation-interest-dinosaur",
+    "label": "Interest-based bedtime with dinosaur",
+    "text": "Please come to the bathroom, brush your teeth, and bring your dinosaur to bed.",
+    "tone": "Interest Based",
+    "interest": "Dinosaurs",
+    "useFewerWords": false,
+    "sourceTranslation": "The bathroom is the next dinosaur stop, and bedtime still has room for teeth plus a dinosaur companion.",
+    "reviewFocus": [
+      "Interest stays grounded and not gimmicky",
+      "All parts remain present",
+      "Warm and playful variants keep the dinosaur connection light"
+    ]
+  },
+  {
+    "id": "variation-fewer-words-lunch",
+    "label": "Fewer Words lunch transition",
+    "text": "Wash your hands and come to the kitchen for lunch.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "sourceTranslation": "Hands first, then the kitchen for lunch.",
+    "reviewFocus": [
+      "Longer becomes a true expansion option",
+      "Compact tone still sounds human",
+      "No task loss"
+    ]
+  },
+  {
+    "id": "variation-multipart-cleanup",
+    "label": "Multi-part cleanup and transition",
+    "text": "Please put your plate in the sink, wipe your hands, and come sit on the couch with me.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "The sink, clean hands, and the couch are all part of where this moment is headed.",
+    "reviewFocus": [
+      "Three-part requests remain complete",
+      "Shorter does not collapse into abstraction",
+      "Warmer does not add pressure"
+    ]
+  }
+]

@@ -158,13 +158,7 @@ export function summarizeExistingTranslations(existingTranslations = []) {
     return summaries;
 }
 
-export function buildTranslationPrompt({
-    text,
-    existingTranslations = [],
-    tone,
-    interest,
-    useFewerWords,
-}) {
+export function getToneInstruction(tone, interest) {
     let toneInstruction = `Use a neutral, warm, observational tone with simple everyday wording.`;
     if (tone && tone !== 'Default') {
         switch (tone) {
@@ -185,6 +179,18 @@ export function buildTranslationPrompt({
         }
     }
 
+    return toneInstruction;
+}
+
+export function buildTranslationPrompt({
+    text,
+    existingTranslations = [],
+    tone,
+    interest,
+    useFewerWords,
+}) {
+    const toneInstruction = getToneInstruction(tone, interest);
+
     const lengthInstruction = useFewerWords ? ' CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.' : '';
     const followUpCoverage = buildFollowUpCoverage(existingTranslations);
     const followUpInstruction = existingTranslations.length > 0
@@ -192,4 +198,29 @@ export function buildTranslationPrompt({
         : '';
 
     return `Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: "${text}". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with "I", "I'm", "I am", "my", "we", or "our". Tone: ${toneInstruction}${lengthInstruction}${followUpInstruction}`;
+}
+
+export function buildVariationPrompt({
+    text,
+    sourceTranslation,
+    variationKind,
+    tone,
+    interest,
+    useFewerWords,
+}) {
+    const toneInstruction = getToneInstruction(tone, interest);
+
+    const variationInstructions = {
+        shorter: `Variation direction: "Shorter". Make both rewrites tighter and more concise than the source suggestion while preserving every important part of the original caregiver request. Do not become clipped, abrupt, or bossy.`,
+        longer: `Variation direction: "Longer". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.`,
+        warmer: `Variation direction: "Warmer". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.`,
+        more_straightforward: `Variation direction: "More straightforward". Make both rewrites plainer, calmer, and more direct than the source suggestion. Keep the language observation-first when natural. Do not become clipped, bossy, or command-like.`,
+        more_playful: `Variation direction: "More playful". Make both rewrites a little lighter in rhythm or wording than the source suggestion while staying grounded and easy to say out loud. Do not turn them into jokes, gimmicks, or full humorous roleplay unless the selected tone already supports that level of play.`,
+    };
+
+    const lengthInstruction = useFewerWords
+        ? 'Respect the existing "Fewer Words" preference unless the chosen variation direction is "Longer", in which case slightly fuller wording is allowed while staying compact.'
+        : '';
+
+    return `Refine one existing declarative suggestion into exactly 2 new declarative rewrites.\n\nOriginal caregiver request: "${text}"\nSelected source suggestion: "${sourceTranslation}"\nTone: ${toneInstruction}\n${variationInstructions[variationKind]}\n${lengthInstruction}\n\nRequirements:\n- Preserve the full meaning of the original caregiver request.\n- Stay anchored to the selected source suggestion rather than inventing a totally new angle.\n- Keep the same low-pressure spirit and the same general tone family as the source suggestion.\n- Make the 2 rewrites meaningfully different from each other in opening words and sentence shape, not just tiny wording swaps.\n- Keep both rewrites authentic and useful in a real caregiver moment.\n- Do not drop important parts of the request.\n- Do not become more manipulative, more praising, more performative, or more emotionally loaded.\n- Do not use generic fallback phrasing or near-duplicates of the source suggestion.\n\nReturn only the valid JSON array.`;
 }

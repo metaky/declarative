@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Redis } from '@upstash/redis';
 import { v4 as uuidv4 } from 'uuid';
-import { buildTranslationPrompt, systemInstruction } from './services/translationPrompt.js';
+import { buildTranslationPrompt, buildVariationPrompt, systemInstruction } from './services/translationPrompt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,24 +41,32 @@ const isMockTranslationMode = process.env.NODE_ENV !== 'production' && process.e
 const isDevChallengeBypassEnabled = process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_CHALLENGE === 'true';
 
 // --- Server-Side Rate Limiting ---
-const RATE_LIMIT_WINDOW_MS = 60000;
-const MAX_REQUESTS_PER_WINDOW = 10;
-const requestLog = new Map();
+const CHALLENGE_RATE_LIMIT_WINDOW_MS = 60000;
+const TRANSLATE_RATE_LIMIT_WINDOW_MS = 60000;
+const VARIATION_BURST_WINDOW_MS = 10000;
+const MAX_CHALLENGE_REQUESTS_PER_WINDOW = 30;
+const MAX_TRANSLATE_REQUESTS_PER_WINDOW = 10;
+const MAX_VARIATION_REQUESTS_PER_WINDOW = 12;
+const MAX_VARIATION_REQUESTS_PER_BURST = 3;
+const challengeRequestLog = new Map();
+const translateRequestLog = new Map();
+const variationBurstRequestLog = new Map();
 
-function logRateLimitHit(endpoint, waitSeconds) {
+function logRateLimitHit(endpoint, waitSeconds, details = {}) {
     console.warn(JSON.stringify({
         event: 'rate_limit_hit',
         source: 'server',
         endpoint,
         wait_seconds: waitSeconds,
-        window_ms: RATE_LIMIT_WINDOW_MS,
-        max_requests_per_window: MAX_REQUESTS_PER_WINDOW,
+        ...details,
         timestamp: new Date().toISOString(),
     }));
 }
 
 function logGeminiUsageMetadata({
     model,
+    mode,
+    variationKind,
     tone,
     useFewerWords,
     existingTranslationsCount,
@@ -71,6 +79,8 @@ function logGeminiUsageMetadata({
             event: 'gemini_usage_metadata',
             source: 'server',
             model,
+            mode,
+            variation_kind: variationKind ?? null,
             tone: tone || 'Default',
             use_fewer_words: Boolean(useFewerWords),
             existing_translations_count: existingTranslationsCount,
@@ -86,6 +96,8 @@ function logGeminiUsageMetadata({
         event: 'gemini_usage_metadata',
         source: 'server',
         model,
+        mode,
+        variation_kind: variationKind ?? null,
         tone: tone || 'Default',
         use_fewer_words: Boolean(useFewerWords),
         existing_translations_count: existingTranslationsCount,
@@ -104,40 +116,55 @@ function logGeminiUsageMetadata({
     }));
 }
 
-function checkRateLimit(ip) {
+function checkRateLimit(log, key, maxRequests, windowMs) {
     const now = Date.now();
-    const timestamps = requestLog.get(ip) || [];
-    const valid = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    const timestamps = log.get(key) || [];
+    const valid = timestamps.filter(t => now - t < windowMs);
 
-    if (valid.length >= MAX_REQUESTS_PER_WINDOW) {
-        const wait = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - valid[0])) / 1000);
+    if (valid.length >= maxRequests) {
+        const wait = Math.ceil((windowMs - (now - valid[0])) / 1000);
         return { limited: true, wait };
     }
 
     valid.push(now);
-    requestLog.set(ip, valid);
+    log.set(key, valid);
     return { limited: false };
 }
 
 // Clean up stale entries every 5 minutes
 setInterval(() => {
     const now = Date.now();
-    for (const [ip, timestamps] of requestLog.entries()) {
-        const valid = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-        if (valid.length === 0) {
-            requestLog.delete(ip);
-        } else {
-            requestLog.set(ip, valid);
-        }
+    for (const [key, timestamps] of challengeRequestLog.entries()) {
+        const valid = timestamps.filter(t => now - t < CHALLENGE_RATE_LIMIT_WINDOW_MS);
+        if (valid.length === 0) challengeRequestLog.delete(key);
+        else challengeRequestLog.set(key, valid);
+    }
+    for (const [key, timestamps] of translateRequestLog.entries()) {
+        const valid = timestamps.filter(t => now - t < TRANSLATE_RATE_LIMIT_WINDOW_MS);
+        if (valid.length === 0) translateRequestLog.delete(key);
+        else translateRequestLog.set(key, valid);
+    }
+    for (const [key, timestamps] of variationBurstRequestLog.entries()) {
+        const valid = timestamps.filter(t => now - t < VARIATION_BURST_WINDOW_MS);
+        if (valid.length === 0) variationBurstRequestLog.delete(key);
+        else variationBurstRequestLog.set(key, valid);
     }
 }, 5 * 60 * 1000);
 
 // --- API Endpoints ---
 app.get('/api/challenge', async (req, res) => {
     const clientIp = req.ip;
-    const limit = checkRateLimit(clientIp);
+    const limit = checkRateLimit(
+        challengeRequestLog,
+        clientIp,
+        MAX_CHALLENGE_REQUESTS_PER_WINDOW,
+        CHALLENGE_RATE_LIMIT_WINDOW_MS
+    );
     if (limit.limited) {
-        logRateLimitHit('/api/challenge', limit.wait);
+        logRateLimitHit('/api/challenge', limit.wait, {
+            window_ms: CHALLENGE_RATE_LIMIT_WINDOW_MS,
+            max_requests_per_window: MAX_CHALLENGE_REQUESTS_PER_WINDOW,
+        });
         return res.status(429).json({
             error: `Rate limit reached. Please wait ${limit.wait} seconds before trying again.`
         });
@@ -232,6 +259,20 @@ function dedupeTranslations(translations, existingTranslations = []) {
     return result;
 }
 
+function dedupeVariationTranslations(translations, sourceTranslation) {
+    const seen = new Set([sourceTranslation.toLowerCase()]);
+    const result = [];
+
+    for (const translation of translations) {
+        const normalized = translation.translation.toLowerCase();
+        if (seen.has(normalized)) continue;
+        seen.add(normalized);
+        result.push(translation);
+    }
+
+    return result;
+}
+
 function buildMockTranslations(text, tone, interest, useFewerWords, existingTranslations = []) {
     const taskPhrases = buildTaskPhrases(text);
     const joinedTasks = joinPhrases(taskPhrases.map(toLowerSentence));
@@ -286,15 +327,73 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
     return dedupeTranslations(mocked, existingTranslations).slice(0, 4);
 }
 
+function buildMockVariationTranslations(sourceTranslation, variationKind) {
+    const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
+    const words = source.split(/\s+/).filter(Boolean);
+    const shorterFragment = words.slice(0, Math.max(4, Math.ceil(words.length * 0.6))).join(' ');
+
+    const variationTemplates = {
+        shorter: [
+            `${shorterFragment}.`,
+            `${shorterFragment.replace(/,.*$/, '')}.`,
+        ],
+        longer: [
+            `${source}, and there is room for it to happen in a calm way.`,
+            `${source}, with a little more space for the moment to unfold.`,
+        ],
+        warmer: [
+            `${source}, and the moment can stay gentle while it happens.`,
+            `${source}, with a little extra softness around the transition.`,
+        ],
+        more_straightforward: [
+            `${source}.`,
+            `${source}, and that is the shape of this moment.`,
+        ],
+        more_playful: [
+            `${source}, as if the moment has a light side note attached.`,
+            `${source}, with just a touch more lift in the wording.`,
+        ],
+    };
+
+    const templates = variationTemplates[variationKind] || variationTemplates.warmer;
+    return dedupeVariationTranslations(
+        templates.map((translation) => ({ translation })),
+        sourceTranslation
+    ).slice(0, 2);
+}
+
 // --- API Endpoint ---
 app.post('/api/translate', async (req, res) => {
-    const { text, existingTranslations = [], tone, interest, useFewerWords } = req.body;
+    const {
+        mode = 'translate',
+        text,
+        existingTranslations = [],
+        tone,
+        interest,
+        useFewerWords,
+        sourceTranslation,
+        variationKind,
+    } = req.body;
     if (!text || typeof text !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid "text" field.' });
     }
 
     if (text.length > 500) {
         return res.status(400).json({ error: 'Input text exceeds the maximum limit of 500 characters.' });
+    }
+
+    if (!['translate', 'moreIdeas', 'variation'].includes(mode)) {
+        return res.status(400).json({ error: 'Missing or invalid "mode" field.' });
+    }
+
+    if (mode === 'variation') {
+        if (!sourceTranslation || typeof sourceTranslation.translation !== 'string') {
+            return res.status(400).json({ error: 'Missing or invalid source translation.' });
+        }
+
+        if (!['shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
+            return res.status(400).json({ error: 'Missing or invalid variation kind.' });
+        }
     }
 
     // 1. Challenge Token Verification (Primary Bot Defense)
@@ -326,16 +425,69 @@ app.post('/api/translate', async (req, res) => {
 
     // req.ip works reliably here because 'trust proxy' is set to true
     const clientIp = req.ip;
-    const limit = checkRateLimit(clientIp);
-    if (limit.limited) {
-        logRateLimitHit('/api/translate', limit.wait);
-        return res.status(429).json({
-            error: `Rate limit reached. Please wait ${limit.wait} seconds before trying again.`
-        });
+    if (mode === 'variation') {
+        const variationLimit = checkRateLimit(
+            translateRequestLog,
+            `${clientIp}:variation`,
+            MAX_VARIATION_REQUESTS_PER_WINDOW,
+            TRANSLATE_RATE_LIMIT_WINDOW_MS
+        );
+
+        if (variationLimit.limited) {
+            logRateLimitHit('/api/translate', variationLimit.wait, {
+                mode,
+                variation_kind: variationKind,
+                window_ms: TRANSLATE_RATE_LIMIT_WINDOW_MS,
+                max_requests_per_window: MAX_VARIATION_REQUESTS_PER_WINDOW,
+            });
+            return res.status(429).json({
+                error: `A lot of versions were tried quickly. Another try will be ready in ${variationLimit.wait} seconds.`
+            });
+        }
+
+        const variationBurstLimit = checkRateLimit(
+            variationBurstRequestLog,
+            clientIp,
+            MAX_VARIATION_REQUESTS_PER_BURST,
+            VARIATION_BURST_WINDOW_MS
+        );
+
+        if (variationBurstLimit.limited) {
+            logRateLimitHit('/api/translate', variationBurstLimit.wait, {
+                mode,
+                variation_kind: variationKind,
+                window_ms: VARIATION_BURST_WINDOW_MS,
+                max_requests_per_window: MAX_VARIATION_REQUESTS_PER_BURST,
+            });
+            return res.status(429).json({
+                error: `A lot of versions were tried quickly. Another try will be ready in ${variationBurstLimit.wait} seconds.`
+            });
+        }
+    } else {
+        const limit = checkRateLimit(
+            translateRequestLog,
+            `${clientIp}:translate`,
+            MAX_TRANSLATE_REQUESTS_PER_WINDOW,
+            TRANSLATE_RATE_LIMIT_WINDOW_MS
+        );
+        if (limit.limited) {
+            logRateLimitHit('/api/translate', limit.wait, {
+                mode,
+                window_ms: TRANSLATE_RATE_LIMIT_WINDOW_MS,
+                max_requests_per_window: MAX_TRANSLATE_REQUESTS_PER_WINDOW,
+            });
+            return res.status(429).json({
+                error: `Rate limit reached. Please wait ${limit.wait} seconds before trying again.`
+            });
+        }
     }
 
     const apiKey = geminiApiKey;
     if (isMockTranslationMode) {
+        if (mode === 'variation') {
+            return res.json(buildMockVariationTranslations(sourceTranslation.translation, variationKind));
+        }
+
         return res.json(buildMockTranslations(text, tone, interest, useFewerWords, existingTranslations));
     }
 
@@ -343,13 +495,22 @@ app.post('/api/translate', async (req, res) => {
         return res.status(500).json({ error: 'API key not configured on server.' });
     }
 
-    const basePrompt = buildTranslationPrompt({
-        text,
-        existingTranslations,
-        tone,
-        interest,
-        useFewerWords,
-    });
+    const basePrompt = mode === 'variation'
+        ? buildVariationPrompt({
+            text,
+            sourceTranslation: sourceTranslation.translation,
+            variationKind,
+            tone,
+            interest,
+            useFewerWords,
+        })
+        : buildTranslationPrompt({
+            text,
+            existingTranslations,
+            tone,
+            interest,
+            useFewerWords,
+        });
 
     try {
         const ai = new GoogleGenAI({ apiKey });
@@ -389,8 +550,13 @@ app.post('/api/translate', async (req, res) => {
         }
 
         const translations = JSON.parse(responseText.trim());
+        const normalizedTranslations = mode === 'variation'
+            ? dedupeVariationTranslations(translations, sourceTranslation.translation).slice(0, 2)
+            : translations;
         logGeminiUsageMetadata({
             model: 'gemini-2.5-flash',
+            mode,
+            variationKind,
             tone,
             useFewerWords,
             existingTranslationsCount: existingTranslations.length,
@@ -398,7 +564,7 @@ app.post('/api/translate', async (req, res) => {
             durationMs: Date.now() - requestStartedAt,
             usageMetadata: response.usageMetadata,
         });
-        return res.json(translations);
+        return res.json(normalizedTranslations);
     } catch (error) {
         console.error('Gemini API Error:', error);
         const message = error instanceof Error ? error.message : 'AI translation unavailable.';

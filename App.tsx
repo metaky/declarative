@@ -10,7 +10,7 @@ import { Onboarding } from './components/Onboarding';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { CoffeePage } from './components/CoffeePage';
-import { clearHistoryEntries, loadHistoryEntries, prependHistoryEntry, saveHistoryEntries } from './services/historyStorage';
+import { clearHistoryEntries, loadHistoryEntries, saveHistoryEntries, upsertHistoryEntry } from './services/historyStorage';
 import type { HistoryEntryInput, HistoryItem } from './types';
 
 export type View = 'translator' | 'learn' | 'other-tools' | 'coffee';
@@ -59,7 +59,7 @@ const App: React.FC = () => {
 
 
   const handleHistorySave = (entry: HistoryEntryInput) => {
-    setHistory(prevHistory => prependHistoryEntry(prevHistory, entry));
+    setHistory(prevHistory => upsertHistoryEntry(prevHistory, entry));
   };
 
   const handleClearHistory = () => {
