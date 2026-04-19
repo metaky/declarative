@@ -68,7 +68,7 @@ export const DonationCallout: React.FC = () => {
              Support this free tool
           </h3>
           <p className="text-sm md:text-base text-amber-800 leading-relaxed">
-            Hi, I'm a dad who built this tool for my PDA autistic child, and I want to keep it free for everyone. However, surging API costs are threatening to shut it down. If this tool helps your family, please consider a small donation to help keep the lights on.
+            Hi, I'm a dad who built this tool for my PDA autistic child, and I want to keep it free for everyone. If this tool helps your family, please consider a small donation to help keep the lights on.
           </p>
         </div>
         
