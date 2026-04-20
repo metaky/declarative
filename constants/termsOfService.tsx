@@ -2,7 +2,7 @@ import React from 'react';
 
 export const TERMS_OF_SERVICE_CONTENT = (
     <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed">
-        <p><strong>Last Updated:</strong> March 4, 2026</p>
+        <p><strong>Last Updated:</strong> April 20, 2026</p>
 
         <p>
             Please read these Terms of Service ("Terms") carefully before using the Declarative application (the "Service") operated by Kyle Wegner ("us", "we", or "our").
@@ -30,6 +30,9 @@ export const TERMS_OF_SERVICE_CONTENT = (
         </p>
         <ul>
             <li><strong>Voluntary Support:</strong> Payments made through the "Buy Me a Coffee" feature are voluntary donations to support the ongoing development and hosting costs of the project.</li>
+            <li><strong>One-Time and Monthly Options:</strong> Support may be offered as a one-time donation or as a recurring monthly donation processed by Stripe.</li>
+            <li><strong>Recurring Renewal:</strong> Monthly support renews automatically each month until you cancel through Stripe.</li>
+            <li><strong>Cancellation Timing:</strong> If you cancel a recurring donation, future renewals will stop, but amounts already processed are still considered final.</li>
             <li><strong>No Goods or Services:</strong> A donation does not entitle you to any premium features, goods, services, or special treatment. It is a gift.</li>
             <li><strong>Non-Refundable:</strong> All donations are final and non-refundable.</li>
         </ul>

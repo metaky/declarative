@@ -6,6 +6,7 @@ const HASH_TO_VIEW: Record<string, View> = {
     '#/learn': 'learn',
     '#/other-tools': 'other-tools',
     '#/coffee': 'coffee',
+    '#/coffee/donate': 'coffee',
 };
 
 const VIEW_TO_HASH: Record<View, string> = {

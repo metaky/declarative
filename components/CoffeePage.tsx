@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CoffeeIcon, HeartIcon, ShieldIcon } from './icons/Icons';
 
-// TO DO: Replace these URLs with your actual Stripe Payment Links
-// 1. Go to Stripe Dashboard > Products > Payment Links
-// 2. Create links for fixed amounts and a "Pay what you want" link for custom amounts
-const STRIPE_LINKS = {
-    small: 'https://buy.stripe.com/9B628kghogpNcM10fPfw402', // Replace with $3 link
-    large: 'https://donate.stripe.com/7sY4gs7KS2yXaDT8Mlfw403', // Replace with $8 link
-    custom: 'https://buy.stripe.com/4gM00ce9g2yX9zPbYxfw400' // Replace with "Let customers choose price" link
+const SUPPORT_LINKS = {
+  oneTime: {
+    small: 'https://buy.stripe.com/9B628kghogpNcM10fPfw402',
+    large: 'https://donate.stripe.com/7sY4gs7KS2yXaDT8Mlfw403',
+    custom: 'https://buy.stripe.com/4gM00ce9g2yX9zPbYxfw400',
+  },
+  monthly: 'https://buy.stripe.com/8x2bIU7KS2yXdQ54w5fw405',
+  manageMonthly: 'https://billing.stripe.com/p/login/4gM00ce9g2yX9zPbYxfw400',
 };
 
 interface CoffeePageProps {
@@ -15,17 +16,42 @@ interface CoffeePageProps {
   onShowTerms: () => void;
 }
 
+type OneTimeOption = keyof typeof SUPPORT_LINKS.oneTime;
+
 export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTerms }) => {
-  const [selectedOption, setSelectedOption] = useState<'small' | 'large' | 'custom' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<OneTimeOption | null>(null);
   const isLoading = false;
 
-  const handleSupportClick = () => {
+  useEffect(() => {
+    if (window.location.hash !== '#/coffee/donate') return;
+
+    const scrollToDonateSection = () => {
+      document.getElementById('donate-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const timeoutId = window.setTimeout(scrollToDonateSection, 50);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  const openExternalLink = (link: string) => {
+    window.open(link, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleOneTimeSupportClick = () => {
     if (!selectedOption) return;
 
-    const link = STRIPE_LINKS[selectedOption];
+    const link = SUPPORT_LINKS.oneTime[selectedOption];
     if (link) {
-        window.open(link, '_blank', 'noopener,noreferrer');
+      openExternalLink(link);
     }
+  };
+
+  const handleMonthlySupportClick = () => {
+    openExternalLink(SUPPORT_LINKS.monthly);
+  };
+
+  const handleManageMonthlyClick = () => {
+    openExternalLink(SUPPORT_LINKS.manageMonthly);
   };
 
   return (
@@ -91,12 +117,11 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                         <CoffeeIcon className="w-10 h-10 text-amber-600" />
                      </div>
                      <h3 className="text-2xl font-bold text-gray-900">Buy me a coffee</h3>
-                     <p className="text-amber-800 mt-2">Select an amount to contribute</p>
+                     <p className="text-amber-800 mt-2">Choose a one-time gift, or support the project monthly.</p>
                 </div>
 
-                <div className="space-y-4 max-w-md mx-auto w-full">
+                <div className="space-y-5 max-w-md mx-auto w-full">
                     <div className="grid grid-cols-3 gap-3">
-                        {/* Small Option */}
                         <button
                             onClick={() => setSelectedOption('small')}
                             disabled={isLoading}
@@ -110,7 +135,6 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                             <span className="text-xs font-medium opacity-80">Small</span>
                         </button>
 
-                        {/* Medium Option */}
                         <button
                             onClick={() => setSelectedOption('large')}
                             disabled={isLoading}
@@ -124,7 +148,6 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                             <span className="text-xs font-medium opacity-80">Medium</span>
                         </button>
 
-                        {/* Custom Option */}
                         <button
                             onClick={() => setSelectedOption('custom')}
                             disabled={isLoading}
@@ -140,14 +163,38 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                     </div>
 
                     <button
-                        onClick={handleSupportClick}
+                        onClick={handleOneTimeSupportClick}
                         disabled={isLoading || !selectedOption}
-                        className="w-full py-4 mt-4 bg-gray-900 text-white text-lg font-bold rounded-2xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-gray-900/30 shadow-lg flex justify-center items-center"
+                        className="w-full py-4 bg-gray-900 text-white text-lg font-bold rounded-2xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-gray-900/30 shadow-lg flex justify-center items-center"
                     >
-                        Support
+                        Support Once
                     </button>
-                     <p className="text-center text-xs text-amber-800/70 mt-4 font-medium px-4 leading-relaxed">
-                         By donating, you agree to our <button onClick={onShowTerms} className="underline hover:text-amber-900">Terms of Service</button> and <button onClick={onShowPrivacy} className="underline hover:text-amber-900">Privacy Policy</button>. Secure payment processing via Stripe.
+
+                    <div className="pt-5 border-t border-amber-200/80 space-y-3">
+                        <div className="text-center space-y-1">
+                            <p className="text-sm font-semibold text-sky-900">Prefer ongoing support?</p>
+                            <p className="text-xs text-gray-600">Monthly support renews each month until you cancel in Stripe and helps cover recurring hosting and AI costs.</p>
+                        </div>
+
+                        <button
+                            onClick={handleMonthlySupportClick}
+                            disabled={isLoading}
+                            className="w-full py-4 bg-sky-700 text-white text-lg font-bold rounded-2xl hover:bg-sky-800 disabled:bg-sky-300 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-sky-700/25 shadow-lg shadow-sky-200/50 flex justify-center items-center"
+                        >
+                            Support $5/Month
+                        </button>
+
+                        <button
+                            onClick={handleManageMonthlyClick}
+                            disabled={isLoading}
+                            className="w-full py-3 bg-white text-sky-700 text-sm font-semibold rounded-2xl border border-sky-200 hover:bg-sky-50 disabled:text-sky-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-sky-700/15"
+                        >
+                            Manage Monthly Support
+                        </button>
+                    </div>
+
+                     <p className="text-center text-xs text-amber-800/70 font-medium px-4 leading-relaxed">
+                         One-time gifts are charged once. Monthly support renews until canceled in Stripe. By donating, you agree to our <button onClick={onShowTerms} className="underline hover:text-amber-900">Terms of Service</button> and <button onClick={onShowPrivacy} className="underline hover:text-amber-900">Privacy Policy</button>. Secure payment processing via Stripe.
                      </p>
                 </div>
              </div>
