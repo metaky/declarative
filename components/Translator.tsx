@@ -286,6 +286,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   const [hasCopiedShareLink, setHasCopiedShareLink] = useState(false);
   const [openToneHelp, setOpenToneHelp] = useState<string | null>(null);
   const [supportsHover, setSupportsHover] = useState(false);
+  const [isStickySubmitActive, setIsStickySubmitActive] = useState(false);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [variationCache, setVariationCache] = useState<VariationHistoryMap>({});
   const [variationStates, setVariationStates] = useState<Record<string, VariationPanelState>>({});
@@ -304,6 +305,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const resultsRef = useRef<HTMLDivElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const shouldScrollToResults = useRef(false);
   const toneSectionRef = useRef<HTMLDivElement>(null);
   const toneHelpPointerIntentRef = useRef(false);
@@ -349,6 +351,52 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
       }
     }
   }, [translations, isLoading]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateSubmitButtonPosition = () => {
+      const submitButton = submitButtonRef.current;
+      if (!submitButton) return;
+
+      const rect = submitButton.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+      const visibleRatio = rect.height > 0 ? Math.max(0, visibleHeight) / rect.height : 0;
+      const hasButtonContentBelowViewport = rect.bottom > viewportHeight;
+      const isButtonAboveViewport = rect.bottom < 0;
+      const showStickyThreshold = 0.15;
+      const hideStickyThreshold = 0.7;
+
+      setIsStickySubmitActive((current) => {
+        if (isButtonAboveViewport) return false;
+        if (current && visibleRatio >= hideStickyThreshold) return false;
+        if (!current && hasButtonContentBelowViewport && visibleRatio <= showStickyThreshold) return true;
+        return current;
+      });
+    };
+
+    updateSubmitButtonPosition();
+
+    const observer = typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver(() => {
+        updateSubmitButtonPosition();
+      }, { threshold: [0, 0.15, 0.7, 1] });
+
+    if (submitButtonRef.current) {
+      observer?.observe(submitButtonRef.current);
+    }
+
+    window.addEventListener('scroll', updateSubmitButtonPosition, { passive: true });
+    window.addEventListener('resize', updateSubmitButtonPosition);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('scroll', updateSubmitButtonPosition);
+      window.removeEventListener('resize', updateSubmitButtonPosition);
+    };
+  }, []);
 
   useEffect(() => {
     const handlePointerDownOutsideToneHelp = (event: PointerEvent) => {
@@ -721,6 +769,9 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   }, [cancelActiveVariationRequest, currentRunId, getCurrentRequestText, interest, saveRunState, tone, translations, useFewerWords, variationCache, variationStates]);
 
   const variationKinds = getVariationKinds(useFewerWords);
+  const canSubmitInitialTranslation = Boolean(inputValue.trim()) && !isLoading;
+  const shouldMountStickySubmit = Boolean(inputValue.trim()) && translations.length === 0;
+  const shouldShowStickySubmit = shouldMountStickySubmit && isStickySubmitActive;
 
   return (
     <div className="flex flex-col items-center w-full space-y-6 md:space-y-10">
@@ -906,8 +957,11 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
 
           <div className="pt-2 md:pt-3 flex justify-end">
             <button
+              ref={submitButtonRef}
               onClick={handleTranslate}
-              disabled={isLoading || !inputValue.trim()}
+              disabled={!canSubmitInitialTranslation}
+              tabIndex={shouldShowStickySubmit ? -1 : undefined}
+              aria-hidden={shouldShowStickySubmit}
               className="w-full md:w-auto px-8 py-3 bg-sky-600 text-white font-bold rounded-full hover:bg-sky-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
             >
               {isLoading ? 'Translating...' : 'Get Ideas'}
@@ -1064,6 +1118,26 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {shouldMountStickySubmit && (
+        <div
+          aria-hidden={!shouldShowStickySubmit}
+          className={`fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-4xl justify-end px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none motion-reduce:transform-none ${shouldShowStickySubmit
+            ? 'opacity-100 translate-y-0 scale-100 pointer-events-none'
+            : 'opacity-0 translate-y-3 scale-[0.98] pointer-events-none'
+            }`}
+        >
+          <button
+            type="button"
+            onClick={handleTranslate}
+            disabled={!canSubmitInitialTranslation}
+            tabIndex={shouldShowStickySubmit ? undefined : -1}
+            className="pointer-events-auto w-full px-8 py-3 bg-sky-600 text-white font-bold rounded-full shadow-lg shadow-sky-900/15 transition-all duration-300 hover:bg-sky-700 hover:shadow-xl disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 md:w-auto"
+          >
+            {isLoading ? 'Translating...' : 'Get Ideas'}
+          </button>
         </div>
       )}
     </div>
