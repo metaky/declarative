@@ -171,7 +171,7 @@ export function getToneInstruction(tone, interest) {
                     : `Use an "Interest Based" tone that feels playful and engaging while staying grounded and low-pressure. Avoid overstimulation or playfulness that distracts from the meaning.`;
                 break;
             case 'Equalizing':
-                toneInstruction = `Use an "Equalizing" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.`;
+                toneInstruction = `Use an "Equalizing" tone: a status-leveling role or adult-uncertainty move is the main declarative frame, not extra flavor. Every suggestion should lower adult authority via child-as-expert/checker/leader, adult-as-unsure/silly/forgetful, or both. For multi-step requests, make the child the route/order/checklist expert. Name the child's role when natural: expert, checker, leader, order boss, or route planner. Use statements, not direct help questions. Keep dignity; avoid mocking, helplessness, sarcasm, praise-pressure, or performance.`;
                 break;
             case 'Humorous':
                 toneInstruction = `Use a "Humorous" tone. Use light, gentle absurdity to lower pressure while keeping the meaning clear. Humor should support connection, not distract from the point. Keep it warm and easy to understand. Avoid sarcasm, ridicule, teasing, and overstimulation.`;

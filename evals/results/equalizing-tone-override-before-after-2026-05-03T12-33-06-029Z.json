@@ -1,0 +1,342 @@
+[
+  {
+    "id": "equalizing-errand",
+    "label": "Errand preparation",
+    "text": "Get your coat and help me check if we have everything for the car.",
+    "useFewerWords": false,
+    "outputs": [
+      {
+        "variantName": "Current live / before update",
+        "durationMs": 1526,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Get your coat and help me check if we have everything for the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.",
+        "usageMetadata": {
+          "promptTokenCount": 809,
+          "candidatesTokenCount": 156,
+          "totalTokenCount": 965,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 809
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The car is almost ready to go. It's time for coats, and then we can do a quick check for everything we need."
+          },
+          {
+            "translation": "It's getting chilly outside, so coats will be good. We could also do a quick scan to make sure we have all our things for the car."
+          },
+          {
+            "translation": "I'm wondering if we have everything for the car. A coat would be helpful, and then maybe we could look together."
+          },
+          {
+            "translation": "The car is waiting. We could grab coats and then do a final check for our things."
+          }
+        ]
+      },
+      {
+        "variantName": "Equalizing-specific override candidate",
+        "durationMs": 1722,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Get your coat and help me check if we have everything for the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone: a status-leveling role or adult-uncertainty move is the main declarative frame, not extra flavor. Every suggestion should lower adult authority via child-as-expert/checker/leader, adult-as-unsure/silly/forgetful, or both. For multi-step requests, make the child the route/order/checklist expert. Name the child's role when natural: expert, checker, leader, order boss, or route planner. Use statements, not direct help questions. Keep dignity; avoid mocking, helplessness, sarcasm, praise-pressure, or performance.",
+        "usageMetadata": {
+          "promptTokenCount": 882,
+          "candidatesTokenCount": 213,
+          "totalTokenCount": 1095,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 882
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The car is almost ready to go. I wonder if we have everything we need for the trip. Maybe you could be the expert checker for our things, and then we could think about coats."
+          },
+          {
+            "translation": "It's time to head out to the car. I'm not sure what the best order is for getting ready. Perhaps we could figure out what we need to bring to the car first, and then we could grab coats."
+          },
+          {
+            "translation": "The car is waiting. I'm wondering if you could be the leader and help me make sure we have all our things before we put on our coats."
+          },
+          {
+            "translation": "Our adventure is about to begin! I'm not sure if we have everything we need for the car. Maybe you could be the order boss and help me check our things, and then we could get our coats."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "equalizing-fewer-words",
+    "label": "Short bedtime check",
+    "text": "Come look at this and tell me if I missed a step for bedtime.",
+    "useFewerWords": true,
+    "outputs": [
+      {
+        "variantName": "Current live / before update",
+        "durationMs": 1352,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Come look at this and tell me if I missed a step for bedtime.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.",
+        "usageMetadata": {
+          "promptTokenCount": 835,
+          "candidatesTokenCount": 148,
+          "totalTokenCount": 983,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 835
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Bedtime is coming up. I was just thinking about the steps and wondered if I missed anything."
+          },
+          {
+            "translation": "The bedtime routine is next. I'm trying to remember all the parts and would love a second set of eyes on it."
+          },
+          {
+            "translation": "It's almost time for bed. I was just reviewing the steps in my head and wondered if you had any thoughts on them."
+          },
+          {
+            "translation": "Bedtime is on the horizon. I'm putting together the plan and was hoping for your input on the steps."
+          }
+        ]
+      },
+      {
+        "variantName": "Equalizing-specific override candidate",
+        "durationMs": 1390,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Come look at this and tell me if I missed a step for bedtime.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone: a status-leveling role or adult-uncertainty move is the main declarative frame, not extra flavor. Every suggestion should lower adult authority via child-as-expert/checker/leader, adult-as-unsure/silly/forgetful, or both. For multi-step requests, make the child the route/order/checklist expert. Name the child's role when natural: expert, checker, leader, order boss, or route planner. Use statements, not direct help questions. Keep dignity; avoid mocking, helplessness, sarcasm, praise-pressure, or performance. CRITICAL: Keep suggestions short when possible, but if the request has multiple important parts, prioritize completeness and clarity over extreme brevity.",
+        "usageMetadata": {
+          "promptTokenCount": 908,
+          "candidatesTokenCount": 158,
+          "totalTokenCount": 1066,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 908
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "Bedtime is happening. I wonder if you could be the expert checker for the steps tonight."
+          },
+          {
+            "translation": "The bedtime routine is underway. It would be super helpful to have an order boss to make sure all the parts are there."
+          },
+          {
+            "translation": "It's time for bed. I'm not sure if I've remembered everything on the list. A route planner would know for sure."
+          },
+          {
+            "translation": "Bedtime is here. I'm trying to remember all the steps. I wonder if you could be the leader and make sure I don't miss anything."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "equalizing-bedtime-multipart",
+    "label": "Multi-part bedtime routine",
+    "text": "Please come to the bathroom, get your pajamas on, and bring your book to bed.",
+    "useFewerWords": false,
+    "outputs": [
+      {
+        "variantName": "Current live / before update",
+        "durationMs": 1324,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.",
+        "usageMetadata": {
+          "promptTokenCount": 812,
+          "candidatesTokenCount": 161,
+          "totalTokenCount": 973,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 812
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bathroom light is on, and pajamas are waiting. It will be time for books in bed soon."
+          },
+          {
+            "translation": "Pajamas are laid out, and the book is on the nightstand. It looks like the next step is getting ready for bed."
+          },
+          {
+            "translation": "I'm wondering if we're ready for pajamas and a book in bed, or if there's something else we need to do first."
+          },
+          {
+            "translation": "It's almost time for bed. The pajamas are ready, and the book is waiting. What do you think is the best way to get there?"
+          }
+        ]
+      },
+      {
+        "variantName": "Equalizing-specific override candidate",
+        "durationMs": 1454,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Please come to the bathroom, get your pajamas on, and bring your book to bed.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone: a status-leveling role or adult-uncertainty move is the main declarative frame, not extra flavor. Every suggestion should lower adult authority via child-as-expert/checker/leader, adult-as-unsure/silly/forgetful, or both. For multi-step requests, make the child the route/order/checklist expert. Name the child's role when natural: expert, checker, leader, order boss, or route planner. Use statements, not direct help questions. Keep dignity; avoid mocking, helplessness, sarcasm, praise-pressure, or performance.",
+        "usageMetadata": {
+          "promptTokenCount": 885,
+          "candidatesTokenCount": 163,
+          "totalTokenCount": 1048,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 885
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The bathroom light is on, and the pajamas are out. I wonder if the book is ready for bed too."
+          },
+          {
+            "translation": "It's almost time for bed. You're the expert on the best order for bathroom, pajamas, and book tonight."
+          },
+          {
+            "translation": "Pajamas are waiting. I'm not sure if the book comes before or after the bathroom part of the bedtime routine. You're the order boss."
+          },
+          {
+            "translation": "The day is winding down. I'm curious about the plan for getting ready for bed, including pajamas, the bathroom, and finding a book."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "equalizing-shoes-car",
+    "label": "Shoes and car transition",
+    "text": "Put your shoes on and get in the car.",
+    "useFewerWords": false,
+    "outputs": [
+      {
+        "variantName": "Current live / before update",
+        "durationMs": 1013,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Put your shoes on and get in the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.",
+        "usageMetadata": {
+          "promptTokenCount": 804,
+          "candidatesTokenCount": 107,
+          "totalTokenCount": 911,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 804
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The shoes are by the door, and the car is ready to go."
+          },
+          {
+            "translation": "It's time to head out, and the car is waiting."
+          },
+          {
+            "translation": "I wonder if we're ready for shoes and the car now."
+          },
+          {
+            "translation": "The car is all set, and the shoes are right here."
+          }
+        ]
+      },
+      {
+        "variantName": "Equalizing-specific override candidate",
+        "durationMs": 1406,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Put your shoes on and get in the car.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone: a status-leveling role or adult-uncertainty move is the main declarative frame, not extra flavor. Every suggestion should lower adult authority via child-as-expert/checker/leader, adult-as-unsure/silly/forgetful, or both. For multi-step requests, make the child the route/order/checklist expert. Name the child's role when natural: expert, checker, leader, order boss, or route planner. Use statements, not direct help questions. Keep dignity; avoid mocking, helplessness, sarcasm, praise-pressure, or performance.",
+        "usageMetadata": {
+          "promptTokenCount": 877,
+          "candidatesTokenCount": 180,
+          "totalTokenCount": 1057,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 877
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The shoes are by the door, and the car is waiting outside. I wonder what the plan is for getting everything ready to go."
+          },
+          {
+            "translation": "It's time to head out. The car is ready, and the shoes are right here. I'm not sure what the best order is for getting ourselves into the car."
+          },
+          {
+            "translation": "The car is all set for us, and the shoes are waiting. You're the expert on getting ready to go; what's the first step?"
+          },
+          {
+            "translation": "The car is outside, and the shoes are here. I'm wondering if you could be the route planner for getting us out the door and into the car."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "equalizing-cleanup-snack",
+    "label": "Cleanup and snack transition",
+    "text": "Put the blocks away and come to the table for snack.",
+    "useFewerWords": false,
+    "outputs": [
+      {
+        "variantName": "Current live / before update",
+        "durationMs": 1209,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Put the blocks away and come to the table for snack.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone. Frame the situation as collaborative or as if the child has useful perspective. If the adult needs help or a second opinion, keep it warm and light, not mocking, helpless, or performatively foolish. Preserve dignity and felt safety.",
+        "usageMetadata": {
+          "promptTokenCount": 806,
+          "candidatesTokenCount": 122,
+          "totalTokenCount": 928,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 806
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The blocks are on the floor, and the snack is ready on the table."
+          },
+          {
+            "translation": "Snack time is starting, and the blocks are still out."
+          },
+          {
+            "translation": "I wonder if the blocks could find their home before we head over to the table for snack."
+          },
+          {
+            "translation": "It looks like the blocks are waiting to be put away, and there's a snack waiting at the table."
+          }
+        ]
+      },
+      {
+        "variantName": "Equalizing-specific override candidate",
+        "durationMs": 1283,
+        "prompt": "Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: \"Put the blocks away and come to the table for snack.\". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with \"I\", \"I'm\", \"I am\", \"my\", \"we\", or \"our\". Tone: Use an \"Equalizing\" tone: a status-leveling role or adult-uncertainty move is the main declarative frame, not extra flavor. Every suggestion should lower adult authority via child-as-expert/checker/leader, adult-as-unsure/silly/forgetful, or both. For multi-step requests, make the child the route/order/checklist expert. Name the child's role when natural: expert, checker, leader, order boss, or route planner. Use statements, not direct help questions. Keep dignity; avoid mocking, helplessness, sarcasm, praise-pressure, or performance.",
+        "usageMetadata": {
+          "promptTokenCount": 879,
+          "candidatesTokenCount": 158,
+          "totalTokenCount": 1037,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 879
+            }
+          ]
+        },
+        "translations": [
+          {
+            "translation": "The blocks are on the floor, and the snack is on the table. I wonder which one happens first."
+          },
+          {
+            "translation": "Snack time is coming up, and the blocks are still out. You're the expert on how we usually get ready for snack."
+          },
+          {
+            "translation": "The table is set for snack, and the blocks are having a party on the rug. I'm not sure what the next step is for the blocks."
+          },
+          {
+            "translation": "It's almost snack time, and the blocks are still out. You're the order boss for getting things ready."
+          }
+        ]
+      }
+    ]
+  }
+]

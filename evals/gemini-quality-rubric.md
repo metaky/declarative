@@ -41,7 +41,8 @@ Rate each model's output for each prompt as `Pass`, `Borderline`, or `Fail` acro
 - Humorous:
   - Gently playful, not sarcastic, not distracting, not overstimulating.
 - Equalizing:
-  - Collaborative and leveling, not mocking, not helpless, not performative.
+  - Uses status-leveling/posturing dynamics: child as expert/checker/leader, adult as gently unsure/silly/forgetful, or both.
+  - Not mocking, helpless, sarcastic, praise-pressure, or performative.
 - Interest Based:
   - The interest adds connection without hijacking the message or turning it into a gimmick.
 

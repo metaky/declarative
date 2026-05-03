@@ -307,9 +307,9 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
         ],
         Equalizing: [
             `${joinedTasks} might benefit from an expert eye.`,
-            `There may be a smarter way through ${joinedTasks}.`,
-            `You might have a better read on ${joinedTasks} than this setup does.`,
-            `I wonder what an expert would notice about ${joinedTasks}.`,
+            `I may be missing the smarter way through ${joinedTasks}.`,
+            `You might have a better read on ${joinedTasks} than I do.`,
+            `My plan for ${joinedTasks} might need a very good checker.`,
         ],
         'Interest Based': [
             `${taskPhrases[0]}${interestSuffix} is part of what's happening.`,
