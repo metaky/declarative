@@ -6,6 +6,7 @@ Your core principles are:
 3.  **Authenticity First:** Actively warn against manipulative phrasing. Your suggestions must be authentic invitations, not passive-aggressive commands. Prioritize the "Give Over Get" mindset.
 4.  **Empathy-Driven AI:** Always offer options, not directives. Root suggestions in autonomy and respect.
 5.  **Objective Situational Framing:** Prefer environment-first or task-first observations over caregiver-first framing. Describe what is happening in the situation before describing anyone's internal state.
+6.  **Natural, Sayable Conversation:** Suggestions should sound like a real caregiver could say them in a live moment, not like labels, fragments, or clinical captions. A short user input may still need a complete, gently conversational sentence.
 
 When a user provides a statement, you must:
 1.  **Address the Whole Statement:** CRITICAL: If the user provides a statement with multiple distinct parts or tasks (e.g., "Wash your hands and sit at the table"), ensure your declarative suggestions gracefully address ALL parts of the request. Do not omit details; instead, weave them together into a coherent, non-demanding narrative that acknowledges the full context.
@@ -17,6 +18,7 @@ When a user provides a statement, you must:
 7.  **Neutralize Perspective:** Avoid relying on narrator-led setups such as "I'm noticing...", "I need...", "I want...", "My body feels...", or "I'm worried..." when the same idea can be expressed as an objective description of the situation.
 8.  **Reduce Emotional Demand:** Minimize language that highlights the caregiver's internal state, personal need, disappointment, urgency, or stress, because this can function like an implicit emotional demand.
 9.  **Use 'I' Sparingly:** Aim for roughly a 3:1 ratio of objective observations to "I" statements. Use "I" statements only when they add natural variety, soften a collaborative idea, or express a genuine shared thought such as "I wonder if...".
+10. **Do Not Over-Compress:** Do not mirror short caregiver inputs with overly terse outputs. Prefer compact complete sentences with enough connective language to feel human and conversational. Keep suggestions brief and usable, but do not fill the set with bare labels like "It is loud in here" or "Those loud sounds are happening." At least 2 suggestions should include light context, pacing, or a calm next-moment frame.
 
 Your output must be a valid JSON array of objects.`;
 
@@ -159,7 +161,7 @@ export function summarizeExistingTranslations(existingTranslations = []) {
 }
 
 export function getToneInstruction(tone, interest) {
-    let toneInstruction = `Use a neutral, warm, observational tone with simple everyday wording.`;
+    let toneInstruction = `Use a neutral, warm, observational tone with simple everyday wording that feels natural to say out loud.`;
     if (tone && tone !== 'Default') {
         switch (tone) {
             case 'Straightforward':
@@ -197,7 +199,7 @@ export function buildTranslationPrompt({
         ? `\nCovered angles: ${followUpCoverage.usedAngles}. Used openings: ${followUpCoverage.openingPatterns.join('; ')}. Underused angles to lean on next: ${followUpCoverage.underusedAngles}. Write 3-4 genuinely new alternatives. Treat those angles, openings, and sentence shapes as used. Favor the underused angles first, start each suggestion differently from the earlier set, and avoid stock frames or recycled sentence skeletons.`
         : '';
 
-    return `Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: "${text}". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with "I", "I'm", "I am", "my", "we", or "our". Tone: ${toneInstruction}${lengthInstruction}${followUpInstruction}`;
+    return `Rewrite this statement into 3-4 declarative alternatives that preserve the full meaning while reducing pressure: "${text}". Ensure all parts of the user's request are addressed gracefully in each suggestion. Lead with environment-first or task-first observations whenever possible rather than caregiver-centered phrasing. At least 3 of the 4 suggestions should begin with objective observations about the environment, task, timing, sensory context, or situation rather than with caregiver-first language. Avoid starting multiple suggestions with "I", "I'm", "I am", "my", "we", or "our". Do not match a short input with only clipped, minimal outputs; each suggestion should usually be a compact, complete, conversational sentence, with 1-2 slightly fuller options across the set when natural. Avoid making most of the set bare "X is happening" labels. Tone: ${toneInstruction}${lengthInstruction}${followUpInstruction}`;
 }
 
 export function buildVariationPrompt({

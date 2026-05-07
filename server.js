@@ -282,9 +282,9 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
 
     const toneTemplates = {
         Default: [
-            `${taskPhrases[0]} is part of what's happening${interestSuffix}.`,
-            `It looks like ${joinedTasks}${interestSuffix} is part of the plan.`,
-            `The situation includes ${joinedTasks}${interestSuffix}.`,
+            `${taskPhrases[0]} is part of what's happening${interestSuffix}, and we can take it one step at a time.`,
+            `It looks like ${joinedTasks}${interestSuffix} is part of the plan right now.`,
+            `There is a lot happening around ${joinedTasks}${interestSuffix}, and it can stay simple.`,
             `I wonder what would make ${joinedTasks}${interestSuffix} feel easier.`,
         ],
         Straightforward: [
