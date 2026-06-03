@@ -158,5 +158,383 @@
       "Interest stays grounded",
       "Multi-part fidelity"
     ]
+  },
+  {
+    "id": "running-house-default-standard",
+    "label": "Default safety redirection",
+    "text": "Stop running in the house",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Preserves the indoor safety concern",
+      "Gives concrete low-pressure redirection",
+      "Avoids vague facts about floors, walls, or running"
+    ]
+  },
+  {
+    "id": "running-house-default-fewer",
+    "label": "Default safety redirection with fewer words",
+    "text": "Stop running in the house",
+    "tone": "Default",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact but still conversational",
+      "Preserves safety meaning",
+      "Names a clear indoor alternative"
+    ]
+  },
+  {
+    "id": "running-house-straightforward-standard",
+    "label": "Straightforward safety redirection",
+    "text": "Stop running in the house",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Plain and safe without becoming a command",
+      "Keeps the location inside the house",
+      "Redirects toward walking or a safer running place"
+    ]
+  },
+  {
+    "id": "running-house-straightforward-fewer",
+    "label": "Straightforward safety redirection with fewer words",
+    "text": "Stop running in the house",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Very concise but not clipped",
+      "Keeps safety and location intact",
+      "Does not collapse into a bare environmental caption"
+    ]
+  },
+  {
+    "id": "running-house-humorous-standard",
+    "label": "Humorous safety redirection",
+    "text": "Stop running in the house",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Light humor supports safety",
+      "No sarcasm, teasing, or overstimulation",
+      "Still clearly redirects indoor movement"
+    ]
+  },
+  {
+    "id": "running-house-humorous-fewer",
+    "label": "Humorous safety redirection with fewer words",
+    "text": "Stop running in the house",
+    "tone": "Humorous",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Brief playful wording",
+      "Safety redirection remains clear",
+      "No gimmicky floor or wall joke that hides the ask"
+    ]
+  },
+  {
+    "id": "running-house-equalizing-standard",
+    "label": "Equalizing safety redirection",
+    "text": "Stop running in the house",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Child as safety checker or movement expert",
+      "Adult uncertainty feels natural, not performative",
+      "Indoor safety intent remains clear"
+    ]
+  },
+  {
+    "id": "running-house-equalizing-fewer",
+    "label": "Equalizing safety redirection with fewer words",
+    "text": "Stop running in the house",
+    "tone": "Equalizing",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact status-leveling",
+      "Preserves safety and location",
+      "Avoids praise-pressure or helpless adult framing"
+    ]
+  },
+  {
+    "id": "running-house-interest-pokemon-standard",
+    "label": "Interest Based safety redirection - Pokemon fixture",
+    "text": "Stop running in the house",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Interest supports a safe movement alternative",
+      "No themed gimmickry that buries the safety meaning"
+    ]
+  },
+  {
+    "id": "running-house-interest-pokemon-fewer",
+    "label": "Interest Based safety redirection with fewer words - Pokemon fixture",
+    "text": "Stop running in the house",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Compact but clear safety redirection",
+      "Interest remains light and supportive"
+    ]
+  },
+  {
+    "id": "dinner-hands-default-standard",
+    "label": "Default dinner sequence",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Preserves coming downstairs",
+      "Preserves handwashing before dinner",
+      "Keeps the dinner sequence concrete and low pressure"
+    ]
+  },
+  {
+    "id": "dinner-hands-default-fewer",
+    "label": "Default dinner sequence with fewer words",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Default",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Short but still sequenced",
+      "Keeps downstairs, hands, and dinner",
+      "Natural spoken wording"
+    ]
+  },
+  {
+    "id": "dinner-hands-straightforward-standard",
+    "label": "Straightforward dinner sequence",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Plainspoken dinner transition",
+      "Sequence remains easy to follow",
+      "No command-like urgency"
+    ]
+  },
+  {
+    "id": "dinner-hands-straightforward-fewer",
+    "label": "Straightforward dinner sequence with fewer words",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Brevity without losing sequence",
+      "Clear downstairs and handwashing details",
+      "Calm, not clipped"
+    ]
+  },
+  {
+    "id": "dinner-hands-humorous-standard",
+    "label": "Humorous dinner sequence",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Gentle playfulness around dinner",
+      "Does not turn dinner into a performance",
+      "Downstairs and handwashing still present"
+    ]
+  },
+  {
+    "id": "dinner-hands-humorous-fewer",
+    "label": "Humorous dinner sequence with fewer words",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Humorous",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact playful dinner cue",
+      "Sequence remains intact",
+      "No overstimulating food joke"
+    ]
+  },
+  {
+    "id": "dinner-hands-equalizing-standard",
+    "label": "Equalizing dinner sequence",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Child as route or order expert",
+      "Adult uncertainty supports status-leveling",
+      "Downstairs, hands, and dinner stay in order"
+    ]
+  },
+  {
+    "id": "dinner-hands-equalizing-fewer",
+    "label": "Equalizing dinner sequence with fewer words",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Equalizing",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact role/order framing",
+      "Sequence remains audible",
+      "No forced or performative status move"
+    ]
+  },
+  {
+    "id": "dinner-hands-interest-pokemon-standard",
+    "label": "Interest Based dinner sequence - Pokemon fixture",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Interest lightly supports the dinner route",
+      "Downstairs, hands, and dinner remain clear"
+    ]
+  },
+  {
+    "id": "dinner-hands-interest-pokemon-fewer",
+    "label": "Interest Based dinner sequence with fewer words - Pokemon fixture",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Compact but complete dinner sequence",
+      "Interest does not overwhelm the task"
+    ]
+  },
+  {
+    "id": "toys-upstairs-default-standard",
+    "label": "Default cleanup destination",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Default",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Preserves toy cleanup",
+      "Preserves upstairs room destination",
+      "Avoids generic cleanup language"
+    ]
+  },
+  {
+    "id": "toys-upstairs-default-fewer",
+    "label": "Default cleanup destination with fewer words",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Default",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Short but complete",
+      "Keeps toys and upstairs room destination",
+      "Natural, not label-like"
+    ]
+  },
+  {
+    "id": "toys-upstairs-straightforward-standard",
+    "label": "Straightforward cleanup destination",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Plain cleanup wording without command pressure",
+      "Destination is not dropped",
+      "Action remains specific"
+    ]
+  },
+  {
+    "id": "toys-upstairs-straightforward-fewer",
+    "label": "Straightforward cleanup destination with fewer words",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Straightforward",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Concise but complete cleanup",
+      "Keeps upstairs in your room",
+      "Does not become a bare command"
+    ]
+  },
+  {
+    "id": "toys-upstairs-humorous-standard",
+    "label": "Humorous cleanup destination",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Humorous",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Light playfulness around toy cleanup",
+      "Upstairs room destination remains clear",
+      "No gimmick that hides the task"
+    ]
+  },
+  {
+    "id": "toys-upstairs-humorous-fewer",
+    "label": "Humorous cleanup destination with fewer words",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Humorous",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Brief playful cleanup line",
+      "Destination remains intact",
+      "No overstimulating toy story"
+    ]
+  },
+  {
+    "id": "toys-upstairs-equalizing-standard",
+    "label": "Equalizing cleanup destination",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Child as room-reset expert or route checker",
+      "Adult uncertainty is natural",
+      "Cleanup destination is preserved"
+    ]
+  },
+  {
+    "id": "toys-upstairs-equalizing-fewer",
+    "label": "Equalizing cleanup destination with fewer words",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Equalizing",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Compact status-leveling",
+      "Toys and upstairs room remain clear",
+      "No vague room-reset abstraction"
+    ]
+  },
+  {
+    "id": "toys-upstairs-interest-pokemon-standard",
+    "label": "Interest Based cleanup destination - Pokemon fixture",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Interest supports cleanup without hijacking it",
+      "Upstairs room destination remains clear"
+    ]
+  },
+  {
+    "id": "toys-upstairs-interest-pokemon-fewer",
+    "label": "Interest Based cleanup destination with fewer words - Pokemon fixture",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": true,
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Compact but complete cleanup route",
+      "No themed replacement for the destination"
+    ]
+  },
+  {
+    "id": "interest-based-missing-interest-fallback",
+    "label": "Interest Based fallback without entered interest",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Interest Based",
+    "useFewerWords": false,
+    "reviewFocus": [
+      "No child interest is invented",
+      "Output stays grounded in downstairs, handwashing, and dinner",
+      "Fallback reads as light low-pressure wording, not true themed Interest Based output"
+    ]
   }
 ]

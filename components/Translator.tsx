@@ -142,6 +142,8 @@ interface TranslationItemProps {
   variationCache: VariationCache;
   variationState?: VariationPanelState;
   onVariationSelect: (item: Translation, kind: VariationKind) => void;
+  disableVariationControls?: boolean;
+  variationDisabledMessage?: string;
 }
 
 const TranslationItem: React.FC<TranslationItemProps> = ({
@@ -152,6 +154,8 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
   variationCache,
   variationState,
   onVariationSelect,
+  disableVariationControls = false,
+  variationDisabledMessage,
 }) => {
   const variationPanelId = `variation-panel-${item.id}`;
   const hasVariationResults = variationState?.displayKind
@@ -209,7 +213,8 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
                   type="button"
                   onClick={() => onVariationSelect(item, kind)}
                   aria-pressed={isSelected}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 ${isSelected ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
+                  disabled={disableVariationControls}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-400 ${isSelected ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
                 >
                   {isSelected && <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[10px] font-bold text-white">✓</span>}
                   <span>{VARIATION_LABELS[kind]}</span>
@@ -218,6 +223,12 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
               );
             })}
           </div>
+
+          {disableVariationControls && variationDisabledMessage && (
+            <p className="mt-3 text-xs text-gray-500" role="status">
+              {variationDisabledMessage}
+            </p>
+          )}
 
           {variationState?.isLoading && (
             <div
@@ -458,6 +469,11 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   }, [cancelActiveVariationRequest]);
 
   const getCurrentRequestText = useCallback(() => inputValue.trim(), [inputValue]);
+  const getCurrentInterest = useCallback(() => (
+    tone === 'Interest Based' ? interest.trim() : undefined
+  ), [interest, tone]);
+
+  const isInterestBasedMissingInterest = tone === 'Interest Based' && !interest.trim();
 
   const handleToneSelect = useCallback((toneName: string) => {
     setTone(toneName);
@@ -476,7 +492,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   }, []);
 
   const saveRunState = useCallback((runId: string, nextTranslations: Translation[], nextVariationUpdate?: HistoryEntryInput['variationUpdate']) => {
-    const currentInterest = tone === 'Interest Based' ? interest : undefined;
+    const currentInterest = getCurrentInterest();
     onHistorySave({
       runId,
       imperativeText: getCurrentRequestText(),
@@ -486,10 +502,10 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
       useFewerWords,
       variationUpdate: nextVariationUpdate,
     });
-  }, [getCurrentRequestText, interest, onHistorySave, tone, useFewerWords]);
+  }, [getCurrentInterest, getCurrentRequestText, onHistorySave, tone, useFewerWords]);
 
   const handleTranslate = useCallback(async () => {
-    if (!getCurrentRequestText() || isLoading) return;
+    if (!getCurrentRequestText() || isLoading || isInterestBasedMissingInterest) return;
 
     const requestText = getCurrentRequestText();
     const nextRunId = createEntityId('history');
@@ -501,13 +517,12 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     shouldScrollToResults.current = true;
 
     try {
-      const currentInterest = tone === 'Interest Based' ? interest : undefined;
       const results = await getDeclarativeTranslations({
         imperativeText: requestText,
         mode: 'translate',
         existingTranslations: [],
         tone,
-        interest: currentInterest,
+        interest: getCurrentInterest(),
         useFewerWords,
       });
       setTranslations(results);
@@ -522,23 +537,22 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     } finally {
       setIsLoading(false);
     }
-  }, [getCurrentRequestText, interest, isLoading, resetVariationUi, saveRunState, tone, useFewerWords]);
+  }, [getCurrentInterest, getCurrentRequestText, isInterestBasedMissingInterest, isLoading, resetVariationUi, saveRunState, tone, useFewerWords]);
 
   const handleGenerateMore = useCallback(async () => {
-    if (!getCurrentRequestText() || isGeneratingMore || !currentRunId) return;
+    if (!getCurrentRequestText() || isGeneratingMore || !currentRunId || isInterestBasedMissingInterest) return;
 
     const requestText = getCurrentRequestText();
     setIsGeneratingMore(true);
     setError(null);
 
     try {
-      const currentInterest = tone === 'Interest Based' ? interest : undefined;
       const results = await getDeclarativeTranslations({
         imperativeText: requestText,
         mode: 'moreIdeas',
         existingTranslations: translations,
         tone,
-        interest: currentInterest,
+        interest: getCurrentInterest(),
         useFewerWords,
       });
       const combinedTranslations = [...translations, ...results];
@@ -553,7 +567,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     } finally {
       setIsGeneratingMore(false);
     }
-  }, [currentRunId, getCurrentRequestText, interest, isGeneratingMore, saveRunState, tone, translations, useFewerWords]);
+  }, [currentRunId, getCurrentInterest, getCurrentRequestText, isGeneratingMore, isInterestBasedMissingInterest, saveRunState, tone, translations, useFewerWords]);
 
   const handleShareTool = async () => {
     const shareData = {
@@ -639,7 +653,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   }, [cancelActiveVariationRequest]);
 
   const handleVariationSelect = useCallback(async (item: Translation, variationKind: VariationKind) => {
-    if (!currentRunId || !getCurrentRequestText()) return;
+    if (!currentRunId || !getCurrentRequestText() || isInterestBasedMissingInterest) return;
 
     setOpenVariationSourceId(item.id);
     const currentVariationCache = variationCache[item.id] || {};
@@ -695,12 +709,11 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     }));
 
     try {
-      const currentInterest = tone === 'Interest Based' ? interest : undefined;
       const results = await getDeclarativeTranslations({
         imperativeText: getCurrentRequestText(),
         mode: 'variation',
         tone,
-        interest: currentInterest,
+        interest: getCurrentInterest(),
         useFewerWords,
         sourceTranslation: item,
         variationKind,
@@ -766,12 +779,13 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
         variationKind: null,
       };
     }
-  }, [cancelActiveVariationRequest, currentRunId, getCurrentRequestText, interest, saveRunState, tone, translations, useFewerWords, variationCache, variationStates]);
+  }, [cancelActiveVariationRequest, currentRunId, getCurrentInterest, getCurrentRequestText, isInterestBasedMissingInterest, saveRunState, tone, translations, useFewerWords, variationCache, variationStates]);
 
   const variationKinds = getVariationKinds(useFewerWords);
-  const canSubmitInitialTranslation = Boolean(inputValue.trim()) && !isLoading;
+  const canSubmitInitialTranslation = Boolean(inputValue.trim()) && !isLoading && !isInterestBasedMissingInterest;
   const shouldMountStickySubmit = Boolean(inputValue.trim()) && translations.length === 0;
   const shouldShowStickySubmit = shouldMountStickySubmit && isStickySubmitActive;
+  const interestGuidanceId = 'interest-based-guidance';
 
   return (
     <div className="flex flex-col items-center w-full space-y-6 md:space-y-10">
@@ -929,10 +943,13 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
                   }}
                   disabled={isLoading}
                   placeholder="e.g. Minecraft"
+                  aria-describedby={interestGuidanceId}
                   className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow bg-gray-50 placeholder-gray-400"
                 />
-                <p className="text-xs text-gray-500 mt-2 ml-1">
-                  Choose a single interest. Example: Pokemon
+                <p id={interestGuidanceId} className="text-xs text-gray-500 mt-2 ml-1">
+                  {isInterestBasedMissingInterest
+                    ? 'Add an interest to get Interest Based ideas.'
+                    : 'Choose a single interest. Example: Pokemon'}
                 </p>
               </div>
             )}
@@ -1094,6 +1111,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
                 variationCache={variationCache[item.id] || {}}
                 variationState={variationStates[item.id]}
                 onVariationSelect={handleVariationSelect}
+                disableVariationControls={isInterestBasedMissingInterest}
+                variationDisabledMessage={isInterestBasedMissingInterest ? 'Add an interest to try variations for Interest Based ideas.' : undefined}
               />
             ))}
           </div>
@@ -1101,7 +1120,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-8 pb-12">
               <button
                 onClick={handleGenerateMore}
-                disabled={isGeneratingMore || !currentRunId}
+                disabled={isGeneratingMore || !currentRunId || isInterestBasedMissingInterest}
                 className="w-full sm:w-auto px-6 py-2.5 bg-gray-200 text-gray-800 font-semibold rounded-full hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
               >
                 {isGeneratingMore ? 'Generating...' : 'Get more ideas'}

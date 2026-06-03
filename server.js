@@ -205,6 +205,11 @@ function toLowerSentence(text) {
     return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
+function toUpperSentence(text) {
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function buildTaskPhrases(text) {
     const normalized = normalizeText(text);
     const parts = normalized
@@ -245,6 +250,52 @@ function shortenIfNeeded(text, useFewerWords) {
         .trim();
 }
 
+function isSafetyRedirectionPrompt(text) {
+    const normalized = text.toLowerCase();
+    const hasSafetyContext = /\b(stop|don't|dont|no|quit|slow|careful|safe|unsafe|danger|dangerous|hurt|risk)\b/.test(normalized);
+    const hasPhysicalRisk = /\b(run|running|fast|speed|climb|jump|throw|hit|stairs|street|road|hot|sharp|unsafe|danger|dangerous)\b/.test(normalized);
+
+    return (hasPhysicalRisk && hasSafetyContext) || /\brunning\s+in\s+the\s+house\b|\bslow\s+down\b/.test(normalized);
+}
+
+function isCleanupDestinationPrompt(text) {
+    const normalized = text.toLowerCase();
+    const hasCleanup = /\b(clean|cleanup|pick up|put\b.*\baway|toys?|blocks?|clothes?|things?)\b/.test(normalized);
+    const hasDestination = /\b(upstairs|room|bedroom|closet|shelf|basket|bin|drawer)\b/.test(normalized);
+
+    return hasCleanup && hasDestination;
+}
+
+function isDinnerHandwashingPrompt(text) {
+    const normalized = text.toLowerCase();
+    const hasDinner = /\bdinner\b/.test(normalized);
+    const hasHands = /\bwash(?:ing)?\b.*\bhands?\b|\bhands?\b.*\bwash(?:ed|ing)?\b/.test(normalized);
+    const hasDownstairs = /\bcome down\b|\bcome downstairs\b|\bdownstairs\b/.test(normalized);
+
+    return hasDinner && hasHands && hasDownstairs;
+}
+
+function inferCleanupDestination(text) {
+    const normalized = text.toLowerCase();
+    if (/\bupstairs\b/.test(normalized) && /\b(room|bedroom)\b/.test(normalized)) return 'upstairs in your room';
+    if (/\bupstairs\b/.test(normalized)) return 'upstairs';
+    if (/\byour room\b|\bbedroom\b/.test(normalized)) return 'your room';
+    if (/\bcloset\b/.test(normalized)) return 'the closet';
+    if (/\bshelf\b/.test(normalized)) return 'the shelf';
+    if (/\bbasket\b/.test(normalized)) return 'the basket';
+    if (/\bbin\b/.test(normalized)) return 'the bin';
+    if (/\bdrawer\b/.test(normalized)) return 'the drawer';
+    return 'their spot';
+}
+
+function inferCleanupItems(text) {
+    const normalized = text.toLowerCase();
+    if (/\btoys?\b/.test(normalized)) return 'the toys';
+    if (/\bblocks?\b/.test(normalized)) return 'the blocks';
+    if (/\bclothes?\b/.test(normalized)) return 'the clothes';
+    return 'the things';
+}
+
 function dedupeTranslations(translations, existingTranslations = []) {
     const seen = new Set(existingTranslations.map(item => item.translation.toLowerCase()));
     const result = [];
@@ -273,12 +324,170 @@ function dedupeVariationTranslations(translations, sourceTranslation) {
     return result;
 }
 
+function buildSafetyMockTranslations(tone, interest, useFewerWords, existingTranslations) {
+    const interestPrefix = tone === 'Interest Based' && interest ? `With ${interest} nearby, ` : '';
+    const toneTemplates = {
+        Default: [
+            'The house has room for walking feet, and running fits better outside.',
+            'Fast feet have a safer spot outside.',
+            'Inside is a walking-speed space.',
+            'Running can wait for a place with more room.',
+        ],
+        Straightforward: [
+            'The house is a walking-speed space.',
+            'Running has more room outside.',
+            'Fast feet have a better spot outside.',
+            'Inside has room for walking feet.',
+        ],
+        Humorous: [
+            'Fast feet have an outdoor job; inside is walking-speed.',
+            'The running part belongs where there is more room.',
+            'Inside is doing the walking-speed version.',
+            'Fast feet can save their big moment for outside.',
+        ],
+        Equalizing: [
+            'You can be the safety checker for which speed fits this room.',
+            'I am not sure this room has running-speed space; outside might.',
+            'This looks like a walking-speed room, and you know the speed rules best.',
+            'Your safety-checker brain might know where fast feet fit better.',
+        ],
+        'Interest Based': interest ? [
+            `${interestPrefix}walking speed inside, running speed outside.`,
+            `${interestPrefix}fast feet have more room outside.`,
+            `${interestPrefix}inside can be the careful-speed part.`,
+            `${interestPrefix}the running part fits better where there is space.`,
+        ] : [
+            'Inside can be the careful-speed part.',
+            'Fast feet have a better spot outside.',
+            'The room has space for walking feet.',
+            'Running fits better where there is more room.',
+        ],
+    };
+
+    const selectedTemplates = toneTemplates[tone] || toneTemplates.Default;
+    const mocked = selectedTemplates.map(template => ({
+        translation: shortenIfNeeded(template, useFewerWords),
+    }));
+
+    return dedupeTranslations(mocked, existingTranslations).slice(0, 4);
+}
+
+function buildCleanupDestinationMockTranslations(text, tone, interest, useFewerWords, existingTranslations) {
+    const destination = inferCleanupDestination(text);
+    const items = inferCleanupItems(text);
+    const sentenceItems = toUpperSentence(items);
+
+    const toneTemplates = {
+        Default: [
+            `${sentenceItems} are ready for their spot ${destination}.`,
+            `This cleanup includes getting ${items} ${destination}.`,
+            `${sentenceItems} have a destination ${destination}.`,
+            `The room reset has ${items} heading ${destination}.`,
+        ],
+        Straightforward: [
+            `${sentenceItems} have a spot ${destination}.`,
+            `The next part is getting ${items} ${destination}.`,
+            `Cleanup means ${items} end up ${destination}.`,
+            `${sentenceItems} have a clear spot ${destination}.`,
+        ],
+        Humorous: [
+            `${sentenceItems} have a small trip ${destination}.`,
+            `The cleanup part is getting ${items} ${destination}.`,
+            `${sentenceItems} are on their way back ${destination}.`,
+            `The room reset has ${items} landing ${destination}.`,
+        ],
+        Equalizing: [
+            `You might be the room-reset boss for getting ${items} ${destination}.`,
+            `I may need a destination checker for where ${items} go ${destination}.`,
+            `Your upstairs route-planner brain might know how ${items} get ${destination}.`,
+            `The order expert may know how ${items} end up ${destination}.`,
+        ],
+        'Interest Based': interest ? [
+            `${sentenceItems} can head ${destination} with ${interest} nearby.`,
+            `${interest} can stay nearby while ${items} go ${destination}.`,
+            `${sentenceItems} can land back ${destination} before ${interest} comes back in.`,
+            `The room reset sends ${items} ${destination}, with ${interest} as company.`,
+        ] : [
+            `${sentenceItems} have a clear destination ${destination}.`,
+            `The cleanup part sends ${items} ${destination}.`,
+            `${sentenceItems} can land back ${destination}.`,
+            `The room reset includes ${items} going ${destination}.`,
+        ],
+    };
+
+    const selectedTemplates = toneTemplates[tone] || toneTemplates.Default;
+    const mocked = selectedTemplates.map(template => ({
+        translation: shortenIfNeeded(template, useFewerWords),
+    }));
+
+    return dedupeTranslations(mocked, existingTranslations).slice(0, 4);
+}
+
+function buildDinnerHandwashingMockTranslations(tone, interest, useFewerWords, existingTranslations) {
+    const toneTemplates = {
+        Default: [
+            'Dinner is downstairs, and hands come before the table.',
+            'The next part is coming down, washing hands, then dinner.',
+            'Downstairs is the dinner spot, with handwashing first.',
+            'I wonder what makes coming down, hands, and dinner feel easier.',
+        ],
+        Straightforward: [
+            'Downstairs, hands, then dinner.',
+            'Dinner is downstairs; hands come first.',
+            'Handwashing is the step before dinner downstairs.',
+            'The table is ready after hands are washed downstairs.',
+        ],
+        Humorous: [
+            'Dinner is doing a tiny drumroll downstairs, and hands get the sink first.',
+            'Downstairs dinner made the list; hands have the first stop.',
+            'The sink gets a quick cameo before dinner downstairs.',
+            'Hands first, then dinner downstairs gets its turn.',
+        ],
+        Equalizing: [
+            'You might be the route expert: downstairs, hands, then dinner.',
+            'I may need an order checker for downstairs, hands, and dinner.',
+            'Your route brain might know the path to dinner after hands.',
+            'The dinner route has downstairs and handwashing; you may know the order.',
+        ],
+        'Interest Based': interest ? [
+            `${interest} can stay nearby while hands get washed before dinner downstairs.`,
+            `The dinner route is still downstairs, hands, then food, with ${interest} nearby.`,
+            `${interest} can be company for coming down and handwashing before dinner.`,
+            `Hands first, then dinner downstairs, with ${interest} waiting nearby.`,
+        ] : [
+            'The dinner route is downstairs, hands, then food.',
+            'Hands can get washed before dinner downstairs, with a little playfulness nearby.',
+            'Coming down, hands, and dinner are the next pieces.',
+            'The sink comes before dinner downstairs.',
+        ],
+    };
+
+    const selectedTemplates = toneTemplates[tone] || toneTemplates.Default;
+    const mocked = selectedTemplates.map(template => ({
+        translation: shortenIfNeeded(template, useFewerWords),
+    }));
+
+    return dedupeTranslations(mocked, existingTranslations).slice(0, 4);
+}
+
 function buildMockTranslations(text, tone, interest, useFewerWords, existingTranslations = []) {
+    if (isSafetyRedirectionPrompt(text)) {
+        return buildSafetyMockTranslations(tone, interest, useFewerWords, existingTranslations);
+    }
+
+    if (isCleanupDestinationPrompt(text)) {
+        return buildCleanupDestinationMockTranslations(text, tone, interest, useFewerWords, existingTranslations);
+    }
+
+    if (isDinnerHandwashingPrompt(text)) {
+        return buildDinnerHandwashingMockTranslations(tone, interest, useFewerWords, existingTranslations);
+    }
+
     const taskPhrases = buildTaskPhrases(text);
     const joinedTasks = joinPhrases(taskPhrases.map(toLowerSentence));
     const firstTask = toLowerSentence(taskPhrases[0]);
     const secondTask = taskPhrases[1] ? toLowerSentence(taskPhrases[1]) : null;
-    const interestSuffix = tone === 'Interest Based' && interest ? ` for ${interest}` : '';
+    const interestSuffix = tone === 'Interest Based' && interest ? ` with ${interest} nearby` : '';
 
     const toneTemplates = {
         Default: [
@@ -300,22 +509,26 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
                 : `It came up quickly. ${taskPhrases[0]} is ready when you want it.`,
         ],
         Humorous: [
-            `${joinedTasks} appears to be back for an encore.`,
-            `Uh oh, ${joinedTasks} made it into today's plot line.`,
-            `It looks like ${joinedTasks} did not magically disappear.`,
-            `${joinedTasks} may be the sneaky side quest today.`,
+            `${joinedTasks} made a tiny cameo in the plan.`,
+            `The ${joinedTasks} part is still here, somehow.`,
+            `It looks like ${joinedTasks} stayed on the list.`,
+            `${joinedTasks} has a small spotlight right now.`,
         ],
         Equalizing: [
             `${joinedTasks} might benefit from an expert eye.`,
             `I may be missing the smarter way through ${joinedTasks}.`,
             `You might have a better read on ${joinedTasks} than I do.`,
-            `My plan for ${joinedTasks} might need a very good checker.`,
+            `My plan for ${joinedTasks} might need an order checker.`,
         ],
         'Interest Based': [
-            `${taskPhrases[0]}${interestSuffix} is part of what's happening.`,
-            `I wonder how ${joinedTasks}${interestSuffix} would go today.`,
+            interest
+                ? `${interest} can be nearby while ${joinedTasks} happens.`
+                : `${joinedTasks} can happen with a little playful energy nearby.`,
+            interest
+                ? `The ${interest} part can keep ${joinedTasks} company without taking over.`
+                : `The next part looks like ${joinedTasks}, with room for a little lightness.`,
             `The next part looks like ${joinedTasks}${interestSuffix}.`,
-            `It looks like ${joinedTasks}${interestSuffix} is on the map.`,
+            `It looks like ${joinedTasks}${interestSuffix} is part of the real plan.`,
         ],
     };
 
@@ -327,16 +540,42 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
     return dedupeTranslations(mocked, existingTranslations).slice(0, 4);
 }
 
-function buildMockVariationTranslations(sourceTranslation, variationKind) {
+function buildShorterMockVariationTranslations(sourceTranslation, originalText) {
     const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
+    if (isSafetyRedirectionPrompt(originalText)) {
+        return [
+            { translation: 'Walking speed inside; running fits outside.' },
+            { translation: 'Fast feet have more room outside.' },
+        ];
+    }
+
+    if (isCleanupDestinationPrompt(originalText)) {
+        const destination = inferCleanupDestination(originalText);
+        const items = inferCleanupItems(originalText);
+        const sentenceItems = toUpperSentence(items);
+        return [
+            { translation: `${sentenceItems} head ${destination}.` },
+            { translation: `${sentenceItems} have a spot ${destination}.` },
+        ];
+    }
+
     const words = source.split(/\s+/).filter(Boolean);
-    const shorterFragment = words.slice(0, Math.max(4, Math.ceil(words.length * 0.6))).join(' ');
+    const compactLength = Math.max(6, Math.ceil(words.length * 0.7));
+    const shorterFragment = words.length <= 8
+        ? source
+        : words.slice(0, compactLength).join(' ');
+
+    return [
+        { translation: `${shorterFragment}.` },
+        { translation: words.length <= 8 ? `${source}, simply.` : `${shorterFragment.replace(/,.*$/, '')}.` },
+    ];
+}
+
+function buildMockVariationTranslations(sourceTranslation, variationKind, originalText = '') {
+    const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
 
     const variationTemplates = {
-        shorter: [
-            `${shorterFragment}.`,
-            `${shorterFragment.replace(/,.*$/, '')}.`,
-        ],
+        shorter: buildShorterMockVariationTranslations(sourceTranslation, originalText).map(item => item.translation),
         longer: [
             `${source}, and there is room for it to happen in a calm way.`,
             `${source}, with a little more space for the moment to unfold.`,
@@ -384,6 +623,12 @@ app.post('/api/translate', async (req, res) => {
 
     if (!['translate', 'moreIdeas', 'variation'].includes(mode)) {
         return res.status(400).json({ error: 'Missing or invalid "mode" field.' });
+    }
+
+    const normalizedInterest = typeof interest === 'string' ? interest.trim() : '';
+
+    if (tone === 'Interest Based' && !normalizedInterest) {
+        return res.status(400).json({ error: 'Interest Based ideas need an entered interest.' });
     }
 
     if (mode === 'variation') {
@@ -485,10 +730,10 @@ app.post('/api/translate', async (req, res) => {
     const apiKey = geminiApiKey;
     if (isMockTranslationMode) {
         if (mode === 'variation') {
-            return res.json(buildMockVariationTranslations(sourceTranslation.translation, variationKind));
+            return res.json(buildMockVariationTranslations(sourceTranslation.translation, variationKind, text));
         }
 
-        return res.json(buildMockTranslations(text, tone, interest, useFewerWords, existingTranslations));
+        return res.json(buildMockTranslations(text, tone, normalizedInterest, useFewerWords, existingTranslations));
     }
 
     if (!apiKey) {
@@ -501,14 +746,14 @@ app.post('/api/translate', async (req, res) => {
             sourceTranslation: sourceTranslation.translation,
             variationKind,
             tone,
-            interest,
+            interest: normalizedInterest,
             useFewerWords,
         })
         : buildTranslationPrompt({
             text,
             existingTranslations,
             tone,
-            interest,
+            interest: normalizedInterest,
             useFewerWords,
         });
 

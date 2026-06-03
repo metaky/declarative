@@ -90,5 +90,118 @@
       "Shorter does not collapse into abstraction",
       "Warmer does not add pressure"
     ]
+  },
+  {
+    "id": "variation-running-default-safety-redirection",
+    "label": "Default safety redirection",
+    "text": "Stop running in the house",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "Inside is a walking-speed space, and running has more room outside.",
+    "reviewFocus": [
+      "Shorter keeps safety, action, and location",
+      "Warmer does not become emotionally loaded",
+      "More straightforward does not become a command",
+      "More playful stays grounded in safe movement"
+    ]
+  },
+  {
+    "id": "variation-running-straightforward-safety-redirection",
+    "label": "Straightforward safety redirection",
+    "text": "Stop running in the house",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "sourceTranslation": "Running is for outside; walking works better in the house.",
+    "reviewFocus": [
+      "Shorter preserves the outside/inside contrast",
+      "Warmer remains calm and practical",
+      "More straightforward does not become bossy",
+      "More playful does not hide the safety redirection"
+    ]
+  },
+  {
+    "id": "variation-dinner-default-sequence",
+    "label": "Default dinner sequence",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "Dinner is ready downstairs, and hands come before sitting down.",
+    "reviewFocus": [
+      "Shorter keeps downstairs, hands, and dinner sequence",
+      "Warmer stays low-pressure",
+      "More straightforward keeps the order clear",
+      "More playful does not turn the sequence into noise"
+    ]
+  },
+  {
+    "id": "variation-dinner-equalizing-order-framing",
+    "label": "Equalizing dinner order framing",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Equalizing",
+    "useFewerWords": false,
+    "sourceTranslation": "I might need your order brain: downstairs, hands, then dinner sounds right.",
+    "reviewFocus": [
+      "Shorter preserves role framing and sequence",
+      "Warmer does not add praise-pressure",
+      "More straightforward keeps the child-as-order-expert dynamic",
+      "More playful does not make the adult seem performatively helpless"
+    ]
+  },
+  {
+    "id": "variation-toys-default-cleanup-destination",
+    "label": "Default cleanup destination",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Default",
+    "useFewerWords": false,
+    "sourceTranslation": "The toys have an upstairs room spot when this space is reset.",
+    "reviewFocus": [
+      "Shorter keeps cleanup and upstairs room destination",
+      "Warmer does not blur the destination",
+      "More straightforward keeps action plus location",
+      "More playful does not replace the real destination with a metaphor"
+    ]
+  },
+  {
+    "id": "variation-toys-straightforward-cleanup-destination",
+    "label": "Straightforward cleanup destination",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Straightforward",
+    "useFewerWords": false,
+    "sourceTranslation": "Toys go from here to their spot upstairs in your room.",
+    "reviewFocus": [
+      "Shorter keeps both the action and the upstairs room",
+      "Warmer stays practical",
+      "More straightforward does not become a chore command",
+      "More playful stays usable and specific"
+    ]
+  },
+  {
+    "id": "variation-toys-interest-pokemon-fixture",
+    "label": "Interest Based cleanup destination - Pokemon fixture",
+    "text": "Pick up your toys and put them away upstairs in your room",
+    "tone": "Interest Based",
+    "interest": "Pokemon",
+    "useFewerWords": false,
+    "sourceTranslation": "The toys can head to their upstairs room spot like Pokemon returning to the right box.",
+    "reviewFocus": [
+      "Pokemon is used only as the Interest Based test fixture",
+      "Shorter keeps the cleanup destination",
+      "Warmer and playful variants do not become gimmicky",
+      "More straightforward keeps the interest light while preserving the route"
+    ]
+  },
+  {
+    "id": "variation-interest-missing-fallback",
+    "label": "Interest Based variation fallback without entered interest",
+    "text": "Please come down and wash your hands. It's dinner time.",
+    "tone": "Interest Based",
+    "useFewerWords": false,
+    "sourceTranslation": "The downstairs path, sink stop, and dinner are all lined up.",
+    "reviewFocus": [
+      "No child interest is invented",
+      "Shorter preserves the dinner sequence",
+      "Warmer and playful variants do not become fake themed Interest Based output",
+      "More straightforward remains low-pressure"
+    ]
   }
 ]

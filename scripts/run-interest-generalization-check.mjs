@@ -1,0 +1,211 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { GoogleGenAI, Type } from '@google/genai';
+
+import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..');
+const envPath = path.join(repoRoot, '.env.local');
+const resultsDir = path.join(repoRoot, 'evals', 'results');
+
+const DEFAULT_INTERESTS = ['Minecraft', 'trains', 'Disney'];
+const DEFAULT_INPUTS = [
+  {
+    id: 'running-house',
+    text: 'Stop running in the house',
+  },
+  {
+    id: 'dinner-hands',
+    text: "Please come down and wash your hands. It's dinner time.",
+  },
+  {
+    id: 'toys-upstairs',
+    text: 'Pick up your toys and put them away upstairs in your room',
+  },
+];
+
+function loadEnv() {
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const [key, ...valueParts] = trimmed.split('=');
+    if (key && !process.env[key]) {
+      process.env[key] = valueParts.join('=').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+    }
+  }
+}
+
+function getArg(name, fallback = '') {
+  const prefix = `--${name}=`;
+  const value = process.argv.find((arg) => arg.startsWith(prefix));
+  return value ? value.slice(prefix.length) : fallback;
+}
+
+function parseJsonArray(text) {
+  try {
+    const trimmed = String(text ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function wordCount(text) {
+  return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+const POKEMON_SPECIFIC_TERMS = /\b(?:pokemon|poke[ -]?stop|trainer|squirtle|pikachu|eevee|ditto|gym)\b/i;
+
+function findCrossInterestLeaks(results) {
+  return results.flatMap((result) => {
+    if (String(result.interest).trim().toLowerCase() === 'pokemon') return [];
+    return result.translations
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => POKEMON_SPECIFIC_TERMS.test(item.translation))
+      .map(({ item, index }) => ({
+        interest: result.interest,
+        inputId: result.inputId,
+        optionIndex: index + 1,
+        translation: item.translation,
+      }));
+  });
+}
+
+async function generate(ai, model, interest, input, useFewerWords) {
+  const prompt = buildTranslationPrompt({
+    text: input.text,
+    tone: 'Interest Based',
+    interest,
+    useFewerWords,
+    existingTranslations: [],
+  });
+  const startedAt = Date.now();
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            translation: { type: Type.STRING },
+          },
+          required: ['translation'],
+        },
+      },
+    },
+  });
+
+  const translations = parseJsonArray(response.text)
+    .filter((item) => item?.translation)
+    .map((item) => ({
+      translation: String(item.translation).trim(),
+      wordCount: wordCount(item.translation),
+    }));
+
+  return {
+    interest,
+    inputId: input.id,
+    text: input.text,
+    useFewerWords,
+    durationMs: Date.now() - startedAt,
+    usageMetadata: response.usageMetadata ?? null,
+    translations,
+  };
+}
+
+function renderMarkdown(payload) {
+  const lines = [
+    '# Interest Generalization Check',
+    '',
+    `Generated: ${payload.generatedAt}`,
+    '',
+    `Model: ${payload.model}. Tone: Interest Based. Fewer Words: ${payload.useFewerWords ? 'on' : 'off'}.`,
+    '',
+  ];
+
+  for (const result of payload.results) {
+    lines.push(`## ${result.interest} / ${result.inputId}`);
+    lines.push('');
+    lines.push(`Original: ${result.text}`);
+    lines.push('');
+    result.translations.forEach((item, index) => {
+      lines.push(`${index + 1}. ${item.translation}`);
+    });
+    lines.push('');
+  }
+
+  if (payload.validation?.crossInterestLeaks?.length) {
+    lines.push('## Validation Issues');
+    lines.push('');
+    for (const issue of payload.validation.crossInterestLeaks) {
+      lines.push(`- ${issue.interest} / ${issue.inputId} option ${issue.optionIndex}: ${issue.translation}`);
+    }
+    lines.push('');
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+loadEnv();
+const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+if (!apiKey) {
+  console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this check.');
+  process.exit(1);
+}
+
+const model = getArg('model', 'gemini-2.5-flash');
+const interests = getArg('interests')
+  ? getArg('interests').split(',').map((item) => item.trim()).filter(Boolean)
+  : DEFAULT_INTERESTS;
+const useFewerWords = process.argv.includes('--fewer');
+const ai = new GoogleGenAI({ apiKey });
+
+const results = [];
+for (const interest of interests) {
+  for (const input of DEFAULT_INPUTS) {
+    console.log(`- ${interest}: ${input.id}`);
+    results.push(await generate(ai, model, interest, input, useFewerWords));
+  }
+}
+
+const payload = {
+  generatedAt: new Date().toISOString(),
+  model,
+  tone: 'Interest Based',
+  useFewerWords,
+  interests,
+  inputs: DEFAULT_INPUTS,
+  results,
+  validation: {
+    crossInterestLeaks: findCrossInterestLeaks(results),
+  },
+};
+
+fs.mkdirSync(resultsDir, { recursive: true });
+const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const jsonPath = path.join(resultsDir, `interest-generalization-${timestamp}.json`);
+const mdPath = path.join(resultsDir, `interest-generalization-${timestamp}.md`);
+const latestJsonPath = path.join(resultsDir, 'latest-interest-generalization.json');
+const latestMdPath = path.join(resultsDir, 'latest-interest-generalization.md');
+
+fs.writeFileSync(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
+fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
+fs.writeFileSync(mdPath, renderMarkdown(payload));
+fs.writeFileSync(latestMdPath, renderMarkdown(payload));
+
+console.log(`Wrote ${mdPath}`);
+
+if (payload.validation.crossInterestLeaks.length > 0) {
+  console.error(`Found ${payload.validation.crossInterestLeaks.length} cross-interest leak(s).`);
+  process.exit(1);
+}

@@ -1,0 +1,341 @@
+{
+  "generatedAt": "2026-06-03T01:47:51.162Z",
+  "model": "gemini-2.5-flash",
+  "tone": "Interest Based",
+  "useFewerWords": false,
+  "interests": [
+    "Minecraft",
+    "trains",
+    "Disney"
+  ],
+  "inputs": [
+    {
+      "id": "running-house",
+      "text": "Stop running in the house"
+    },
+    {
+      "id": "dinner-hands",
+      "text": "Please come down and wash your hands. It's dinner time."
+    },
+    {
+      "id": "toys-upstairs",
+      "text": "Pick up your toys and put them away upstairs in your room"
+    }
+  ],
+  "results": [
+    {
+      "interest": "Minecraft",
+      "inputId": "running-house",
+      "text": "Stop running in the house",
+      "useFewerWords": false,
+      "durationMs": 1481,
+      "usageMetadata": {
+        "promptTokenCount": 1127,
+        "candidatesTokenCount": 110,
+        "totalTokenCount": 1237,
+        "cachedContentTokenCount": 841,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1127
+          }
+        ],
+        "cacheTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 841
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Inside, we go with walking steps, like when you're carefully exploring a Minecraft cave. Running speed fits best outside.",
+          "wordCount": 19
+        },
+        {
+          "translation": "I wonder if we could try walking in here, like a careful Minecraft character. We can save the sprinting for outside.",
+          "wordCount": 21
+        },
+        {
+          "translation": "Minecraft players walk inside their builds. We can move like that in the house, and use bigger speeds outside.",
+          "wordCount": 19
+        }
+      ]
+    },
+    {
+      "interest": "Minecraft",
+      "inputId": "dinner-hands",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "useFewerWords": false,
+      "durationMs": 1230,
+      "usageMetadata": {
+        "promptTokenCount": 1220,
+        "candidatesTokenCount": 110,
+        "totalTokenCount": 1330,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1220
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Ready for some dinner soon, like gathering supplies in Minecraft. The path to the table usually includes washing up downstairs first.",
+          "wordCount": 21
+        },
+        {
+          "translation": "Time to transition soon, like moving between biomes. We'll head downstairs and wash up before dinner.",
+          "wordCount": 16
+        },
+        {
+          "translation": "Thinking about dinner, a bit like setting up a new base. We've got downstairs and handwashing on the way.",
+          "wordCount": 19
+        }
+      ]
+    },
+    {
+      "interest": "Minecraft",
+      "inputId": "toys-upstairs",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "useFewerWords": false,
+      "durationMs": 1167,
+      "usageMetadata": {
+        "promptTokenCount": 1190,
+        "candidatesTokenCount": 108,
+        "totalTokenCount": 1298,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1190
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "I'm thinking about a Minecraft-style journey for these toys, all the way upstairs to your room.",
+          "wordCount": 16
+        },
+        {
+          "translation": "Wondering how to get these toys from here to your room upstairs? Like finding the right Minecraft path.",
+          "wordCount": 18
+        },
+        {
+          "translation": "Looks like these toys are ready for their next step: an upstairs path to your room, maybe a bit like a Minecraft portal.",
+          "wordCount": 23
+        }
+      ]
+    },
+    {
+      "interest": "trains",
+      "inputId": "running-house",
+      "text": "Stop running in the house",
+      "useFewerWords": false,
+      "durationMs": 1245,
+      "usageMetadata": {
+        "promptTokenCount": 1130,
+        "candidatesTokenCount": 114,
+        "totalTokenCount": 1244,
+        "cachedContentTokenCount": 842,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1130
+          }
+        ],
+        "cacheTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 842
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Inside here, it's more of a walking pace, like a train moving slowly into the station. Faster speeds fit outside.",
+          "wordCount": 20
+        },
+        {
+          "translation": "Hmm, inside this house is a good place for walking, kind of like trains on a switch track. Running speed is great for outside.",
+          "wordCount": 24
+        },
+        {
+          "translation": "Inside feels like walking speed, like a careful train moving along its route. Running really fits outside instead.",
+          "wordCount": 18
+        }
+      ]
+    },
+    {
+      "interest": "trains",
+      "inputId": "dinner-hands",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "useFewerWords": false,
+      "durationMs": 1287,
+      "usageMetadata": {
+        "promptTokenCount": 1223,
+        "candidatesTokenCount": 131,
+        "totalTokenCount": 1354,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1223
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Dinner is getting ready downstairs. When you're ready to come down, you can make a stop at the hand wash station, like a train preparing for its next journey.",
+          "wordCount": 29
+        },
+        {
+          "translation": "Looks like the dinner train is pulling into the station soon. You can head downstairs and get your hands clean for it when you're ready.",
+          "wordCount": 25
+        },
+        {
+          "translation": "It's almost time for the dinner run. If you're heading downstairs, there's a hand wash stop before the meal.",
+          "wordCount": 19
+        }
+      ]
+    },
+    {
+      "interest": "trains",
+      "inputId": "toys-upstairs",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "useFewerWords": false,
+      "durationMs": 1024,
+      "usageMetadata": {
+        "promptTokenCount": 1197,
+        "candidatesTokenCount": 104,
+        "totalTokenCount": 1301,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1197
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Looks like these toys could take a train-like journey all the way upstairs to your room.",
+          "wordCount": 16
+        },
+        {
+          "translation": "Ready to map out a path for these toys, like a train route, heading upstairs to your room?",
+          "wordCount": 18
+        },
+        {
+          "translation": "I'm wondering if we could get these toys on a schedule, like a train, to go upstairs to your room.",
+          "wordCount": 20
+        }
+      ]
+    },
+    {
+      "interest": "Disney",
+      "inputId": "running-house",
+      "text": "Stop running in the house",
+      "useFewerWords": false,
+      "durationMs": 1219,
+      "usageMetadata": {
+        "promptTokenCount": 1127,
+        "candidatesTokenCount": 114,
+        "totalTokenCount": 1241,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1127
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Inside speed can be like those slow, majestic Disney parade steps. Running speed wants to be outside.",
+          "wordCount": 17
+        },
+        {
+          "translation": "Maybe we can practice our slower Disney character walk inside? The running speed can be ready for outside, like when the characters wave from a float.",
+          "wordCount": 26
+        },
+        {
+          "translation": "This house space is more for walking, like the gentle pace on 'it's a small world'. Running fits best outside.",
+          "wordCount": 20
+        }
+      ]
+    },
+    {
+      "interest": "Disney",
+      "inputId": "dinner-hands",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "useFewerWords": false,
+      "durationMs": 1395,
+      "usageMetadata": {
+        "promptTokenCount": 1220,
+        "candidatesTokenCount": 124,
+        "totalTokenCount": 1344,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1220
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "Dinner’s almost ready, like a feast in a Disney castle. Thinking about heading downstairs for a quick hand wash before that happens?",
+          "wordCount": 22
+        },
+        {
+          "translation": "We could make our way down and do a quick hand wash, like getting ready for a Disney parade. Then dinner is all set.",
+          "wordCount": 24
+        },
+        {
+          "translation": "I’m wondering if it's time to journey downstairs and wash up, like getting neat for a Disney character meeting. Dinner is coming up soon!",
+          "wordCount": 24
+        }
+      ]
+    },
+    {
+      "interest": "Disney",
+      "inputId": "toys-upstairs",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "useFewerWords": false,
+      "durationMs": 1293,
+      "usageMetadata": {
+        "promptTokenCount": 1190,
+        "candidatesTokenCount": 103,
+        "totalTokenCount": 1293,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1190
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "translations": [
+        {
+          "translation": "I wonder if we can get these toys upstairs to your room, like a Disney parade route.",
+          "wordCount": 17
+        },
+        {
+          "translation": "Time to get these toys put away in your room upstairs, like finding the castle at the end of a Disney journey.",
+          "wordCount": 22
+        },
+        {
+          "translation": "These toys need to go upstairs to your room; we could make it a Disney-style cleanup mission.",
+          "wordCount": 17
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "crossInterestLeaks": []
+  }
+}

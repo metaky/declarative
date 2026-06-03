@@ -1,0 +1,1436 @@
+{
+  "generatedAt": "2026-05-07T14:55:46.224Z",
+  "reviewRule": "Pass the set when it has 1-2 genuinely usable/excellent options and no should-not-show option. Reserve hasHarmfulOption for should-not-show output, not ordinary weakness or serious mismatch.",
+  "reviewFields": {
+    "bestOptionCount": null,
+    "hasExcellentOption": null,
+    "hasHarmfulOption": null,
+    "setVerdict": null,
+    "why": ""
+  },
+  "items": [
+    {
+      "id": "current-01-running-house-default-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-default-standard",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Default",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "The floor in here is for walking.",
+          "wordCount": 7
+        },
+        {
+          "translation": "The running happens outside.",
+          "wordCount": 4
+        },
+        {
+          "translation": "I wonder if we could try out our walking feet in here.",
+          "wordCount": 12
+        },
+        {
+          "translation": "Movement is happening quickly in the house right now.",
+          "wordCount": 9
+        }
+      ],
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "All appropriate, but responses are short. This follows on the short prompt, but in comparison to the \"fewerwords\" filter on, these are the same or actually shorter than some of those. We can train to be slightly more converastional."
+      }
+    },
+    {
+      "id": "current-02-running-house-default-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-default-fewer",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Default",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 1,
+      "translations": [
+        {
+          "translation": "The floor in here is for walking.",
+          "wordCount": 7
+        },
+        {
+          "translation": "Running is something we do outside.",
+          "wordCount": 6
+        },
+        {
+          "translation": "Movement is slower inside the house.",
+          "wordCount": 6
+        },
+        {
+          "translation": "I notice a lot of fast feet! This space is for walking feet.",
+          "wordCount": 13
+        }
+      ],
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "All good"
+      }
+    },
+    {
+      "id": "current-03-running-house-straightforward-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-straightforward-standard",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Straightforward",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "Running is for outside spaces; inside we use walking speed.",
+          "wordCount": 10
+        },
+        {
+          "translation": "The house is a walking zone.",
+          "wordCount": 6
+        },
+        {
+          "translation": "Inside our house, feet move at a walking pace to keep everyone safe.",
+          "wordCount": 13
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "This tone is meant to resonate with older kids or PDA kids that do not connect with a more playful tone. These all meet the mark."
+      }
+    },
+    {
+      "id": "current-04-running-house-straightforward-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-straightforward-fewer",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Straightforward",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "The house is a walking space.",
+          "wordCount": 6
+        },
+        {
+          "translation": "Running happens outside.",
+          "wordCount": 3
+        },
+        {
+          "translation": "We can walk inside.",
+          "wordCount": 4
+        },
+        {
+          "translation": "Walking feet are needed for being inside the house.",
+          "wordCount": 9
+        }
+      ],
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": ""
+      }
+    },
+    {
+      "id": "current-05-running-house-humorous-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-humorous-standard",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Humorous",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 1,
+      "translations": [
+        {
+          "translation": "The floor in here is for walking.",
+          "wordCount": 7
+        },
+        {
+          "translation": "Running feet can zoom around outside.",
+          "wordCount": 6
+        },
+        {
+          "translation": "Inside our house, feet go at walking speed.",
+          "wordCount": 8
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These do not integrate humor at all. They are Declarative in nature, but do not integrate the tone needed to joke with the child"
+      }
+    },
+    {
+      "id": "current-06-running-house-humorous-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-humorous-fewer",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Humorous",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "Those are some fast feet! The floor is better for walking.",
+          "wordCount": 11
+        },
+        {
+          "translation": "The house is a walking zone.",
+          "wordCount": 6
+        },
+        {
+          "translation": "Running shoes can really fly outside.",
+          "wordCount": 6
+        },
+        {
+          "translation": "I notice some speedy legs. Inside spaces are for walking.",
+          "wordCount": 10
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Options 3 and 4 have some humor integrated, but the others do not. All are declarative."
+      }
+    },
+    {
+      "id": "current-07-running-house-equalizing-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-equalizing-standard",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Equalizing",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "The floor can be a bit slippery for running right here; the running place is outside.",
+          "wordCount": 16
+        },
+        {
+          "translation": "I may need a speed checker for inside. There's a walking speed for inside, and a running speed for outside.",
+          "wordCount": 20
+        },
+        {
+          "translation": "Sometimes I forget the house rules. Could you be the expert on inside movement, showing what's safe inside versus outside?",
+          "wordCount": 20
+        },
+        {
+          "translation": "I wonder if we have a special running path outside, because the house path is usually for walking.",
+          "wordCount": 18
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "Good job with 2, 3 and 4. 1 does not include an equalizing portion."
+      }
+    },
+    {
+      "id": "current-08-running-house-equalizing-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-equalizing-fewer",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Equalizing",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "The house is a walking space, and outside is a running space.",
+          "wordCount": 12
+        },
+        {
+          "translation": "I may need a speed-fit checker for the house. Walking inside, running outside.",
+          "wordCount": 13
+        },
+        {
+          "translation": "Oh, my brain forgot for a moment if this was a running zone or a walking zone.",
+          "wordCount": 17
+        },
+        {
+          "translation": "This feels like a spot for walking, and then there's a running area out there.",
+          "wordCount": 15
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": true,
+        "setVerdict": "Borderline",
+        "why": "Options 2 and 3 are decent equalizing options. 1 and 4 don't use equalizing at all, with 1 not being declarative."
+      }
+    },
+    {
+      "id": "current-09-running-house-interest-based-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-interest-based-standard",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "The floor is a good place for walking inside, maybe like a Pokemon exploring a new path.",
+          "wordCount": 17
+        },
+        {
+          "translation": "It can be tricky to move quickly in here; outside is usually the spot for big running energy.",
+          "wordCount": 18
+        },
+        {
+          "translation": "Movement is happening in the house; sometimes a walking pace works best for our indoor spaces.",
+          "wordCount": 16
+        },
+        {
+          "translation": "I notice a lot of fast steps! A walking speed keeps us steady, just like a cautious Pokemon in a new area.",
+          "wordCount": 22
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Good declarative statements, however the only \"interest\" integrations are options 1 and 4, and neither of them really lean into the interest, they just simply mention it as part of the statement."
+      }
+    },
+    {
+      "id": "current-10-running-house-interest-based-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "running-house-interest-based-fewer",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 1,
+      "translations": [
+        {
+          "translation": "The house is a place for walking; outside is where running happens. Maybe like a speedy Pokemon needing open space!",
+          "wordCount": 20
+        },
+        {
+          "translation": "It's a walking speed inside. Pokemon characters often have different speeds for different places.",
+          "wordCount": 14
+        },
+        {
+          "translation": "Movement is for walking in here. The running happens outside.",
+          "wordCount": 10
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These are not \"fewerwords\" optimized and do a poor job of integrating the actual interest beyond naming the interest itself."
+      }
+    },
+    {
+      "id": "current-11-dinner-hands-default-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-default-standard",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Default",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 5,
+      "translations": [
+        {
+          "translation": "Dinner is ready on the table. There are warm bubbles in the sink for hands.",
+          "wordCount": 15
+        },
+        {
+          "translation": "It is dinner time. The table is set and the handwashing station is open.",
+          "wordCount": 14
+        },
+        {
+          "translation": "Dinner is cooking. I am noticing some hands that might be ready for a wash before we eat.",
+          "wordCount": 18
+        },
+        {
+          "translation": "The family is gathering for dinner. Warm water and soap are available for handwashing.",
+          "wordCount": 14
+        }
+      ],
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": ""
+      }
+    },
+    {
+      "id": "current-12-dinner-hands-default-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-default-fewer",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Default",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "Dinner is ready on the table. Time for handwashing before we eat.",
+          "wordCount": 12
+        },
+        {
+          "translation": "The table is set for dinner. Handwashing usually happens before we sit down for our meal.",
+          "wordCount": 16
+        },
+        {
+          "translation": "It's dinner o'clock! Looks like everyone's coming downstairs and washing up.",
+          "wordCount": 11
+        },
+        {
+          "translation": "Dinner is served! Hands are washed before we begin.",
+          "wordCount": 9
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "\"fewwerwords\" should result in shorter statements. Good examples here would be something like. \"Dinner's ready. We could wash hands.\" or \"Those hands might be dirty for dinner time!\""
+      }
+    },
+    {
+      "id": "current-13-dinner-hands-straightforward-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-straightforward-standard",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Straightforward",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "Dinner is ready on the table. Time to wash hands.",
+          "wordCount": 10
+        },
+        {
+          "translation": "Dinner is prepared. Handwashing happens, then eating.",
+          "wordCount": 7
+        },
+        {
+          "translation": "The table is set for dinner. Handwashing usually comes before sitting down to eat.",
+          "wordCount": 14
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Option 1 is close. It matches the right tone, but \"time to wash hands\" is too direct for declarative language. Something like \"Dinenr is ready on the table. We could wash hands.\" is softer and more declarative. The other options don't really work conversationally. These are all rather short and could be expanded by a few words to make room for better responses. The \"fewerwords\" responses are about the same length as these and are as brief as you can get, so feel free to use more words when it helps the responses."
+      }
+    },
+    {
+      "id": "current-14-dinner-hands-straightforward-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-straightforward-fewer",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Straightforward",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "Dinner is ready. Handwashing happens downstairs before eating.",
+          "wordCount": 8
+        },
+        {
+          "translation": "Dinner preparations are complete. Next is handwashing for dinner.",
+          "wordCount": 9
+        },
+        {
+          "translation": "Food is on the table, and handwashing comes before dinner.",
+          "wordCount": 10
+        },
+        {
+          "translation": "The food is waiting. Time to get downstairs, and handwashing is next.",
+          "wordCount": 12
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Options 2 and 3 are short and straightforward. 1 is close as well. 4 feels too aggressive with \"time to get downstairs.\""
+      }
+    },
+    {
+      "id": "current-15-dinner-hands-humorous-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-humorous-standard",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Humorous",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "The dinner bell is ringing! And the handwashing station is ready for action. Your speedy feet might get you to the table in record time!",
+          "wordCount": 25
+        },
+        {
+          "translation": "Dinner is almost on the table! The sink is all set for some bubbly fun. Then, it's straight to the food zone.",
+          "wordCount": 22
+        },
+        {
+          "translation": "It's dinner time. The downstairs world is calling, and the water is running in the sink for hand-cleaning adventures before we eat.",
+          "wordCount": 22
+        },
+        {
+          "translation": "Dinner is approaching, and there are some hands that need a quick rinse before the feast begins! The table is waiting.",
+          "wordCount": 21
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "Options 1 and 2 are both fun and do a good job of becoming humorous. 3 and 4 are OK, but simply adding an exclamation point to a response doesn't really make it \"humorous\" or fun."
+      }
+    },
+    {
+      "id": "current-16-dinner-hands-humorous-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-humorous-fewer",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Humorous",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "The dinner aroma is starting to fill the downstairs area. Hands often enjoy a quick splash before joining the meal.",
+          "wordCount": 20
+        },
+        {
+          "translation": "Dinner preparations are happening. The handwashing station is ready for anyone heading to the table.",
+          "wordCount": 15
+        },
+        {
+          "translation": "Heard some rumbling, must be dinner getting ready! The sink is open for a quick hand party before eating.",
+          "wordCount": 19
+        },
+        {
+          "translation": "Dinner will be available soon. Downstairs is the way, and a clean-hands moment at the sink often happens before sitting.",
+          "wordCount": 20
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "There are some good fun bits in here (hands often enjoy a quick splash, sink is open for a quick hand party, etc.) but these all read awkwardly AND are not shortened to match the \"fewerwords\" filter. FewerWords can often make phrases choppy and that's fine, but that means we should really be cutting out filler words. Consider option 1. A better \"fewerwords\" option might be \"Smells like dinner. We can splash hands a bit and eat.\""
+      }
+    },
+    {
+      "id": "current-17-dinner-hands-equalizing-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-equalizing-standard",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Equalizing",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "The dining table is set for dinner, and the water is running in the bathroom sink.",
+          "wordCount": 16
+        },
+        {
+          "translation": "Dinner ingredients are ready for eating, and it looks like a good time to visit the downstairs sink for handwashing.",
+          "wordCount": 20
+        },
+        {
+          "translation": "It is dinner time soon. I wonder if the downstairs handwashing station is open now, and when it might be a good time to head down.",
+          "wordCount": 26
+        },
+        {
+          "translation": "The food is on the table! I'm not sure if the downstairs route is clear for getting hands clean before dinner.",
+          "wordCount": 21
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Only option 4 has an equalizing component (I'm not sure if\u2026) but even that doesn't really meet equalizing needs. Equalizing should make the child feel smart or strong or capable, and/or make the adult seem incapable, weak, or needing the child's expertise."
+      }
+    },
+    {
+      "id": "current-18-dinner-hands-equalizing-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-equalizing-fewer",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Equalizing",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "The dining room table is set for dinner, and there's warm water ready for hands downstairs.",
+          "wordCount": 16
+        },
+        {
+          "translation": "Dinner is ready to start, I wonder if the handwashing station is prepared for a quick clean.",
+          "wordCount": 17
+        },
+        {
+          "translation": "It is dinner time. We need to remember the handwashing step before heading to the table. I'm wondering if the downstairs route is clear.",
+          "wordCount": 24
+        },
+        {
+          "translation": "Dinner is almost ready! I was just thinking about who might be the expert on getting downstairs for handwashing before dinner.",
+          "wordCount": 21
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Option 4 is close to being right - it gets declarative and qualizing right - but isn't shortened for the \"fewerwords\" filter being on."
+      }
+    },
+    {
+      "id": "current-19-dinner-hands-interest-based-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-interest-based-standard",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "Dinner is ready! There is a delicious meal downstairs. It is time for clean hands before we eat.",
+          "wordCount": 18
+        },
+        {
+          "translation": "The dinner bell rang, and it looks like a Pokemon might be joining us for dinner down in the kitchen. Handwashing is the next step before we can sit down.",
+          "wordCount": 30
+        },
+        {
+          "translation": "Food is on the table, all set for dinner. Time to make our way downstairs and get hands sparkly clean, just like a freshly caught Pokemon card!",
+          "wordCount": 27
+        },
+        {
+          "translation": "Downstairs is where dinner is waiting. A good hand wash is usually what happens before we eat.",
+          "wordCount": 17
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Option 3 is great because it integrates the interest naturally, beyond just name dropping. It is a little direct, but still works. The rest do not integrate the interest in a natural way."
+      }
+    },
+    {
+      "id": "current-20-dinner-hands-interest-based-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "dinner-hands-interest-based-fewer",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve the transition downstairs, handwashing, and dinner timing.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "Dinner is ready! Washing hands is next, and then coming down to the table.",
+          "wordCount": 14
+        },
+        {
+          "translation": "It's time for dinner! Handwashing first, and then heading downstairs, like a quick Pikachu dash.",
+          "wordCount": 15
+        },
+        {
+          "translation": "The dining room is ready for dinner. First, handwashing, and then making your way down.",
+          "wordCount": 15
+        },
+        {
+          "translation": "I'm setting the table for dinner now. Handwashing is a good step before coming down, perhaps with your favorite Pokemon in mind.",
+          "wordCount": 22
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These miss the mark by either not integrating the interest well, and/or are not shortened enough for the fewerwords filter."
+      }
+    },
+    {
+      "id": "current-21-toys-upstairs-default-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-default-standard",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Default",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "These toys are ready to go upstairs to your room.",
+          "wordCount": 10
+        },
+        {
+          "translation": "It's time for these toys to be picked up and put away in your room.",
+          "wordCount": 15
+        },
+        {
+          "translation": "The toys are here, and your room upstairs is where they belong.",
+          "wordCount": 12
+        },
+        {
+          "translation": "I notice the toys are ready to be put back in your room up the stairs.",
+          "wordCount": 16
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Options 1 and 4 are great. 2 and 4 are both too direct to work as declarative statements. We could expand our word count in these to make more room for declarative statements if necessary."
+      }
+    },
+    {
+      "id": "current-22-toys-upstairs-default-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-default-fewer",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Default",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "The toys are on the floor. Their home is upstairs in your room.",
+          "wordCount": 13
+        },
+        {
+          "translation": "Time for the toys to go back to their places. They like being in your room upstairs.",
+          "wordCount": 17
+        },
+        {
+          "translation": "I wonder if the toys are ready for their trip upstairs to your room.",
+          "wordCount": 14
+        },
+        {
+          "translation": "The toys are here, and your room upstairs is their cozy spot.",
+          "wordCount": 12
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These generally work well as declarative statements, but they are not right for the \"fewerwords\" filter. Option 2 could be shortened to \"Toys like being in your room.\" Option 3 could simply be \"Should toys go upstairs?\" These short versions can really cut out any extra words that can overwhelm kids with auditory processing disorders."
+      }
+    },
+    {
+      "id": "current-23-toys-upstairs-straightforward-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-straightforward-standard",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Straightforward",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 2,
+      "translations": [
+        {
+          "translation": "These toys are ready for their spot upstairs in the room.",
+          "wordCount": 11
+        },
+        {
+          "translation": "The toys are here, and their home is upstairs in the room for safekeeping.",
+          "wordCount": 14
+        },
+        {
+          "translation": "There's a gathering of toys on the floor, and the toy basket is waiting upstairs in your room for them.",
+          "wordCount": 20
+        },
+        {
+          "translation": "Upstairs in the room is where the toys live; looks like it's time for them to make their journey back up there.",
+          "wordCount": 22
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "Options 1 and 2 are fine. 3 and 4 are both a bit awkward, otherwise they would work for straightforward tone as well."
+      }
+    },
+    {
+      "id": "current-24-toys-upstairs-straightforward-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-straightforward-fewer",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Straightforward",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "The toys are on the floor. Their home is upstairs in your room.",
+          "wordCount": 13
+        },
+        {
+          "translation": "Time for the toys to go back to your room. They need to be picked up first.",
+          "wordCount": 17
+        },
+        {
+          "translation": "The toys are ready to be gathered and then put away in your room upstairs.",
+          "wordCount": 15
+        },
+        {
+          "translation": "I wonder if the toys want to go on an adventure to your room upstairs.",
+          "wordCount": 15
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These are not \"fewerwords\" optimized. They should be cut down, and straightforward. For example, Option4 could be \"Toytime adventure in your room?\""
+      }
+    },
+    {
+      "id": "current-25-toys-upstairs-humorous-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-humorous-standard",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Humorous",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "The toys are having a big floor party right now. Their home base is in your room upstairs.",
+          "wordCount": 18
+        },
+        {
+          "translation": "These friends are ready for their ride upstairs to your room. They'll be cozy there.",
+          "wordCount": 15
+        },
+        {
+          "translation": "Upstairs is where the toys live. They'll be ready for another adventure when they're back in your room.",
+          "wordCount": 18
+        },
+        {
+          "translation": "I wonder if these toys are ready for their upstairs journey to your room?",
+          "wordCount": 14
+        }
+      ],
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Options 1 and 2 are both humorous. 3 and 4 lack the same fun and humour."
+      }
+    },
+    {
+      "id": "current-26-toys-upstairs-humorous-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-humorous-fewer",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Humorous",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "The toys are having an downstairs party, and the toy basket is ready for transport upstairs.",
+          "wordCount": 16
+        },
+        {
+          "translation": "Toy mountain here, and the upstairs room is the toy home base.",
+          "wordCount": 12
+        },
+        {
+          "translation": "The playroom is ready for speedy feet and hands to gather up the toys. Then it's time for an upstairs adventure to the bedroom.",
+          "wordCount": 24
+        },
+        {
+          "translation": "I wonder if these toys are ready to go back to their spots in the bedroom upstairs.",
+          "wordCount": 17
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Missing the mark on humorous AND fewerwords. A good example might be chaning option2 to \"Wow! Toy mountain could go upstairs.\""
+      }
+    },
+    {
+      "id": "current-27-toys-upstairs-equalizing-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-equalizing-standard",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Equalizing",
+      "useFewerWords": false,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "The toys are on the floor; they can be put away in the room upstairs. I wonder if you remember the best way to get them there.",
+          "wordCount": 27
+        },
+        {
+          "translation": "It is looking like the toys need to go all the way upstairs to your room. I might need a route planner to remember how to get there.",
+          "wordCount": 28
+        },
+        {
+          "translation": "Upstairs is where the toys live in your room. I am not sure if all of these toys belong there, maybe you can be the destination checker.",
+          "wordCount": 27
+        },
+        {
+          "translation": "I see all the toys are on the floor, and their home is your room upstairs. I think it would be helpful to have a room-reset boss for this job.",
+          "wordCount": 30
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Option 4 is the closest good combination - it starts with a declarative statement and incorporates the \"boss\" idea as equalizing. Great! Most of the others do a decent job of equalizing but start off without using declarative statements."
+      }
+    },
+    {
+      "id": "current-28-toys-upstairs-equalizing-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-equalizing-fewer",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Equalizing",
+      "useFewerWords": true,
+      "automatedVerdict": "Pass",
+      "automatedOverallUsefulness": 4,
+      "translations": [
+        {
+          "translation": "The toys are here, and their home is upstairs in your room.",
+          "wordCount": 12
+        },
+        {
+          "translation": "I'm not sure if these toys go upstairs or downstairs. You're the expert on where they live.",
+          "wordCount": 17
+        },
+        {
+          "translation": "It looks like the toys want to go on an adventure to their room upstairs. I wonder what order they like to travel in.",
+          "wordCount": 24
+        },
+        {
+          "translation": "There's a job for the 'room-reset boss' when toys are ready to go back upstairs to their spot.",
+          "wordCount": 18
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These actually are generally pretty good, despite me marking them as failed. These only fail because they do not fit the fewerwords filter. A better version of option2 that hits fewerwords might be \"I'm confused. Do toys go up or downstairs?\""
+      }
+    },
+    {
+      "id": "current-29-toys-upstairs-interest-based-standard",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-interest-based-standard",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 1,
+      "translations": [
+        {
+          "translation": "These Pokemon friends are having a quiet moment, noticing that the toys are out and ready to go upstairs to your room.",
+          "wordCount": 22
+        },
+        {
+          "translation": "The next thing is for the toys to be picked up and find their way to your room upstairs.",
+          "wordCount": 19
+        },
+        {
+          "translation": "I wonder if these Pokemon characters could help us think about gathering the toys to go up to your room for bedtime.",
+          "wordCount": 22
+        },
+        {
+          "translation": "It looks like the toys are waiting to be tidied up and moved to their spot in your room upstairs.",
+          "wordCount": 20
+        }
+      ],
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Option3 works because it integrates the interest into the declarative statement. The others either miss that or integrate the interest in an awkward way."
+      }
+    },
+    {
+      "id": "current-30-toys-upstairs-interest-based-fewer",
+      "source": "latest-eval-current",
+      "originalRunId": "toys-upstairs-interest-based-fewer",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus the upstairs bedroom destination without sounding like a chore command.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": true,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 1,
+      "translations": [
+        {
+          "translation": "These Pokemon friends look like they're ready to go upstairs. It's time for toys to go into the room now.",
+          "wordCount": 20
+        },
+        {
+          "translation": "The upstairs room is waiting for the toys. Let's get these gathered for their journey.",
+          "wordCount": 15
+        },
+        {
+          "translation": "I wonder if these toys want to go upstairs to the room. They can rest there.",
+          "wordCount": 16
+        },
+        {
+          "translation": "The toys are on the floor. The room upstairs is their cozy spot.",
+          "wordCount": 13
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Only option1 has the interest integrated, and it fails because the back part (it's time for toys to go in the room now) is too heavily demand focused and not a declarative statement. The rest fail to integrate the interest AND are not short enough to satisfy the fewerwords filter."
+      }
+    },
+    {
+      "id": "current-31-dinner-hands-interest-missing-standard",
+      "source": "latest-eval-supplemental",
+      "originalRunId": "dinner-hands-interest-missing-standard",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Confirm Interest Based fallback stays grounded when no interest value is provided.",
+      "tone": "Interest Based",
+      "useFewerWords": false,
+      "automatedVerdict": "Fail",
+      "automatedOverallUsefulness": 3,
+      "translations": [
+        {
+          "translation": "Dinner is ready! The kitchen is set, and it looks like a good time to wash hands before we eat.",
+          "wordCount": 20
+        },
+        {
+          "translation": "The table is almost ready for dinner. First, a quick stop at the sink, and then down to the kitchen.",
+          "wordCount": 20
+        },
+        {
+          "translation": "Dinner time is approaching. It seems like the perfect moment to come downstairs and get hands clean.",
+          "wordCount": 17
+        },
+        {
+          "translation": "The dinner aroma is filling the house. Downstairs, a quick hand wash, then time to eat.",
+          "wordCount": 16
+        }
+      ],
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "None of these integrate interests even though it is marked as interest based"
+      }
+    },
+    {
+      "id": "anchor-good-safety-default",
+      "source": "intentional-anchor",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Default",
+      "useFewerWords": false,
+      "translations": [
+        {
+          "translation": "Fast feet have more room outside.",
+          "wordCount": 6
+        },
+        {
+          "translation": "Inside is feeling like a walking-speed place right now.",
+          "wordCount": 9
+        },
+        {
+          "translation": "There is a better running spot once we are outside.",
+          "wordCount": 10
+        },
+        {
+          "translation": "The house works better for slower feet.",
+          "wordCount": 7
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "These all technically do work, but they are all a little abrupt and terse. This is common for short inputs like \"stop running in the house\" but I think we need to find a way to allow the responses to be a little more conversational. This even might be something that needs to be covered in the master prompt."
+      }
+    },
+    {
+      "id": "anchor-weak-safety-caption",
+      "source": "intentional-anchor",
+      "text": "Stop running in the house",
+      "intent": "Reduce unsafe indoor running without turning it into a threat or command.",
+      "tone": "Default",
+      "useFewerWords": true,
+      "translations": [
+        {
+          "translation": "The floor is for walking.",
+          "wordCount": 5
+        },
+        {
+          "translation": "Movement is happening.",
+          "wordCount": 3
+        },
+        {
+          "translation": "The house has floors.",
+          "wordCount": 4
+        },
+        {
+          "translation": "Running exists outside.",
+          "wordCount": 3
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "Options 2, 3, and 4 do not make any sense. Option 1 kind of works, but isn't great. Short options that can work here might be something like \"We have slow feet inside.\" or \""
+      }
+    },
+    {
+      "id": "anchor-good-dinner-sequence",
+      "source": "intentional-anchor",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve coming down, handwashing, and dinner timing.",
+      "tone": "Default",
+      "useFewerWords": false,
+      "translations": [
+        {
+          "translation": "Dinner is ready downstairs, and the sink is the stop before eating.",
+          "wordCount": 12
+        },
+        {
+          "translation": "The table is set; clean hands come before dinner.",
+          "wordCount": 9
+        },
+        {
+          "translation": "Food is ready downstairs after a quick handwash.",
+          "wordCount": 8
+        },
+        {
+          "translation": "The dinner path has two parts: downstairs and hands first.",
+          "wordCount": 10
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "I like option3. Even though it is brief and to the point, it actually is a nice version of declarative language. The others seem too short and don't have a conversational nature to them. That terseness takes away from some of the declarative nature of the responses."
+      }
+    },
+    {
+      "id": "anchor-weak-dinner-sequence-loss",
+      "source": "intentional-anchor",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve coming down, handwashing, and dinner timing.",
+      "tone": "Straightforward",
+      "useFewerWords": true,
+      "translations": [
+        {
+          "translation": "Dinner is ready.",
+          "wordCount": 3
+        },
+        {
+          "translation": "The table is waiting.",
+          "wordCount": 4
+        },
+        {
+          "translation": "Hands are a thing.",
+          "wordCount": 4
+        },
+        {
+          "translation": "Food is downstairs.",
+          "wordCount": 3
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": true,
+        "setVerdict": "Fail",
+        "why": "Even with the FewerWords filter, we need to reflect the full scope of what the input is getting at. This person is trying to communicate that the child needs to wash hands and eat dinner now. Responses like \"food is downstairs\" is generally OK from a declarative standpoint, but doesn't mention washing hands, which is important. \"Hands are a thing\" is bizarre and not even close to helpful. An example that might work with fewerwords ON is \"We could wash hands for dinner.\" It's a softer approach (we could) and mentions both washing hands and dinner without become a demand."
+      }
+    },
+    {
+      "id": "anchor-good-cleanup-destination",
+      "source": "intentional-anchor",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus upstairs room destination.",
+      "tone": "Straightforward",
+      "useFewerWords": false,
+      "translations": [
+        {
+          "translation": "The toys go from here to their upstairs room spot.",
+          "wordCount": 10
+        },
+        {
+          "translation": "Toy pickup has a clear finish: upstairs in your room.",
+          "wordCount": 10
+        },
+        {
+          "translation": "These toys have a home upstairs in your room.",
+          "wordCount": 9
+        },
+        {
+          "translation": "The room upstairs is the landing spot for these toys.",
+          "wordCount": 10
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "1",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "Take inspiration from Option3. It is straightforward and declarative. It does not get \"cute\" which is part of the goal of the straightforward filter. Option1 is close, but just a little awkward."
+      }
+    },
+    {
+      "id": "anchor-weak-cleanup-destination-loss",
+      "source": "intentional-anchor",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus upstairs room destination.",
+      "tone": "Default",
+      "useFewerWords": true,
+      "translations": [
+        {
+          "translation": "The toys are everywhere.",
+          "wordCount": 4
+        },
+        {
+          "translation": "Cleanup is happening.",
+          "wordCount": 3
+        },
+        {
+          "translation": "This room has toys.",
+          "wordCount": 4
+        },
+        {
+          "translation": "The floor is ready.",
+          "wordCount": 4
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "2",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Borderline",
+        "why": "All options neglect mentioning that the toys go upstairs in your room. This can be OK with the fewerwords filter, but we have to be careful. Option1 is actualy really nice - it points out the problem without making a demand. The other 3 are nonsense. I might simply change Option1 to \"The toys are everywhere. Upstairs?\" While this is a broken fragment of a question at the end, that is acceptable for fewerwords, and it gives a direction to the child without actually creating a demand."
+      }
+    },
+    {
+      "id": "anchor-good-equalizing",
+      "source": "intentional-anchor",
+      "text": "Pick up your toys and put them away upstairs in your room",
+      "intent": "Preserve cleanup plus upstairs room destination with status-leveling.",
+      "tone": "Equalizing",
+      "useFewerWords": false,
+      "translations": [
+        {
+          "translation": "I may need the upstairs route expert for where these toys land.",
+          "wordCount": 12
+        },
+        {
+          "translation": "The room-reset boss probably knows which toys head upstairs.",
+          "wordCount": 9
+        },
+        {
+          "translation": "My brain is missing the toy route from here to your room.",
+          "wordCount": 12
+        },
+        {
+          "translation": "This looks like a job for someone who knows the upstairs toy spots.",
+          "wordCount": 13
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": false,
+        "setVerdict": "Pass",
+        "why": "Generally these are good. The ideas are solid, but the outputs are a little awkward or clunky. I suspect this is because the outputs feel limited in their ability to use more natural language because they are trying to match the input length. We can be slightly more conversational, especially when fewerwords is turned off. I don't want this to expand significantly, and so it's a delicate balance, but we should have"
+      }
+    },
+    {
+      "id": "anchor-weak-interest-gimmick",
+      "source": "intentional-anchor",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve dinner sequence while using Pokemon only if natural.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": false,
+      "translations": [
+        {
+          "translation": "Pikachu needs you to wash your hands before the dinner battle begins.",
+          "wordCount": 12
+        },
+        {
+          "translation": "The Pokemon dinner quest requires clean hands and a downstairs journey.",
+          "wordCount": 11
+        },
+        {
+          "translation": "Your Pokemon cards are waiting at the sink before dinner.",
+          "wordCount": 10
+        },
+        {
+          "translation": "A wild dinner appeared, so the trainer must wash hands.",
+          "wordCount": 10
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "3+",
+        "hasExcellentOption": true,
+        "hasHarmfulOption": true,
+        "setVerdict": "Pass",
+        "why": "The harmful option would be Option3 because it makes a promise (pokemon cards are at the sink) that might not be true. I love the integration of pokemon throughout all of them, I just don't want to make promises about specific items being in places that we can't be sure are possible for the parents."
+      }
+    },
+    {
+      "id": "anchor-good-interest-light",
+      "source": "intentional-anchor",
+      "text": "Please come down and wash your hands. It's dinner time.",
+      "intent": "Preserve dinner sequence while using Pokemon only if natural.",
+      "tone": "Interest Based",
+      "interest": "Pokemon",
+      "useFewerWords": false,
+      "translations": [
+        {
+          "translation": "Dinner is ready downstairs, and hands get a quick sink stop first.",
+          "wordCount": 12
+        },
+        {
+          "translation": "The kitchen is ready after handwashing; maybe a Pokemon can keep you company on the way down.",
+          "wordCount": 17
+        },
+        {
+          "translation": "Clean hands before dinner feels like the next part of the route.",
+          "wordCount": 12
+        },
+        {
+          "translation": "Food is ready downstairs, and the sink is the first stop.",
+          "wordCount": 11
+        }
+      ],
+      "automatedVerdict": null,
+      "automatedOverallUsefulness": null,
+      "review": {
+        "bestOptionCount": "0",
+        "hasExcellentOption": false,
+        "hasHarmfulOption": false,
+        "setVerdict": "Fail",
+        "why": "These don't integrate the interests well."
+      }
+    }
+  ]
+}
