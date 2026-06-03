@@ -10,10 +10,11 @@ import { Onboarding } from './components/Onboarding';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { CoffeePage } from './components/CoffeePage';
+import { ChangelogPage } from './components/ChangelogPage';
 import { clearHistoryEntries, loadHistoryEntries, saveHistoryEntries, upsertHistoryEntry } from './services/historyStorage';
 import type { HistoryEntryInput, HistoryItem } from './types';
 
-export type View = 'translator' | 'learn' | 'other-tools' | 'coffee';
+export type View = 'translator' | 'learn' | 'other-tools' | 'coffee' | 'changelog';
 
 const App: React.FC = () => {
   const { currentView, navigate: setCurrentView } = useHashRouter();
@@ -85,6 +86,7 @@ const App: React.FC = () => {
         {currentView === 'translator' && <Translator history={history} onHistorySave={handleHistorySave} onClearHistory={handleClearHistory} />}
         {currentView === 'learn' && <LearningHub onNavigate={setCurrentView} />}
         {currentView === 'other-tools' && <OtherTools />}
+        {currentView === 'changelog' && <ChangelogPage />}
         {currentView === 'coffee' && (
           <CoffeePage
             onShowPrivacy={() => setShowPrivacyPolicy(true)}

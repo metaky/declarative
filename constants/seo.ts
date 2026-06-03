@@ -29,6 +29,11 @@ export const SEO_METADATA: SEOConfig = {
     description: "Support the ongoing development of declarative language tools and resources for the PDA and neurodiverse community.",
     keywords: `${BASE_KEYWORDS}, donate to autism tools`,
   },
+  changelog: {
+    title: "Changelog | Declarative Language Tool",
+    description: "Follow recent updates to the Declarative Language Tool, including translation quality improvements, new support options, and community-focused releases.",
+    keywords: `${BASE_KEYWORDS}, changelog, product updates`,
+  },
   privacy: {
     title: "Privacy Policy | Declarative Language Tool",
     description: "Privacy policy for the Declarative Language Tool.",

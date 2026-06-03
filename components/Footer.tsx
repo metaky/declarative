@@ -31,6 +31,10 @@ export const Footer: React.FC<FooterProps> = ({ onShowPrivacy, onShowTerms, onNa
                 Support & Donate
             </button>
             <span className="hidden sm:inline text-gray-400">|</span>
+            <button onClick={() => onNavigate('changelog')} className="underline hover:text-gray-700 transition-colors">
+                Changelog
+            </button>
+            <span className="hidden sm:inline text-gray-400">|</span>
             <button onClick={onShowTerms} className="underline hover:text-gray-700 transition-colors">
                 Terms of Service
             </button>

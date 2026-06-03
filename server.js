@@ -39,6 +39,9 @@ const redis = redisUrl && redisToken ? new Redis({
 }) : null;
 const isMockTranslationMode = process.env.NODE_ENV !== 'production' && process.env.DEV_USE_MOCK_TRANSLATIONS === 'true';
 const isDevChallengeBypassEnabled = process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_CHALLENGE === 'true';
+const TRANSLATIONS_MADE_KEY = 'declarative:stats:translations_made';
+const TRANSLATIONS_MADE_SEED = 2011;
+const TRANSLATIONS_MADE_TRACKING_STARTED = '2026-05-04';
 
 // --- Server-Side Rate Limiting ---
 const CHALLENGE_RATE_LIMIT_WINDOW_MS = 60000;
@@ -116,6 +119,36 @@ function logGeminiUsageMetadata({
     }));
 }
 
+async function getTranslationsMadeCount() {
+    if (!redis) return null;
+
+    try {
+        let count = await redis.get(TRANSLATIONS_MADE_KEY);
+        if (count === null || count === undefined) {
+            await redis.set(TRANSLATIONS_MADE_KEY, TRANSLATIONS_MADE_SEED, { nx: true });
+            count = await redis.get(TRANSLATIONS_MADE_KEY);
+        }
+
+        const numericCount = Number(count);
+        return Number.isFinite(numericCount) ? numericCount : null;
+    } catch (error) {
+        console.warn('Translation stats read failed:', error);
+        return null;
+    }
+}
+
+async function incrementTranslationsMadeCount() {
+    if (!redis || isDevChallengeBypassEnabled || isMockTranslationMode) return null;
+
+    try {
+        await getTranslationsMadeCount();
+        return await redis.incr(TRANSLATIONS_MADE_KEY);
+    } catch (error) {
+        console.warn('Translation stats increment failed:', error);
+        return null;
+    }
+}
+
 function checkRateLimit(log, key, maxRequests, windowMs) {
     const now = Date.now();
     const timestamps = log.get(key) || [];
@@ -191,6 +224,15 @@ app.get('/api/challenge', async (req, res) => {
         console.error("Failed to generate challenge token:", error);
         return res.status(500).json({ error: "Internal Server Error" });
     }
+});
+
+app.get('/api/stats', async (req, res) => {
+    const translationsMade = await getTranslationsMadeCount();
+    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    return res.json({
+        translationsMade,
+        translationsMadeTrackingStarted: TRANSLATIONS_MADE_TRACKING_STARTED,
+    });
 });
 
 function normalizeText(text) {
@@ -809,6 +851,9 @@ app.post('/api/translate', async (req, res) => {
             durationMs: Date.now() - requestStartedAt,
             usageMetadata: response.usageMetadata,
         });
+        if (mode === 'translate') {
+            await incrementTranslationsMadeCount();
+        }
         return res.json(normalizedTranslations);
     } catch (error) {
         console.error('Gemini API Error:', error);
