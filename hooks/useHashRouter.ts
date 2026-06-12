@@ -7,6 +7,7 @@ const HASH_TO_VIEW: Record<string, View> = {
     '#/other-tools': 'other-tools',
     '#/coffee': 'coffee',
     '#/coffee/donate': 'coffee',
+    '#/changelog': 'changelog',
 };
 
 const VIEW_TO_HASH: Record<View, string> = {
@@ -14,19 +15,35 @@ const VIEW_TO_HASH: Record<View, string> = {
     'learn': '#/learn',
     'other-tools': '#/other-tools',
     'coffee': '#/coffee',
+    'changelog': '#/changelog',
 };
 
-function getViewFromHash(): View {
-    const hash = window.location.hash || '#/';
-    return HASH_TO_VIEW[hash] || 'translator';
+const PATH_TO_VIEW: Record<string, View> = {
+    '/': 'translator',
+    '/learn': 'learn',
+    '/other-tools': 'other-tools',
+    '/coffee': 'coffee',
+    '/coffee/donate': 'coffee',
+    '/changelog': 'changelog',
+};
+
+function getNormalizedPath(): string {
+    return window.location.pathname.replace(/\/+$/, '') || '/';
+}
+
+function getViewFromLocation(): View {
+    const hash = window.location.hash;
+    if (HASH_TO_VIEW[hash]) return HASH_TO_VIEW[hash];
+
+    return PATH_TO_VIEW[getNormalizedPath()] || 'translator';
 }
 
 export function useHashRouter() {
-    const [currentView, setCurrentView] = useState<View>(getViewFromHash);
+    const [currentView, setCurrentView] = useState<View>(getViewFromLocation);
 
     useEffect(() => {
         const handleHashChange = () => {
-            setCurrentView(getViewFromHash());
+            setCurrentView(getViewFromLocation());
         };
 
         window.addEventListener('hashchange', handleHashChange);
@@ -44,7 +61,7 @@ export function useHashRouter() {
 
     // Set initial hash if none exists
     useEffect(() => {
-        if (!window.location.hash) {
+        if (!window.location.hash && !PATH_TO_VIEW[getNormalizedPath()]) {
             window.location.hash = '#/';
         }
     }, []);

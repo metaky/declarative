@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { View } from '../App';
-import { CoffeeIcon, ShareIcon, CheckIcon } from './icons/Icons';
+import { CoffeeIcon, ShareIcon, CheckIcon, CloseIcon, MenuIcon } from './icons/Icons';
 
 interface HeaderProps {
   currentView: View;
@@ -26,8 +26,38 @@ const NavLink: React.FC<{
   );
 };
 
+const MobileMenuLink: React.FC<{
+  label: string;
+  isActive?: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
+}> = ({ label, isActive = false, onClick, icon }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex min-h-12 w-full items-center justify-between rounded-lg px-4 py-3 text-left text-base font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+        isActive
+          ? 'bg-sky-50 text-sky-700'
+          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-950'
+      }`}
+    >
+      <span>{label}</span>
+      {icon && <span className="text-current opacity-80">{icon}</span>}
+    </button>
+  );
+};
+
 export const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
   const [hasCopied, setHasCopied] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [currentView]);
+
+  const navigateTo = (view: View) => {
+    setCurrentView(view);
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -52,25 +82,26 @@ export const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) =
         console.error('Failed to copy', err);
       }
     }
+    setIsMobileMenuOpen(false);
   };
 
   return (
-    <header className="bg-white/80 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm w-full overflow-hidden">
+    <header className="bg-white/80 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm w-full">
       <div className="container mx-auto px-4 py-3 md:py-4 max-w-4xl">
         {/* Top Branding Row */}
-        <div className="flex justify-between items-center w-full mb-1">
+        <div className="flex justify-between items-center w-full md:mb-1">
           <div 
             className="flex items-center space-x-2 md:space-x-3 cursor-pointer group" 
-            onClick={() => setCurrentView('translator')}
+            onClick={() => navigateTo('translator')}
           >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 md:h-9 md:w-9 text-sky-600 group-hover:text-sky-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
               <h1 className="text-xl md:text-3xl font-extrabold text-gray-900 tracking-tight group-hover:text-gray-700 transition-colors">Declarative</h1>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <button
                 onClick={handleShare}
-                className={`flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 border ${
+                className={`flex items-center justify-center space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 border ${
                     hasCopied 
                     ? 'bg-green-50 text-green-700 border-green-200' 
                     : 'bg-sky-50/50 text-sky-700/70 hover:bg-sky-100 hover:text-sky-800 border-sky-100'
@@ -81,8 +112,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) =
             </button>
 
             <button
-                onClick={() => setCurrentView('coffee')}
-                className={`flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 ${
+                onClick={() => navigateTo('coffee')}
+                className={`flex items-center justify-center space-x-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 ${
                     currentView === 'coffee'
                     ? 'bg-amber-100 text-amber-700 shadow-sm ring-1 ring-amber-300'
                     : 'bg-amber-50/50 text-amber-700/70 hover:bg-amber-100 hover:text-amber-800 border border-amber-100'
@@ -92,26 +123,86 @@ export const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) =
                 <span className="text-xs md:text-sm font-bold">Support</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen((isOpen) => !isOpen)}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-navigation"
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            className="md:hidden flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+          >
+            {isMobileMenuOpen ? <CloseIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+          </button>
         </div>
 
         {/* Navigation Sub-header */}
-        <nav className="flex justify-center items-center space-x-1 md:space-x-4 overflow-x-auto no-scrollbar pt-2">
+        <nav className="hidden md:flex justify-center items-center space-x-1 md:space-x-4 overflow-x-auto no-scrollbar pt-2">
             <NavLink
                 label="Translator"
                 isActive={currentView === 'translator'}
-                onClick={() => setCurrentView('translator')}
+                onClick={() => navigateTo('translator')}
             />
             <NavLink
                 label="Learn"
                 isActive={currentView === 'learn'}
-                onClick={() => setCurrentView('learn')}
+                onClick={() => navigateTo('learn')}
+            />
+            <NavLink
+                label="Changelog"
+                isActive={currentView === 'changelog'}
+                onClick={() => navigateTo('changelog')}
             />
             <NavLink
                 label="Other Tools"
                 isActive={currentView === 'other-tools'}
-                onClick={() => setCurrentView('other-tools')}
+                onClick={() => navigateTo('other-tools')}
             />
         </nav>
+
+        {isMobileMenuOpen && (
+          <nav
+            id="mobile-navigation"
+            className="md:hidden pt-3 pb-1 animate-fade-in"
+            aria-label="Mobile navigation"
+          >
+            <div className="grid gap-1 border-t border-gray-200 pt-3">
+              <MobileMenuLink
+                label="Translator"
+                isActive={currentView === 'translator'}
+                onClick={() => navigateTo('translator')}
+              />
+              <MobileMenuLink
+                label="Learn"
+                isActive={currentView === 'learn'}
+                onClick={() => navigateTo('learn')}
+              />
+              <MobileMenuLink
+                label="Changelog"
+                isActive={currentView === 'changelog'}
+                onClick={() => navigateTo('changelog')}
+              />
+              <MobileMenuLink
+                label="Other Tools"
+                isActive={currentView === 'other-tools'}
+                onClick={() => navigateTo('other-tools')}
+              />
+            </div>
+            <div className="mt-3 grid gap-1 border-t border-gray-200 pt-3">
+              <MobileMenuLink
+                label={hasCopied ? 'Link Copied!' : 'Share'}
+                onClick={handleShare}
+                icon={hasCopied ? <CheckIcon className="h-5 w-5" /> : <ShareIcon className="h-5 w-5" />}
+              />
+              <MobileMenuLink
+                label="Support"
+                isActive={currentView === 'coffee'}
+                onClick={() => navigateTo('coffee')}
+                icon={<CoffeeIcon className="h-5 w-5" />}
+              />
+            </div>
+          </nav>
+        )}
       </div>
     </header>
   );
