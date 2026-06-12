@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Local/generated QA artifacts
+.playwright-cli/
+output/
+
+# Generated eval run artifacts. Commit curated reports intentionally with git add -f.
+evals/results/*-[0-9][0-9][0-9][0-9]-*.json
+evals/results/*-[0-9][0-9][0-9][0-9]-*.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
