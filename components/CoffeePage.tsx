@@ -20,7 +20,14 @@ type OneTimeOption = keyof typeof SUPPORT_LINKS.oneTime;
 
 export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTerms }) => {
   const [selectedOption, setSelectedOption] = useState<OneTimeOption | null>(null);
+  const [showAmountPrompt, setShowAmountPrompt] = useState(false);
   const isLoading = false;
+
+  const selectedOptionLabel: Record<OneTimeOption, string> = {
+    small: '$3',
+    large: '$8',
+    custom: 'Custom',
+  };
 
   useEffect(() => {
     if (window.location.hash !== '#/coffee/donate') return;
@@ -37,8 +44,16 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
     window.open(link, '_blank', 'noopener,noreferrer');
   };
 
+  const handleOneTimeOptionClick = (option: OneTimeOption) => {
+    setSelectedOption(option);
+    setShowAmountPrompt(false);
+  };
+
   const handleOneTimeSupportClick = () => {
-    if (!selectedOption) return;
+    if (!selectedOption) {
+      setShowAmountPrompt(true);
+      return;
+    }
 
     const link = SUPPORT_LINKS.oneTime[selectedOption];
     if (link) {
@@ -53,6 +68,12 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
   const handleManageMonthlyClick = () => {
     openExternalLink(SUPPORT_LINKS.manageMonthly);
   };
+
+  const oneTimeCtaLabel = selectedOption
+    ? selectedOption === 'custom'
+      ? 'Choose Custom Amount'
+      : `Give ${selectedOptionLabel[selectedOption]} Once`
+    : 'Choose an amount to give once';
 
   return (
     <div className="flex flex-col items-center w-full space-y-10 animate-fade-in pb-10">
@@ -117,13 +138,18 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                         <CoffeeIcon className="w-10 h-10 text-amber-600" />
                      </div>
                      <h3 className="text-2xl font-bold text-gray-900">Buy me a coffee</h3>
-                     <p className="text-amber-800 mt-2">Choose a one-time gift, or support the project monthly.</p>
+                     <p className="text-amber-800 mt-2">A one-time gift helps keep this project free.</p>
                 </div>
 
                 <div className="space-y-5 max-w-md mx-auto w-full">
+                    <div className="space-y-2 text-center">
+                        <p className="text-sm font-bold uppercase tracking-wide text-amber-900">One-time gift</p>
+                        <p className="text-sm text-gray-600">Pick the amount that feels right. No subscription.</p>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-3">
                         <button
-                            onClick={() => setSelectedOption('small')}
+                            onClick={() => handleOneTimeOptionClick('small')}
                             disabled={isLoading}
                             className={`py-3 px-2 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center bg-white ${
                                 selectedOption === 'small'
@@ -136,7 +162,7 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                         </button>
 
                         <button
-                            onClick={() => setSelectedOption('large')}
+                            onClick={() => handleOneTimeOptionClick('large')}
                             disabled={isLoading}
                             className={`py-3 px-2 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center bg-white ${
                                 selectedOption === 'large'
@@ -149,7 +175,7 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
                         </button>
 
                         <button
-                            onClick={() => setSelectedOption('custom')}
+                            onClick={() => handleOneTimeOptionClick('custom')}
                             disabled={isLoading}
                             className={`py-3 px-2 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center bg-white ${
                                 selectedOption === 'custom'
@@ -164,37 +190,37 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
 
                     <button
                         onClick={handleOneTimeSupportClick}
-                        disabled={isLoading || !selectedOption}
-                        className="w-full py-4 bg-gray-900 text-white text-lg font-bold rounded-2xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-gray-900/30 shadow-lg flex justify-center items-center"
+                        disabled={isLoading}
+                        className="w-full py-4 bg-amber-700 text-white text-lg font-bold rounded-2xl hover:bg-amber-800 disabled:bg-amber-300 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-amber-700/30 shadow-lg shadow-amber-200/70 flex justify-center items-center"
                     >
-                        Support Once
+                        {oneTimeCtaLabel}
                     </button>
 
-                    <div className="pt-5 border-t border-amber-200/80 space-y-3">
-                        <div className="text-center space-y-1">
-                            <p className="text-sm font-semibold text-sky-900">Prefer ongoing support?</p>
-                            <p className="text-xs text-gray-600">Monthly support renews each month until you cancel in Stripe and helps cover recurring hosting and AI costs.</p>
+                    {showAmountPrompt && (
+                        <p className="text-center text-sm font-medium text-amber-900" role="status">
+                            Choose $3, $8, or Custom first.
+                        </p>
+                    )}
+
+                    <div className="pt-5 border-t border-amber-200/80">
+                        <div className="rounded-2xl border border-sky-100 bg-white/70 p-4 space-y-3">
+                            <div className="text-center space-y-1">
+                                <p className="text-sm font-semibold text-sky-900">Make it monthly instead</p>
+                                <p className="text-xs text-gray-600">Optional $5/month support helps cover recurring hosting and AI costs. Cancel anytime in Stripe.</p>
+                            </div>
+
+                            <button
+                                onClick={handleMonthlySupportClick}
+                                disabled={isLoading}
+                                className="w-full py-3 bg-white text-sky-700 text-sm font-bold rounded-xl border border-sky-200 hover:bg-sky-50 disabled:text-sky-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-sky-700/15"
+                            >
+                                Give $5 monthly
+                            </button>
                         </div>
-
-                        <button
-                            onClick={handleMonthlySupportClick}
-                            disabled={isLoading}
-                            className="w-full py-4 bg-sky-700 text-white text-lg font-bold rounded-2xl hover:bg-sky-800 disabled:bg-sky-300 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-sky-700/25 shadow-lg shadow-sky-200/50 flex justify-center items-center"
-                        >
-                            Support $5/Month
-                        </button>
-
-                        <button
-                            onClick={handleManageMonthlyClick}
-                            disabled={isLoading}
-                            className="w-full py-3 bg-white text-sky-700 text-sm font-semibold rounded-2xl border border-sky-200 hover:bg-sky-50 disabled:text-sky-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-sky-700/15"
-                        >
-                            Manage Monthly Support
-                        </button>
                     </div>
 
                      <p className="text-center text-xs text-amber-800/70 font-medium px-4 leading-relaxed">
-                         One-time gifts are charged once. Monthly support renews until canceled in Stripe. By donating, you agree to our <button onClick={onShowTerms} className="underline hover:text-amber-900">Terms of Service</button> and <button onClick={onShowPrivacy} className="underline hover:text-amber-900">Privacy Policy</button>. Secure payment processing via Stripe.
+                         One-time gifts are charged once. Monthly support renews until canceled in Stripe. Monthly supporters can <button onClick={handleManageMonthlyClick} className="underline hover:text-amber-900">manage or cancel monthly support</button> through Stripe. By donating, you agree to our <button onClick={onShowTerms} className="underline hover:text-amber-900">Terms of Service</button> and <button onClick={onShowPrivacy} className="underline hover:text-amber-900">Privacy Policy</button>. Secure payment processing via Stripe.
                      </p>
                 </div>
              </div>
