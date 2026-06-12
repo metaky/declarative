@@ -73,7 +73,7 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
     ? selectedOption === 'custom'
       ? 'Choose Custom Amount'
       : `Give ${selectedOptionLabel[selectedOption]} Once`
-    : 'Choose an amount to give once';
+    : 'Choose an amount to give';
 
   return (
     <div className="flex flex-col items-center w-full space-y-10 animate-fade-in pb-10">
