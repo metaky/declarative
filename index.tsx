@@ -8,7 +8,7 @@ import posthog from 'posthog-js';
 // Initialize PostHog for analytics safely
 try {
   posthog.init('phc_pvFdBKNfNPtBnedh7BuUFSNW2hYqbjb2N6kWgRdagOg', {
-    api_host: 'https://app.posthog.com',
+    api_host: 'https://us.i.posthog.com',
     autocapture: true, // Enable autocapture as requested
   });
 } catch (error) {

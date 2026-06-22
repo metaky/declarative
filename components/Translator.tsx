@@ -118,6 +118,9 @@ const VARIATION_LABELS: Record<VariationKind, string> = {
   more_playful: 'More playful',
 };
 
+const VARIATION_TOGGLE_TELEMETRY_WINDOW_MS = 120000;
+const VARIATION_TOGGLE_TELEMETRY_THRESHOLD = 30;
+
 const VARIATION_ORDER_DEFAULT: VariationKind[] = ['shorter', 'warmer', 'more_straightforward', 'more_playful'];
 const VARIATION_ORDER_FEWER_WORDS: VariationKind[] = ['longer', 'warmer', 'more_straightforward', 'more_playful'];
 
@@ -184,6 +187,7 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
         <button
           type="button"
           onClick={onToggleOpen}
+          data-ph-no-autocapture
           aria-expanded={isOpen}
           aria-controls={variationPanelId}
           className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 ${isOpen ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
@@ -330,6 +334,10 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     requestId: 0,
     sourceId: null,
     variationKind: null,
+  });
+  const variationToggleTelemetryRef = useRef({
+    timestamps: [] as number[],
+    lastReportedAt: 0,
   });
 
   useEffect(() => {
@@ -618,6 +626,27 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   };
 
   const handleToggleVariationPanel = useCallback((sourceId: string) => {
+    const now = Date.now();
+    const recentToggleTimestamps = [
+      ...variationToggleTelemetryRef.current.timestamps.filter(
+        (timestamp) => now - timestamp < VARIATION_TOGGLE_TELEMETRY_WINDOW_MS
+      ),
+      now,
+    ];
+    variationToggleTelemetryRef.current.timestamps = recentToggleTimestamps;
+
+    if (
+      recentToggleTimestamps.length === VARIATION_TOGGLE_TELEMETRY_THRESHOLD &&
+      now - variationToggleTelemetryRef.current.lastReportedAt > VARIATION_TOGGLE_TELEMETRY_WINDOW_MS
+    ) {
+      trackEvent('variation_panel_toggle_burst', {
+        toggle_count: recentToggleTimestamps.length,
+        window_ms: VARIATION_TOGGLE_TELEMETRY_WINDOW_MS,
+        source_translation_id: sourceId,
+      });
+      variationToggleTelemetryRef.current.lastReportedAt = now;
+    }
+
     setError(null);
     setOpenVariationSourceId((current) => {
       if (current === sourceId) {
