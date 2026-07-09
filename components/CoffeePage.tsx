@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CoffeeIcon, HeartIcon, ShieldIcon } from './icons/Icons';
+import { GiftIcon, HeartIcon, ShieldIcon } from './icons/Icons';
 
 const SUPPORT_LINKS = {
   oneTime: {
@@ -135,18 +135,13 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
              <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-8 rounded-3xl border border-amber-100 shadow-lg flex-grow flex flex-col justify-center">
                 <div className="text-center mb-8">
                      <div className="inline-block p-4 bg-white rounded-full shadow-sm mb-4">
-                        <CoffeeIcon className="w-10 h-10 text-amber-600" />
+                        <GiftIcon className="w-10 h-10 text-amber-600" />
                      </div>
-                     <h3 className="text-2xl font-bold text-gray-900">Buy me a coffee</h3>
+                     <h3 className="text-2xl font-bold text-gray-900">Make a donation</h3>
                      <p className="text-amber-800 mt-2">A one-time gift helps keep this project free.</p>
                 </div>
 
                 <div className="space-y-5 max-w-md mx-auto w-full">
-                    <div className="space-y-2 text-center">
-                        <p className="text-sm font-bold uppercase tracking-wide text-amber-900">One-time gift</p>
-                        <p className="text-sm text-gray-600">Pick the amount that feels right. No subscription.</p>
-                    </div>
-
                     <div className="grid grid-cols-3 gap-3">
                         <button
                             onClick={() => handleOneTimeOptionClick('small')}
