@@ -15,6 +15,8 @@ dist-ssr
 # Local/generated QA artifacts
 .playwright-cli/
 output/
+.worktrees/
+.superpowers/
 
 # Generated eval run artifacts. Commit curated reports intentionally with git add -f.
 evals/results/*-[0-9][0-9][0-9][0-9]-*.json
