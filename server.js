@@ -12,6 +12,7 @@ import {
     raceGeminiRequestWithTimeout,
     validateGeminiResponse,
 } from './services/geminiResponse.js';
+import { getGeminiFinishReason, logGeminiCompletionEvent } from './services/geminiObservability.js';
 import { buildTranslationPrompt, buildVariationPrompt, systemInstruction } from './services/translationPrompt.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -72,70 +73,6 @@ function logRateLimitHit(endpoint, waitSeconds, details = {}) {
         endpoint,
         wait_seconds: waitSeconds,
         ...details,
-        timestamp: new Date().toISOString(),
-    }));
-}
-
-function logGeminiUsageMetadata({
-    model,
-    mode,
-    variationKind,
-    tone,
-    useFewerWords,
-    existingTranslationsCount,
-    textLength,
-    durationMs,
-    usageMetadata,
-}) {
-    if (!usageMetadata) {
-        console.info(JSON.stringify({
-            event: 'gemini_usage_metadata',
-            source: 'server',
-            model,
-            mode,
-            variation_kind: variationKind ?? null,
-            tone: tone || 'Default',
-            use_fewer_words: Boolean(useFewerWords),
-            existing_translations_count: existingTranslationsCount,
-            text_length: textLength,
-            duration_ms: durationMs,
-            usage_metadata_available: false,
-            timestamp: new Date().toISOString(),
-        }));
-        return;
-    }
-
-    console.info(JSON.stringify({
-        event: 'gemini_usage_metadata',
-        source: 'server',
-        model,
-        mode,
-        variation_kind: variationKind ?? null,
-        tone: tone || 'Default',
-        use_fewer_words: Boolean(useFewerWords),
-        existing_translations_count: existingTranslationsCount,
-        text_length: textLength,
-        duration_ms: durationMs,
-        usage_metadata_available: true,
-        prompt_token_count: usageMetadata.promptTokenCount ?? null,
-        candidates_token_count: usageMetadata.candidatesTokenCount ?? null,
-        thoughts_token_count: usageMetadata.thoughtsTokenCount ?? null,
-        total_token_count: usageMetadata.totalTokenCount ?? null,
-        cached_content_token_count: usageMetadata.cachedContentTokenCount ?? null,
-        cache_tokens_details: usageMetadata.cacheTokensDetails ?? null,
-        prompt_tokens_details: usageMetadata.promptTokensDetails ?? null,
-        candidates_tokens_details: usageMetadata.candidatesTokensDetails ?? null,
-        timestamp: new Date().toISOString(),
-    }));
-}
-
-function logGeminiResponseFailure({ code, mode, variationKind }) {
-    console.warn(JSON.stringify({
-        event: 'gemini_response_failure',
-        source: 'server',
-        code,
-        mode,
-        variation_kind: variationKind ?? null,
         timestamp: new Date().toISOString(),
     }));
 }
@@ -761,7 +698,6 @@ app.post('/api/translate', async (req, res) => {
     }
 
     if (!apiKey) {
-        logGeminiResponseFailure({ code: 'api_error', mode, variationKind });
         return res.status(500).json({ error: 'AI translation unavailable.' });
     }
 
@@ -782,9 +718,10 @@ app.post('/api/translate', async (req, res) => {
             useFewerWords,
         });
 
+    let requestStartedAt = null;
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const requestStartedAt = Date.now();
+        requestStartedAt = Date.now();
 
         const apiPromise = ai.models.generateContent({
             model: geminiModelConfig.model,
@@ -807,6 +744,8 @@ app.post('/api/translate', async (req, res) => {
         });
 
         const response = await raceGeminiRequestWithTimeout(apiPromise, { timeoutMs: 30000 });
+        const durationMs = Date.now() - requestStartedAt;
+        const finishReason = getGeminiFinishReason(response);
         const blocked = isGeminiResponseBlocked(response);
         const validation = validateGeminiResponse({
             responseText: blocked ? '' : response.text,
@@ -816,29 +755,49 @@ app.post('/api/translate', async (req, res) => {
             blocked,
         });
         if (!validation.ok) {
-            logGeminiResponseFailure({ code: validation.code, mode, variationKind });
+            logGeminiCompletionEvent({
+                outcome: validation.code,
+                revision: process.env.K_REVISION,
+                config: geminiModelConfig,
+                mode,
+                variationKind,
+                durationMs,
+                usageMetadata: response.usageMetadata,
+                suggestionCount: 0,
+                finishReason,
+            });
             return res.status(500).json({ error: 'AI translation unavailable.' });
         }
-        logGeminiUsageMetadata({
-            model: geminiModelConfig.model,
+        logGeminiCompletionEvent({
+            outcome: validation.code,
+            revision: process.env.K_REVISION,
+            config: geminiModelConfig,
             mode,
             variationKind,
-            tone,
-            useFewerWords,
-            existingTranslationsCount: existingTranslations.length,
-            textLength: text.length,
-            durationMs: Date.now() - requestStartedAt,
+            durationMs,
             usageMetadata: response.usageMetadata,
+            suggestionCount: validation.suggestions.length,
+            finishReason,
         });
         return res.json(validation.suggestions);
     } catch (error) {
-        logGeminiResponseFailure({
-            code: classifyGeminiFailure(error),
-            mode,
-            variationKind,
-        });
+        if (requestStartedAt !== null) {
+            logGeminiCompletionEvent({
+                outcome: classifyGeminiFailure(error),
+                revision: process.env.K_REVISION,
+                config: geminiModelConfig,
+                mode,
+                variationKind,
+                durationMs: Date.now() - requestStartedAt,
+                suggestionCount: 0,
+            });
+        }
         return res.status(500).json({ error: 'AI translation unavailable.' });
     }
+});
+
+app.get('/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok', configuration: 'ready' });
 });
 
 // --- Static File Serving ---
