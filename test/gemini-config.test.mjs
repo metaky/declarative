@@ -112,6 +112,18 @@ test('stops the production server before it binds when GEMINI_MODEL_CONFIG is un
   assert.match(result.output, /GEMINI_MODEL_CONFIG.*unknown/i, 'server did not explain the production configuration error');
 });
 
+test('stops the production server before it binds when GEMINI_MODEL_CONFIG is absent', async () => {
+  const result = await startServerWithEnvironment({
+    NODE_ENV: 'production',
+    GEMINI_MODEL_CONFIG: undefined,
+  });
+
+  assert.equal(result.timedOut, false, 'server kept running instead of rejecting the missing production configuration');
+  assert.notEqual(result.exitCode, 0, 'server reported a successful startup with a missing production configuration');
+  assert.doesNotMatch(result.output, /Server listening on port/, 'server bound a port before rejecting the missing production configuration');
+  assert.match(result.output, /GEMINI_MODEL_CONFIG.*required.*production/i, 'server did not explain the missing production configuration error');
+});
+
 test('charges visible output and thought tokens once at the output rate without using totalTokenCount', () => {
   const configuration = getGeminiModelConfig('gemini-3.6-flash-medium');
   const cost = estimateGeminiCostUsd(configuration, {

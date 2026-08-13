@@ -23,6 +23,15 @@ const resultsDir = path.join(repoRoot, 'evals', 'results');
 
 const MODEL_CANDIDATES = listEvaluationConfigurations();
 
+function normalizeBakeoffPayloadForCurrentRegistry(payload) {
+  const currentIds = new Set(MODEL_CANDIDATES.map((candidate) => candidate.id));
+  return {
+    ...payload,
+    candidates: MODEL_CANDIDATES,
+    results: (payload.results ?? []).filter((result) => currentIds.has(result.candidateId)),
+  };
+}
+
 function loadEnv() {
   if (!fs.existsSync(envPath)) return;
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
@@ -71,13 +80,6 @@ function getSelectedCandidates() {
     throw new Error(`Unknown model candidate(s): ${missing.join(', ')}`);
   }
   return selected;
-}
-
-function refreshCandidateMetadata(candidates = []) {
-  return candidates.map((candidate) => {
-    const current = MODEL_CANDIDATES.find((item) => item.id === candidate.id || item.model === candidate.model);
-    return current ? { ...candidate, ...current } : candidate;
-  });
 }
 
 function loadCases(limit) {
@@ -252,7 +254,7 @@ function formatVerdicts(counts) {
   return `Pass ${counts.Pass ?? 0}, Borderline ${counts.Borderline ?? 0}, Fail ${counts.Fail ?? 0}`;
 }
 
-function renderMarkdown(payload) {
+function renderBakeoffMarkdown(payload) {
   const lines = [];
   lines.push('# Gemini Model Bakeoff');
   lines.push('');
@@ -276,16 +278,17 @@ function renderMarkdown(payload) {
   lines.push('');
   lines.push('## Summary');
   lines.push('');
-  lines.push('| Candidate | Runs | Aggregate Runs | Excluded | Errors | Avg Latency ms | Prompt Tokens | Output Tokens | Estimated USD | Postprocessed Verdicts | Avg Usable | Avg Excellent | Should-Not-Show |');
-  lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|');
+  lines.push('| Candidate | Runs | Aggregate Runs | Excluded | Errors | Avg Latency ms | Prompt Tokens | Visible Candidate Tokens | Thought Tokens | Billed Output Tokens (Candidates + Thoughts) | Estimated USD | Postprocessed Verdicts | Avg Usable | Avg Excellent | Should-Not-Show |');
+  lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|');
   for (const summary of payload.summary) {
-    lines.push(`| ${summary.candidateId} | ${summary.runs} | ${summary.aggregateRuns ?? summary.runs} | ${summary.excludedFromAggregate ?? 0} | ${summary.errors ?? 0} | ${summary.avgLatencyMs} | ${summary.promptTokens} | ${summary.outputTokens} | ${summary.estimatedUsd} | ${summary.postprocessedVerdicts ?? 'not scored'} | ${summary.avgUsableOptions ?? 'n/a'} | ${summary.avgExcellentOptions ?? 'n/a'} | ${summary.shouldNotShowOptions ?? 'n/a'} |`);
+    lines.push(`| ${summary.candidateId} | ${summary.runs} | ${summary.aggregateRuns ?? summary.runs} | ${summary.excludedFromAggregate ?? 0} | ${summary.errors ?? 0} | ${summary.avgLatencyMs} | ${summary.promptTokens} | ${summary.candidateOutputTokens} | ${summary.thoughtTokens} | ${summary.billedOutputTokens} | ${summary.estimatedUsd} | ${summary.postprocessedVerdicts ?? 'not scored'} | ${summary.avgUsableOptions ?? 'n/a'} | ${summary.avgExcellentOptions ?? 'n/a'} | ${summary.shouldNotShowOptions ?? 'n/a'} |`);
   }
   if (payload.qualityScored) {
     const evaluatorPromptTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.promptTokenCount ?? 0), 0);
-    const evaluatorOutputTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.candidatesTokenCount ?? 0), 0);
+    const evaluatorCandidateOutputTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.candidatesTokenCount ?? 0), 0);
+    const evaluatorThoughtTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.thoughtsTokenCount ?? 0), 0);
     lines.push('');
-    lines.push(`Evaluator token use: prompt ${evaluatorPromptTokens}, output ${evaluatorOutputTokens}. This is eval-only cost, not production translation cost.`);
+    lines.push(`Evaluator token use: prompt ${evaluatorPromptTokens}, visible candidates ${evaluatorCandidateOutputTokens}, thoughts ${evaluatorThoughtTokens}, billed output (candidates + thoughts) ${evaluatorCandidateOutputTokens + evaluatorThoughtTokens}. This is eval-only cost, not production translation cost.`);
   }
   lines.push('');
   lines.push('## Outputs');
@@ -294,6 +297,9 @@ function renderMarkdown(payload) {
     lines.push(`### ${result.candidateId} / ${result.caseId}`);
     lines.push('');
     lines.push(`- Latency: ${result.durationMs} ms`);
+    const candidateOutputTokens = result.usageMetadata?.candidatesTokenCount ?? 0;
+    const thoughtTokens = result.usageMetadata?.thoughtsTokenCount ?? 0;
+    lines.push(`- Tokens: prompt ${result.usageMetadata?.promptTokenCount ?? 0}; visible candidates ${candidateOutputTokens}; thoughts ${thoughtTokens}; billed output (candidates + thoughts) ${candidateOutputTokens + thoughtTokens}`);
     lines.push(`- Estimated USD: ${result.estimatedUsd}`);
     if (result.error) {
       lines.push(`- Error: ${result.error}`);
@@ -318,7 +324,7 @@ function renderMarkdown(payload) {
   return `${lines.join('\n')}\n`;
 }
 
-function summarize(results, candidates = MODEL_CANDIDATES) {
+function summarizeBakeoffResults(results, candidates = MODEL_CANDIDATES) {
   return candidates.map((candidate) => {
     const items = results.filter((result) => result.candidateId === candidate.id);
     const aggregateItems = items.filter((item) => !item.excludedFromAggregate);
@@ -336,7 +342,9 @@ function summarize(results, candidates = MODEL_CANDIDATES) {
       excludedFromAggregate: items.length - aggregateItems.length,
       avgLatencyMs: aggregateItems.length ? Math.round(sum((item) => item.durationMs) / aggregateItems.length) : 0,
       promptTokens: sum((item) => item.usageMetadata?.promptTokenCount ?? 0),
-      outputTokens: sum((item) => item.usageMetadata?.candidatesTokenCount ?? 0),
+      candidateOutputTokens: sum((item) => item.usageMetadata?.candidatesTokenCount ?? 0),
+      thoughtTokens: sum((item) => item.usageMetadata?.thoughtsTokenCount ?? 0),
+      billedOutputTokens: sum((item) => (item.usageMetadata?.candidatesTokenCount ?? 0) + (item.usageMetadata?.thoughtsTokenCount ?? 0)),
       estimatedUsd: Number(sum((item) => item.estimatedUsd).toFixed(6)),
       postprocessedVerdicts: qualitySummaries.length ? formatVerdicts(counts) : null,
       avgUsableOptions: avg((item) => item.bestOptionCount ?? 0),
@@ -347,32 +355,36 @@ function summarize(results, candidates = MODEL_CANDIDATES) {
   });
 }
 
-loadEnv();
-const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
-if (!apiKey) {
-  console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this bakeoff.');
-  process.exit(1);
-}
+export {
+  normalizeBakeoffPayloadForCurrentRegistry,
+  renderBakeoffMarkdown,
+  summarizeBakeoffResults,
+};
 
-const ai = new GoogleGenAI({ apiKey });
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  loadEnv();
+  const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+  if (!apiKey) {
+    console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this bakeoff.');
+    process.exit(1);
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
 if (hasFlag('score-latest')) {
   const latestJsonPath = path.join(resultsDir, 'latest-model-bakeoff.json');
   const existingPayload = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
-  const payload = {
-    ...existingPayload,
-    candidates: refreshCandidateMetadata(existingPayload.candidates),
-  };
+  const payload = normalizeBakeoffPayloadForCurrentRegistry(existingPayload);
   const scoredPayload = await scoreResults(ai, payload);
-  scoredPayload.summary = summarize(scoredPayload.results, scoredPayload.candidates);
+  scoredPayload.summary = summarizeBakeoffResults(scoredPayload.results, scoredPayload.candidates);
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const jsonPath = path.join(resultsDir, `model-bakeoff-${timestamp}.json`);
   const markdownPath = path.join(resultsDir, `model-bakeoff-${timestamp}.md`);
   const latestMarkdownPath = path.join(resultsDir, 'latest-model-bakeoff.md');
   fs.writeFileSync(jsonPath, `${JSON.stringify(scoredPayload, null, 2)}\n`);
-  fs.writeFileSync(markdownPath, renderMarkdown(scoredPayload));
+  fs.writeFileSync(markdownPath, renderBakeoffMarkdown(scoredPayload));
   fs.writeFileSync(latestJsonPath, `${JSON.stringify(scoredPayload, null, 2)}\n`);
-  fs.writeFileSync(latestMarkdownPath, renderMarkdown(scoredPayload));
+  fs.writeFileSync(latestMarkdownPath, renderBakeoffMarkdown(scoredPayload));
   console.log(`Wrote ${markdownPath}`);
   process.exit(0);
 }
@@ -381,13 +393,10 @@ if (hasFlag('rebuild-latest')) {
   const latestJsonPath = path.join(resultsDir, 'latest-model-bakeoff.json');
   const latestMarkdownPath = path.join(resultsDir, 'latest-model-bakeoff.md');
   const existingPayload = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
-  const payload = {
-    ...existingPayload,
-    candidates: refreshCandidateMetadata(existingPayload.candidates),
-  };
-  payload.summary = summarize(payload.results, payload.candidates);
+  const payload = normalizeBakeoffPayloadForCurrentRegistry(existingPayload);
+  payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
   fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-  fs.writeFileSync(latestMarkdownPath, renderMarkdown(payload));
+  fs.writeFileSync(latestMarkdownPath, renderBakeoffMarkdown(payload));
   console.log(`Updated latest JSON at ${latestJsonPath}`);
   console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
   process.exit(0);
@@ -414,13 +423,13 @@ let payload = {
   ],
   candidates: selectedCandidates,
   cases,
-  summary: summarize(results, selectedCandidates),
+  summary: summarizeBakeoffResults(results, selectedCandidates),
   results,
 };
 
 if (hasFlag('score')) {
   payload = await scoreResults(ai, payload);
-  payload.summary = summarize(payload.results, payload.candidates);
+  payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
 }
 
 fs.mkdirSync(resultsDir, { recursive: true });
@@ -430,8 +439,9 @@ const markdownPath = path.join(resultsDir, `model-bakeoff-${timestamp}.md`);
 const latestJsonPath = path.join(resultsDir, 'latest-model-bakeoff.json');
 const latestMarkdownPath = path.join(resultsDir, 'latest-model-bakeoff.md');
 fs.writeFileSync(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(markdownPath, renderMarkdown(payload));
+fs.writeFileSync(markdownPath, renderBakeoffMarkdown(payload));
 fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(latestMarkdownPath, renderMarkdown(payload));
+fs.writeFileSync(latestMarkdownPath, renderBakeoffMarkdown(payload));
 
 console.log(`Wrote ${markdownPath}`);
+}
