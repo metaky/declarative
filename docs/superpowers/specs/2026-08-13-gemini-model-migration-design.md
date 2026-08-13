@@ -1,6 +1,6 @@
 # Gemini Model Migration Design
 
-**Status:** Approved design direction; written specification awaiting final user review
+**Status:** Approved
 
 **Owner:** Codex, acting as project manager
 
@@ -399,15 +399,13 @@ Routine implementation, tests, local evaluation within the cap, tagged deploymen
 
 ## 10. Target Schedule
 
-- Phase 1 complete target: August 21, 2026
-- Phase 2 complete target: August 31, 2026
-- Phase 3 complete target: September 11, 2026
-- Phase 4 decision target: September 16, 2026
-- Phase 5 canary start target: September 18, 2026
-- 100% migration target: September 30, 2026
+- Begin each next phase immediately when its preceding gate passes.
+- Start the production canary as soon as Phases 1-4 are approved; do not wait for a calendar milestone.
+- Reach 100% production traffic as soon as the canary gates pass.
+- September 30, 2026 is the latest acceptable date for 100% migration, not the expected launch date.
 - Contingency buffer before 2.5 Flash shutdown: October 1-15, 2026
 
-These are project targets, not permission to bypass a quality gate. If a gate cannot pass by its target date, Codex will surface the specific evidence and available tradeoff to Kyle.
+The project should move materially faster than the latest acceptable date. The date exists to protect a two-week contingency buffer before shutdown, not to pace the work. It is not permission to bypass a quality gate. If a gate threatens the latest acceptable date, Codex will surface the specific evidence and available tradeoff to Kyle immediately.
 
 ## 11. Success Definition
 
