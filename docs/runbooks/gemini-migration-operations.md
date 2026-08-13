@@ -337,11 +337,12 @@ Use this helper only with a non-retired revision and an explicitly deployable Ge
 ```bash
 verify_revision_secret_refs() {
   local revision="$1"
+  assert_revision_not_retired "$revision" || return 1
+
   local gemini_version="$2"
   local upstash_url_version="$3"
   local upstash_token_version="$4"
 
-  assert_revision_not_retired "$revision"
   assert_gemini_version_deployable "$gemini_version"
   gcloud run revisions describe "$revision" \
     --project "$PROJECT" --region "$REGION" --format=json \
@@ -373,6 +374,8 @@ Define these helpers before validating either tagged revision. They emit only UR
 resolve_zero_traffic_tag() (
   set -euo pipefail
   local revision="$1"
+  assert_revision_not_retired "$revision" || return 1
+
   local tag="$2"
   local metadata_dir service_file resolved_url
 
@@ -551,8 +554,10 @@ The missing-interest gate captures an exact UTC request window and exact revisio
 ```bash
 verify_missing_interest_no_model() (
   set -euo pipefail
-  : "${VERIFY_BASE_URL:?Set VERIFY_BASE_URL.}"
   : "${VERIFY_REVISION:?Set VERIFY_REVISION.}"
+  assert_revision_not_retired "$VERIFY_REVISION" || return 1
+
+  : "${VERIFY_BASE_URL:?Set VERIFY_BASE_URL.}"
   : "${SMOKE_TEXT:?Set private SMOKE_TEXT.}"
 
   local correlation_dir status_file usage_file log_error
@@ -615,6 +620,8 @@ The allowlisted usage gate projects only known metadata fields into owner-only f
 run_allowlisted_usage_gate() (
   set -euo pipefail
   local revision="$1"
+  assert_revision_not_retired "$revision" || return 1
+
   local window_start="$2"
   local window_end="$3"
   local gate_dir usage_file rate_file usage_error rate_error usage_filter rate_filter
@@ -683,6 +690,8 @@ verify_deployed_model_and_thinking_source() {
 
 run_complete_revision_gate() {
   local revision="$1"
+  assert_revision_not_retired "$revision" || return 1
+
   local resolved_url="$2"
   local behavior_start behavior_end
 
@@ -704,7 +713,8 @@ The controller verified at `2026-08-13T17:56:19Z` that `declarative-gemini-rotat
 ```bash
 assert_full_traffic() {
   local expected_revision="$1"
-  assert_revision_not_retired "$expected_revision"
+  assert_revision_not_retired "$expected_revision" || return 1
+
   gcloud run services describe "$SERVICE" \
     --project "$PROJECT" --region "$REGION" --format=json \
     | jq -e --arg revision "$expected_revision" '
@@ -730,6 +740,131 @@ export ROLLBACK_GATE_PASSED="true"
 ```
 
 If any step fails, keep public traffic unchanged and stop. Never substitute `declarative-secret-baseline`, `declarative-00102-5l7`, or Gemini secret version `1` as a fallback.
+
+## Local retired-revision guard fixtures
+
+Run these fixtures only in a local shell after loading the helper definitions above. They replace `gcloud`, `node`, and `sleep` with local probes; they make no network, provider, log, secret, or HTTP call. For every revision-aware helper, `declarative-gemini-rotation` must reach the mocked first external boundary, while both retired revisions must return before that boundary is touched.
+
+```bash
+run_retired_revision_guard_fixtures() (
+  set -euo pipefail
+  local fixture_dir probe helper revision command_status
+  local helpers=(
+    verify_revision_secret_refs
+    resolve_zero_traffic_tag
+    verify_missing_interest_no_model
+    run_allowlisted_usage_gate
+    run_complete_revision_gate
+    assert_full_traffic
+  )
+  local retired_revisions=(
+    declarative-secret-baseline
+    declarative-00102-5l7
+  )
+
+  umask 077
+  fixture_dir="$(mktemp -d /tmp/declarative-retired-guard.XXXXXX)"
+  chmod 700 "$fixture_dir"
+  probe="$fixture_dir/external-boundary"
+  trap 'find "$fixture_dir" -type f -delete; rmdir "$fixture_dir"' EXIT
+
+  gcloud() {
+    : >"$probe"
+    return 91
+  }
+  node() {
+    : >"$probe"
+    return 91
+  }
+  sleep() {
+    return 0
+  }
+
+  for helper in "${helpers[@]}"; do
+    find "$fixture_dir" -type f -delete
+    case "$helper" in
+      verify_revision_secret_refs)
+        "$helper" declarative-gemini-rotation 2 1 1 >/dev/null 2>&1 || true
+        ;;
+      resolve_zero_traffic_tag)
+        "$helper" declarative-gemini-rotation fixture-tag >/dev/null 2>&1 || true
+        ;;
+      verify_missing_interest_no_model)
+        VERIFY_REVISION=declarative-gemini-rotation \
+          VERIFY_BASE_URL='https://fixture.invalid' \
+          SMOKE_TEXT='fixture-only' \
+          "$helper" >/dev/null 2>&1 || true
+        ;;
+      run_allowlisted_usage_gate)
+        LOG_SETTLE_SECONDS=0 \
+          "$helper" declarative-gemini-rotation \
+          '2026-08-13T00:00:00.000Z' '2026-08-13T00:00:01.000Z' \
+          >/dev/null 2>&1 || true
+        ;;
+      run_complete_revision_gate)
+        "$helper" declarative-gemini-rotation 'https://fixture.invalid' \
+          >/dev/null 2>&1 || true
+        ;;
+      assert_full_traffic)
+        "$helper" declarative-gemini-rotation >/dev/null 2>&1 || true
+        ;;
+    esac
+    [ -e "$probe" ] || {
+      printf 'Known-good revision did not pass guard in %s.\n' "$helper" >&2
+      return 1
+    }
+
+    for revision in "${retired_revisions[@]}"; do
+      find "$fixture_dir" -type f -delete
+      case "$helper" in
+        verify_revision_secret_refs)
+          command_status=0
+          "$helper" "$revision" 2 1 1 >/dev/null 2>&1 || command_status="$?"
+          ;;
+        resolve_zero_traffic_tag)
+          command_status=0
+          "$helper" "$revision" fixture-tag >/dev/null 2>&1 || command_status="$?"
+          ;;
+        verify_missing_interest_no_model)
+          command_status=0
+          VERIFY_REVISION="$revision" \
+            VERIFY_BASE_URL='https://fixture.invalid' \
+            SMOKE_TEXT='fixture-only' \
+            "$helper" >/dev/null 2>&1 || command_status="$?"
+          ;;
+        run_allowlisted_usage_gate)
+          command_status=0
+          LOG_SETTLE_SECONDS=0 \
+            "$helper" "$revision" \
+            '2026-08-13T00:00:00.000Z' '2026-08-13T00:00:01.000Z' \
+            >/dev/null 2>&1 || command_status="$?"
+          ;;
+        run_complete_revision_gate)
+          command_status=0
+          "$helper" "$revision" 'https://fixture.invalid' \
+            >/dev/null 2>&1 || command_status="$?"
+          ;;
+        assert_full_traffic)
+          command_status=0
+          "$helper" "$revision" >/dev/null 2>&1 || command_status="$?"
+          ;;
+      esac
+      if [ "$command_status" -eq 0 ]; then
+        printf 'Retired revision unexpectedly passed %s.\n' "$helper" >&2
+        return 1
+      fi
+      [ ! -e "$probe" ] || {
+        printf 'Retired revision reached external boundary in %s.\n' "$helper" >&2
+        return 1
+      }
+    done
+  done
+
+  printf '%s\n' 'revision_guard_helpers=6 known_good=accepted retired_revisions=rejected_before_external_boundary'
+)
+
+run_retired_revision_guard_fixtures
+```
 
 ## Reproducible replacement Gemini key rotation
 
