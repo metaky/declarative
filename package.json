@@ -10,6 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc",
+    "test": "node --test",
+    "check": "npm run test && npm run lint && npm run build",
     "check:gemini-models": "node scripts/check-gemini-models.mjs",
     "check:get-more-ideas-prompts": "node scripts/check-get-more-ideas-prompts.mjs",
     "check:get-more-ideas-multiround": "node scripts/check-get-more-ideas-multiround.mjs",
