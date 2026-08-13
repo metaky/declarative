@@ -42,10 +42,10 @@ The ledger moved to schema 5, which has no recovery fields. Automatic migration 
 
 ## Lock and privacy safeguards
 
-- Lock ownership is bound to PID plus process-start identity. A stale lock is recoverable when the PID is dead or has been reused by a different process, but an old lock matching the live owner identity is never stolen.
-- Malformed stale locks are quarantined and compared by filesystem identity before removal. Concurrent callers still serialize spend reservations and cannot cross the cap.
+- The custom lock and stale-lock recovery implementation was removed after review demonstrated an ownership race. Ledger access now uses exactly pinned `proper-lockfile@4.1.2`, whose atomic-directory acquisition, heartbeat, stale timeout, bounded retries, and compromise detection are configured once for every ledger operation.
+- The harness never manually removes, renames, or repairs the library lock. A compromised lock or release failure fails closed. Real child-process tests prove exclusive critical-section entry, preserved concurrent accounting, bounded recovery after a killed owner, and protection of a live owner beyond the stale threshold.
 - Generated migration report directories are hardened to `0700` when private artifacts are created.
-- Timestamped JSON/Markdown reports, latest pointers, call checkpoints, score checkpoints, and atomic temporary files are created as `0600` and renamed atomically.
+- Every migration writer—including the four auxiliary checks and the bakeoff rebuild-latest route—uses the same private atomic writer. Timestamped JSON/Markdown reports, latest pointers, call checkpoints, score checkpoints, and atomic temporary files are created as `0600` and renamed atomically.
 - The canonical metadata-only ledger remains tracked and stageable with ordinary metadata permissions. All generated migration artifacts remain recursively ignored; the ledger is the sole exception.
 
 ## TDD evidence
@@ -62,10 +62,12 @@ Each failure was observed before the corresponding production change, then rerun
 
 ## Verification evidence
 
-- Focused Task 6 suite: 58/58 passed before the final two schema checks; the final full repository suite passed 155/155.
+- Final focused multi-process lock and private-writer suite: 18/18 passed with bounded timeouts.
+- Final full repository suite: 162/162 passed.
 - Critical durability/fail-closed/evaluator subset: 24/24 passed in each of five consecutive runs (120/120 total), with no hang.
 - `npm run lint`: passed.
 - `npm run build`: passed; only existing Browserslist-age and bundle-size advisories were emitted.
+- `npm audit --omit=dev` reports the same 18 advisories as the clean pre-Task-6 baseline (1 low, 13 moderate, 3 high, 1 critical). The pinned lock package adds no new reported advisory. Audit remediation is tracked as separate dependency maintenance rather than being silently folded into this migration.
 - Five migration `--help` paths passed keylessly; the canonical ledger SHA-256 remained unchanged at `bf972835e0282d217a9d4b569cd93e91db092fbcf1f9590e2e269bd4db3846fc`.
 - Generated latest, timestamped, call-checkpoint, and score-checkpoint paths passed `git check-ignore --no-index`; the canonical ledger remained unignored/stageable.
 - Permission tests passed for migration directories (`0700`) and all generated report/checkpoint files (`0600`).

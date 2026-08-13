@@ -14,53 +14,20 @@ import {
   parseCliOptions,
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
+  writePrivateMigrationArtifactSet,
 } from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
-if (process.argv.includes('--help')) {
-  console.log(`Gemini model comparison
-
-Usage:
-  node scripts/check-gemini-models.mjs --configurations=<id,id|all> [options]
-
-Use an explicit allow-listed configuration selection. This help path does not load credentials or call Gemini.`);
-  process.exit(0);
-}
 const envPath = path.join(repoRoot, '.env.local');
-const options = parseCliOptions(process.argv.slice(2));
-const ledgerPath = await resolveCanonicalSpendLedgerPath({
-  repoRoot,
-  requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
-});
-
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const [key, ...valueParts] = trimmed.split('=');
-    if (key && !process.env[key]) {
-      process.env[key] = valueParts.join('=').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
-    }
-  }
-}
-
-const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
-if (!apiKey) {
-  console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running the model comparison.');
-  process.exit(1);
-}
-
 const evalPath = path.join(repoRoot, 'evals', 'gemini-translation-prompt-set.json');
-const promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'))
-  .filter((item) => !(item.tone === 'Interest Based' && !item.interest));
 const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
-fs.mkdirSync(resultsDir, { recursive: true });
-
-const ai = new GoogleGenAI({ apiKey });
-const models = options.configurations;
+let options;
+let ledgerPath;
+let promptSet;
+let ai;
+let models;
 
 async function runCase(promptCase) {
   const prompt = buildTranslationPrompt({
@@ -228,7 +195,34 @@ function buildMarkdown(results, timestamp) {
   return `${lines.join('\n')}\n`;
 }
 
+export async function writeGeminiModelComparisonArtifacts({ artifactPaths, payload, markdown }) {
+  await writePrivateMigrationArtifactSet({ artifactPaths, payload, markdown });
+}
+
 async function main() {
+  options = parseCliOptions(process.argv.slice(2));
+  ledgerPath = await resolveCanonicalSpendLedgerPath({
+    repoRoot,
+    requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  });
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && !process.env[key]) {
+        process.env[key] = valueParts.join('=').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+      }
+    }
+  }
+  const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+  if (!apiKey) throw new Error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running the model comparison.');
+  promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'))
+    .filter((item) => !(item.tone === 'Interest Based' && !item.interest));
+  ai = new GoogleGenAI({ apiKey });
+  models = options.configurations;
+
   const startedAt = Date.now();
   console.log(`Running ${promptSet.length} evaluation cases across ${models.length} models...`);
 
@@ -240,10 +234,12 @@ async function main() {
 
   const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'gemini-model-comparison' });
 
-  fs.writeFileSync(artifactPaths.json, JSON.stringify(results, null, 2));
-  fs.writeFileSync(artifactPaths.markdown, buildMarkdown(results, new Date().toISOString()));
-  fs.writeFileSync(artifactPaths.latestJson, JSON.stringify(results, null, 2));
-  fs.writeFileSync(artifactPaths.latestMarkdown, buildMarkdown(results, new Date().toISOString()));
+  const timestamp = new Date().toISOString();
+  await writeGeminiModelComparisonArtifacts({
+    artifactPaths,
+    payload: results,
+    markdown: buildMarkdown(results, timestamp),
+  });
 
   console.log('');
   console.log(`Wrote JSON results to ${artifactPaths.json}`);
@@ -253,7 +249,18 @@ async function main() {
   console.log(`Completed in ${Date.now() - startedAt} ms`);
 }
 
-main().catch((error) => {
-  console.error('Gemini model comparison failed:', error);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes('--help')) {
+    console.log(`Gemini model comparison
+
+Usage:
+  node scripts/check-gemini-models.mjs --configurations=<id,id|all> [options]
+
+Use an explicit allow-listed configuration selection. This help path does not load credentials or call Gemini.`);
+    process.exit(0);
+  }
+  main().catch((error) => {
+    console.error('Gemini model comparison failed:', error);
+    process.exit(1);
+  });
+}

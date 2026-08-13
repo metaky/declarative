@@ -15,31 +15,17 @@ import {
   parseCliOptions,
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
+  writePrivateMigrationArtifactSet,
 } from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
-if (process.argv.includes('--help')) {
-  console.log(`Gemini interest generalization check
-
-Usage:
-  node scripts/run-interest-generalization-check.mjs --configuration=<id> [options]
-
-Use one explicit allow-listed configuration. This help path does not load credentials or call Gemini.`);
-  process.exit(0);
-}
 const envPath = path.join(repoRoot, '.env.local');
 const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
-const options = parseCliOptions(process.argv.slice(2));
-if (options.configurations.length !== 1) {
-  throw new Error('Interest generalization migration checks require exactly one explicit --configuration.');
-}
-const configuration = options.configurations[0];
-const ledgerPath = await resolveCanonicalSpendLedgerPath({
-  repoRoot,
-  requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
-});
+let options;
+let configuration;
+let ledgerPath;
 
 const DEFAULT_INTERESTS = ['Minecraft', 'trains', 'Disney'];
 const DEFAULT_INPUTS = [
@@ -215,52 +201,74 @@ function renderMarkdown(payload) {
   return `${lines.join('\n')}\n`;
 }
 
-loadEnv();
-const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
-if (!apiKey) {
-  console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this check.');
-  process.exit(1);
+export async function writeInterestGeneralizationArtifacts({ artifactPaths, payload, markdown }) {
+  await writePrivateMigrationArtifactSet({ artifactPaths, payload, markdown });
 }
 
-const interests = getArg('interests')
-  ? getArg('interests').split(',').map((item) => item.trim()).filter(Boolean)
-  : DEFAULT_INTERESTS;
-const useFewerWords = process.argv.includes('--fewer');
-const ai = new GoogleGenAI({ apiKey });
+async function main() {
+  options = parseCliOptions(process.argv.slice(2));
+  if (options.configurations.length !== 1) {
+    throw new Error('Interest generalization migration checks require exactly one explicit --configuration.');
+  }
+  configuration = options.configurations[0];
+  ledgerPath = await resolveCanonicalSpendLedgerPath({
+    repoRoot,
+    requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  });
+  loadEnv();
+  const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+  if (!apiKey) throw new Error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this check.');
 
-const results = [];
-for (const interest of interests) {
-  for (const input of DEFAULT_INPUTS) {
-    console.log(`- ${interest}: ${input.id}`);
-    results.push(await generate(ai, interest, input, useFewerWords));
+  const interests = getArg('interests')
+    ? getArg('interests').split(',').map((item) => item.trim()).filter(Boolean)
+    : DEFAULT_INTERESTS;
+  const useFewerWords = process.argv.includes('--fewer');
+  const ai = new GoogleGenAI({ apiKey });
+  const results = [];
+  for (const interest of interests) {
+    for (const input of DEFAULT_INPUTS) {
+      console.log(`- ${interest}: ${input.id}`);
+      results.push(await generate(ai, interest, input, useFewerWords));
+    }
+  }
+
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    model: configuration.model,
+    effectiveConfiguration: captureConfigurationMetadata(configuration),
+    tone: 'Interest Based',
+    useFewerWords,
+    interests,
+    inputs: DEFAULT_INPUTS,
+    results,
+    validation: {
+      crossInterestLeaks: findCrossInterestLeaks(results),
+    },
+  };
+  const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'interest-generalization' });
+  await writeInterestGeneralizationArtifacts({
+    artifactPaths,
+    payload,
+    markdown: renderMarkdown(payload),
+  });
+  console.log(`Wrote ${artifactPaths.markdown}`);
+  if (payload.validation.crossInterestLeaks.length > 0) {
+    throw new Error(`Found ${payload.validation.crossInterestLeaks.length} cross-interest leak(s).`);
   }
 }
 
-const payload = {
-  generatedAt: new Date().toISOString(),
-  model: configuration.model,
-  effectiveConfiguration: captureConfigurationMetadata(configuration),
-  tone: 'Interest Based',
-  useFewerWords,
-  interests,
-  inputs: DEFAULT_INPUTS,
-  results,
-  validation: {
-    crossInterestLeaks: findCrossInterestLeaks(results),
-  },
-};
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes('--help')) {
+    console.log(`Gemini interest generalization check
 
-fs.mkdirSync(resultsDir, { recursive: true });
-const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'interest-generalization' });
+Usage:
+  node scripts/run-interest-generalization-check.mjs --configuration=<id> [options]
 
-fs.writeFileSync(artifactPaths.json, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(artifactPaths.latestJson, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(artifactPaths.markdown, renderMarkdown(payload));
-fs.writeFileSync(artifactPaths.latestMarkdown, renderMarkdown(payload));
-
-console.log(`Wrote ${artifactPaths.markdown}`);
-
-if (payload.validation.crossInterestLeaks.length > 0) {
-  console.error(`Found ${payload.validation.crossInterestLeaks.length} cross-interest leak(s).`);
-  process.exit(1);
+Use one explicit allow-listed configuration. This help path does not load credentials or call Gemini.`);
+    process.exit(0);
+  }
+  main().catch((error) => {
+    console.error('Interest generalization check failed:', error);
+    process.exit(1);
+  });
 }

@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,6 +39,8 @@ import {
   runBudgetedCall,
   scoreRowsWithCheckpoint,
   summarizeSpendLedger,
+  atomicWritePrivateText,
+  writePrivateMigrationArtifactSet,
 } from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -103,48 +104,13 @@ function hasFlag(name) {
   return process.argv.includes(`--${name}`);
 }
 
-function ensurePrivateDirectorySync(directoryPath) {
-  fs.mkdirSync(directoryPath, { recursive: true, mode: 0o700 });
-  const directoryStats = fs.lstatSync(directoryPath);
-  if (directoryStats.isSymbolicLink() || !directoryStats.isDirectory()) {
-    throw new Error(`Private migration report directory must be a real directory: ${directoryPath}`);
-  }
-  fs.chmodSync(directoryPath, 0o700);
+async function writeMigrationReportArtifacts({ artifactPaths, payload, markdown }) {
+  await writePrivateMigrationArtifactSet({ artifactPaths, payload, markdown });
 }
 
-function atomicWritePrivateTextSync(filePath, contents) {
-  ensurePrivateDirectorySync(path.dirname(filePath));
-  const temporaryPath = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  const descriptor = fs.openSync(temporaryPath, 'wx', 0o600);
-  try {
-    fs.writeFileSync(descriptor, contents);
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-  try {
-    fs.renameSync(temporaryPath, filePath);
-    fs.chmodSync(filePath, 0o600);
-  } catch (error) {
-    try {
-      fs.unlinkSync(temporaryPath);
-    } catch (cleanupError) {
-      if (cleanupError?.code !== 'ENOENT') throw cleanupError;
-    }
-    throw error;
-  }
-}
-
-function writeMigrationReportArtifacts({ artifactPaths, payload, markdown }) {
-  const json = `${JSON.stringify(payload, null, 2)}\n`;
-  for (const [filePath, contents] of [
-    [artifactPaths.json, json],
-    [artifactPaths.markdown, markdown],
-    [artifactPaths.latestJson, json],
-    [artifactPaths.latestMarkdown, markdown],
-  ]) {
-    atomicWritePrivateTextSync(filePath, contents);
-  }
+async function writeRebuiltLatestArtifacts({ jsonPath, markdownPath, payload, markdown }) {
+  await atomicWritePrivateText(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
+  await atomicWritePrivateText(markdownPath, markdown);
 }
 
 function getCandidateFilter() {
@@ -680,6 +646,7 @@ export {
   renderBakeoffMarkdown,
   summarizeBakeoffResults,
   writeMigrationReportArtifacts,
+  writeRebuiltLatestArtifacts,
 };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -694,8 +661,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const existingPayload = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
     const payload = normalizeBakeoffPayloadForCurrentRegistry(existingPayload);
     payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
-    fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-    fs.writeFileSync(latestMarkdownPath, renderBakeoffMarkdown(payload));
+    await writeRebuiltLatestArtifacts({
+      jsonPath: latestJsonPath,
+      markdownPath: latestMarkdownPath,
+      payload,
+      markdown: renderBakeoffMarkdown(payload),
+    });
     console.log(`Updated latest JSON at ${latestJsonPath}`);
     console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
     process.exit(0);
@@ -734,7 +705,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     payload.aggregate = calculateAggregateMetrics(payload.results);
     payload.gates = calculateAggregateGates(payload.results);
     payload.cumulativeSpend = summarizeSpendLedger(await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd }));
-    writeMigrationReportArtifacts({
+    await writeMigrationReportArtifacts({
       artifactPaths,
       payload,
       markdown: renderBakeoffMarkdown(payload),
@@ -825,7 +796,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   payload.cumulativeSpend = summarizeSpendLedger(await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd }));
 
   const artifactPaths = buildArtifactPaths({ resultsDir: migrationResultsDir, baseName: 'model-bakeoff' });
-  writeMigrationReportArtifacts({
+  await writeMigrationReportArtifacts({
     artifactPaths,
     payload,
     markdown: renderBakeoffMarkdown(payload),

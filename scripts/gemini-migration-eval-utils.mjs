@@ -1,19 +1,17 @@
 import crypto from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import {
   chmod,
   lstat,
-  link,
   mkdir,
   open,
   readFile,
   realpath,
   rename,
   unlink,
-  writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
+import properLockfile from 'proper-lockfile';
 
 import {
   buildThinkingConfig,
@@ -32,6 +30,21 @@ export const NANO_USD_PER_USD = 1_000_000_000;
 export const MIGRATION_TOKEN_LIMITS = Object.freeze({
   generation: Object.freeze({ maxInputTokens: 32_768, maxOutputTokens: 1_024 }),
   evaluation: Object.freeze({ maxInputTokens: 65_536, maxOutputTokens: 4_096 }),
+});
+export const LEDGER_LOCK_OPTIONS = Object.freeze({
+  stale: 5_000,
+  update: 2_000,
+  realpath: true,
+  retries: Object.freeze({
+    retries: 50,
+    factor: 1,
+    minTimeout: 200,
+    maxTimeout: 200,
+    randomize: false,
+  }),
+  onCompromised(error) {
+    throw error;
+  },
 });
 
 const SPEND_TYPES = new Set(['generation', 'evaluation']);
@@ -604,14 +617,44 @@ async function ensurePrivateDirectory(directoryPath) {
   await chmod(directoryPath, 0o700);
 }
 
-async function atomicWriteJson(filePath, value, { privateFile = false } = {}) {
-  if (privateFile) {
-    await ensurePrivateDirectory(path.dirname(filePath));
-  } else {
-    await mkdir(path.dirname(filePath), { recursive: true });
-  }
+export async function atomicWritePrivateText(filePath, contents) {
+  await ensurePrivateDirectory(path.dirname(filePath));
   const temporaryPath = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  const handle = await open(temporaryPath, 'wx', privateFile ? 0o600 : 0o666);
+  const handle = await open(temporaryPath, 'wx', 0o600);
+  try {
+    await handle.writeFile(contents);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  try {
+    await rename(temporaryPath, filePath);
+    await chmod(filePath, 0o600);
+  } catch (error) {
+    await unlink(temporaryPath).catch((cleanupError) => {
+      if (cleanupError?.code !== 'ENOENT') throw cleanupError;
+    });
+    throw error;
+  }
+}
+
+export async function writePrivateMigrationArtifactSet({ artifactPaths, payload, markdown }) {
+  const json = `${JSON.stringify(payload, null, 2)}\n`;
+  for (const [filePath, contents] of [
+    [artifactPaths.json, json],
+    [artifactPaths.markdown, markdown],
+    [artifactPaths.latestJson, json],
+    [artifactPaths.latestMarkdown, markdown],
+  ]) {
+    await atomicWritePrivateText(filePath, contents);
+  }
+}
+
+async function atomicWriteJson(filePath, value, { privateFile = false } = {}) {
+  if (privateFile) return atomicWritePrivateText(filePath, `${JSON.stringify(value, null, 2)}\n`);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const temporaryPath = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  const handle = await open(temporaryPath, 'wx', 0o666);
   try {
     await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`);
     await handle.sync();
@@ -642,15 +685,7 @@ async function writePrivateCallCheckpoint({ repoRoot, callId, requestHash, resul
   const checkpointPath = path.join(checkpointDirectory, fileName);
   const checkpointPayload = { schemaVersion: 2, callId, requestHash, result };
   const serialized = `${JSON.stringify(checkpointPayload, null, 2)}\n`;
-  const temporaryPath = `${checkpointPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  const handle = await open(temporaryPath, 'wx', 0o600);
-  try {
-    await handle.writeFile(serialized);
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  await rename(temporaryPath, checkpointPath);
+  await atomicWritePrivateText(checkpointPath, serialized);
   return {
     relativePath: path.posix.join('.call-checkpoints', fileName),
     sha256: crypto.createHash('sha256').update(serialized).digest('hex'),
@@ -867,152 +902,22 @@ function isProcessAlive(pid) {
   }
 }
 
-function getProcessStartIdentity(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) return null;
+export async function withLedgerLock(ledgerPath, callback) {
+  const release = await properLockfile.lock(ledgerPath, LEDGER_LOCK_OPTIONS);
+  let callbackResult;
+  let callbackError;
   try {
-    const startedAt = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    return startedAt ? `ps-lstart:${startedAt}` : null;
-  } catch {
-    return null;
-  }
-}
-
-async function quarantineLock(lockPath, expectedToken, action) {
-  const quarantinePath = `${lockPath}.${action}.${process.pid}.${crypto.randomUUID()}`;
-  try {
-    await rename(lockPath, quarantinePath);
+    callbackResult = await callback();
   } catch (error) {
-    if (error?.code === 'ENOENT') return false;
-    throw error;
+    callbackError = error;
   }
-  let metadata;
   try {
-    metadata = JSON.parse(await readFile(quarantinePath, 'utf8'));
-  } catch {
-    metadata = null;
-  }
-  if (metadata?.ownerToken !== expectedToken) {
-    try {
-      await rename(quarantinePath, lockPath);
-    } catch (error) {
-      if (error?.code !== 'EEXIST') throw error;
-    }
-    return false;
-  }
-  await unlink(quarantinePath).catch((error) => {
-    if (error?.code !== 'ENOENT') throw error;
-  });
-  return true;
-}
-
-async function recoverMalformedStaleLock(lockPath, staleMs) {
-  let lockStats;
-  try {
-    lockStats = await lstat(lockPath);
+    await release();
   } catch (error) {
-    if (error?.code === 'ENOENT') return true;
-    return false;
+    throw new Error(`Phase 3 spend ledger lock release failed: ${error.message}`, { cause: error });
   }
-  if ((Date.now() - lockStats.mtimeMs) < staleMs) return false;
-  const quarantinePath = `${lockPath}.malformed.${process.pid}.${crypto.randomUUID()}`;
-  try {
-    await rename(lockPath, quarantinePath);
-  } catch (error) {
-    if (error?.code === 'ENOENT') return true;
-    throw error;
-  }
-  try {
-    const currentStats = await lstat(quarantinePath);
-    const unchanged = currentStats.dev === lockStats.dev
-      && currentStats.ino === lockStats.ino
-      && currentStats.mtimeMs === lockStats.mtimeMs;
-    if (!unchanged) {
-      await rename(quarantinePath, lockPath);
-      return false;
-    }
-    await unlink(quarantinePath);
-    return true;
-  } catch (error) {
-    await rename(quarantinePath, lockPath).catch(() => {});
-    if (error?.code === 'ENOENT') return true;
-    throw error;
-  }
-}
-
-async function recoverDeadLock(lockPath, { staleMs, processIdentity }) {
-  let metadata;
-  try {
-    metadata = JSON.parse(await readFile(lockPath, 'utf8'));
-  } catch (error) {
-    if (error?.code === 'ENOENT') return true;
-    return recoverMalformedStaleLock(lockPath, staleMs);
-  }
-  const ageMs = Date.now() - Date.parse(metadata.createdAt);
-  if (!Number.isInteger(metadata.ownerPid) || !metadata.ownerToken
-    || typeof metadata.ownerIdentity !== 'string' || !metadata.ownerIdentity
-    || !Number.isFinite(ageMs)) {
-    return recoverMalformedStaleLock(lockPath, staleMs);
-  }
-  if (ageMs < staleMs) return false;
-  const currentIdentity = await processIdentity(metadata.ownerPid);
-  if (currentIdentity === metadata.ownerIdentity) return false;
-  return quarantineLock(lockPath, metadata.ownerToken, 'stale');
-}
-
-async function withLedgerLock(ledgerPath, callback, options = {}) {
-  const lockPath = `${ledgerPath}.lock`;
-  const ownerToken = crypto.randomUUID();
-  const candidatePath = `${lockPath}.candidate.${process.pid}.${ownerToken}`;
-  const lockOptions = {
-    attempts: options.attempts ?? 100,
-    retryMs: options.retryMs ?? 10,
-    staleMs: options.staleMs ?? 30_000,
-    processIdentity: options.processIdentity ?? getProcessStartIdentity,
-  };
-  const ownerIdentity = await lockOptions.processIdentity(process.pid);
-  if (typeof ownerIdentity !== 'string' || !ownerIdentity) {
-    throw new Error('Could not establish a process-start identity for the Phase 3 spend ledger lock.');
-  }
-  const candidateHandle = await open(candidatePath, 'wx');
-  try {
-    await candidateHandle.writeFile(`${JSON.stringify({
-        ownerPid: process.pid,
-        ownerToken,
-        ownerIdentity,
-        createdAt: new Date().toISOString(),
-      })}\n`);
-    await candidateHandle.sync();
-  } finally {
-    await candidateHandle.close();
-  }
-
-  let acquired = false;
-  try {
-    for (let attempt = 0; attempt < lockOptions.attempts; attempt += 1) {
-      try {
-        await link(candidatePath, lockPath);
-        acquired = true;
-        break;
-      } catch (error) {
-        if (error?.code !== 'EEXIST') throw error;
-        await recoverDeadLock(lockPath, lockOptions);
-        if (attempt === lockOptions.attempts - 1) {
-          throw new Error(`Could not acquire Phase 3 spend ledger lock after ${lockOptions.attempts} attempts.`);
-        }
-        await new Promise((resolve) => setTimeout(resolve, lockOptions.retryMs));
-      }
-    }
-    if (!acquired) throw new Error('Could not acquire Phase 3 spend ledger lock.');
-    return await callback();
-  } finally {
-    await unlink(candidatePath).catch((error) => {
-      if (error?.code !== 'ENOENT') throw error;
-    });
-    if (acquired) await quarantineLock(lockPath, ownerToken, 'release');
-  }
+  if (callbackError) throw callbackError;
+  return callbackResult;
 }
 
 function serializedInputByteUpperBound(request) {
@@ -1076,7 +981,6 @@ async function reserveSpend({
   requestHash,
   configuration,
   tokenLimits,
-  lockOptions,
 }) {
   if (!SPEND_TYPES.has(type)) throw new Error(`Unknown Phase 3 spend type: ${type}`);
   if (!runId) throw new Error('A stable run ID is required before reserving Phase 3 spend.');
@@ -1126,10 +1030,10 @@ async function reserveSpend({
     ledger.updatedAt = createdAt;
     await atomicWriteJson(ledgerPath, ledger);
     return { reservation };
-  }, lockOptions);
+  });
 }
 
-async function updateReservation({ ledgerPath, budgetUsd, reservation, lockOptions, update }) {
+async function updateReservation({ ledgerPath, budgetUsd, reservation, update }) {
   return withLedgerLock(ledgerPath, async () => {
     const ledger = await readLedgerAtCanonicalPath(ledgerPath, budgetUsd);
     const index = ledger.pendingReservations.findIndex(({ id }) => id === reservation.id);
@@ -1138,7 +1042,7 @@ async function updateReservation({ ledgerPath, budgetUsd, reservation, lockOptio
     ledger.updatedAt = new Date().toISOString();
     await atomicWriteJson(ledgerPath, ledger);
     return ledger.pendingReservations[index] ?? null;
-  }, lockOptions);
+  });
 }
 
 async function markDispatched(options) {
@@ -1174,7 +1078,6 @@ async function settleSpend({
   usageMetadata,
   resultCheckpoint,
   providerDurationMs,
-  lockOptions,
 }) {
   requireSafeNonNegativeInteger(actualNanoUsd, 'Actual call spend');
   requireSafeNonNegativeInteger(providerDurationMs, 'Provider duration');
@@ -1211,7 +1114,7 @@ async function settleSpend({
     ledger.updatedAt = completedAt;
     await atomicWriteJson(ledgerPath, ledger);
     return ledger.completedCalls[pending.callId];
-  }, lockOptions);
+  });
 }
 
 export async function reconcileSpendLedger({
@@ -1220,7 +1123,6 @@ export async function reconcileSpendLedger({
   ledgerPath,
   budgetUsd = 10,
   isProcessAlive: processAlive = isProcessAlive,
-  lockOptions,
 }) {
   const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
   return withLedgerLock(canonicalPath, async () => {
@@ -1241,7 +1143,7 @@ export async function reconcileSpendLedger({
       await atomicWriteJson(canonicalPath, ledger);
     }
     return ledger;
-  }, lockOptions);
+  });
 }
 
 export async function runBudgetedCall({
@@ -1260,7 +1162,6 @@ export async function runBudgetedCall({
   serializeResult = (response) => response,
   deserializeResult = (result) => result,
   faultInjection = {},
-  lockOptions,
   nowMs = () => performance.now(),
 }) {
   const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
@@ -1270,7 +1171,6 @@ export async function runBudgetedCall({
     repoRoot,
     ledgerPath: canonicalPath,
     budgetUsd,
-    lockOptions,
   });
   const decision = await reserveSpend({
     ledgerPath: canonicalPath,
@@ -1280,7 +1180,6 @@ export async function runBudgetedCall({
     requestHash,
     configuration,
     tokenLimits,
-    lockOptions,
   });
   if (decision.completedCall) {
     const durableResult = await readPrivateCallCheckpoint({
@@ -1298,7 +1197,6 @@ export async function runBudgetedCall({
       ledgerPath: canonicalPath,
       budgetUsd,
       reservation,
-      lockOptions,
     });
   } catch (error) {
     throw new Error(`Phase 3 dispatch accounting failed before provider call: ${error.message}`, { cause: error });
@@ -1317,7 +1215,6 @@ export async function runBudgetedCall({
       ledgerPath: canonicalPath,
       budgetUsd,
       reservation,
-      lockOptions,
     }, 'provider_rejection').catch(() => {});
     throw error;
   }
@@ -1336,7 +1233,6 @@ export async function runBudgetedCall({
       ledgerPath: canonicalPath,
       budgetUsd,
       reservation,
-      lockOptions,
     }, 'missing_usage').catch(() => {});
     throw new Error(`Phase 3 spend unresolved for ${runId}: missing usage metadata after dispatch.`);
   }
@@ -1367,7 +1263,6 @@ export async function runBudgetedCall({
       ledgerPath: canonicalPath,
       budgetUsd,
       reservation,
-      lockOptions,
     }, 'usage_pricing_or_checkpoint_failure').catch(() => {});
     throw error;
   }
@@ -1382,14 +1277,12 @@ export async function runBudgetedCall({
       usageMetadata: normalizedUsageMetadata,
       resultCheckpoint,
       providerDurationMs,
-      lockOptions,
     });
   } catch (error) {
     await markUnresolved({
       ledgerPath: canonicalPath,
       budgetUsd,
       reservation,
-      lockOptions,
     }, 'usage_or_pricing_failure').catch(() => {});
     throw error;
   }

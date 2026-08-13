@@ -6,7 +6,6 @@ import {
   rm,
   symlink,
   unlink,
-  utimes,
   writeFile,
 } from 'node:fs/promises';
 import os from 'node:os';
@@ -257,64 +256,6 @@ safetyTest('post-dispatch pricing or usage parser failure remains unresolved', a
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
   assert.equal(ledger.pendingReservations[0].status, 'unresolved');
   assert.equal(ledger.pendingReservations[0].reason, 'usage_pricing_or_checkpoint_failure');
-});
-
-safetyTest('settlement failure preserves the dispatched liability on disk', async (t) => {
-  const context = await fixture(t);
-  const lockPath = `${context.ledgerPath}.lock`;
-
-  await assert.rejects(
-    runBudgetedCall(callOptions(context, {
-      lockOptions: { attempts: 2, retryMs: 1, staleMs: 60_000 },
-      call: async () => {
-        await writeFile(lockPath, `${JSON.stringify({
-          ownerPid: process.pid,
-          ownerToken: 'live-test-lock',
-          createdAt: new Date().toISOString(),
-        })}\n`, { flag: 'wx' });
-        return { usageMetadata: validUsage() };
-      },
-    })),
-    /lock/i,
-  );
-
-  await unlink(lockPath);
-  const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.equal(ledger.pendingReservations[0].status, 'dispatched');
-  assert.equal(ledger.reservedNanoUsd, ledger.pendingReservations[0].liabilityNanoUsd);
-});
-
-safetyTest('a stale dead-process lock is recovered safely', async (t) => {
-  const context = await fixture(t);
-  await writeFile(`${context.ledgerPath}.lock`, `${JSON.stringify({
-    ownerPid: 999_999_999,
-    ownerToken: 'dead-owner',
-    createdAt: '2000-01-01T00:00:00.000Z',
-  })}\n`, { flag: 'wx' });
-
-  await runBudgetedCall(callOptions(context, {
-    lockOptions: { attempts: 5, retryMs: 1, staleMs: 1 },
-  }));
-
-  const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.equal(ledger.generation.calls, 1);
-  assert.equal(ledger.pendingReservations.length, 0);
-});
-
-safetyTest('a stale malformed lock from an interrupted metadata write is recovered', async (t) => {
-  const context = await fixture(t);
-  const lockPath = `${context.ledgerPath}.lock`;
-  await writeFile(lockPath, '', { flag: 'wx' });
-  await utimes(lockPath, new Date('2000-01-01T00:00:00.000Z'), new Date('2000-01-01T00:00:00.000Z'));
-
-  await runBudgetedCall(callOptions(context, {
-    runId: 'after-malformed-lock',
-    lockOptions: { attempts: 5, retryMs: 1, staleMs: 1 },
-  }));
-
-  const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.equal(ledger.generation.calls, 1);
-  assert.equal(ledger.pendingReservations.length, 0);
 });
 
 safetyTest('reconciliation releases only proven-undispatched dead reservations and preserves dispatched liabilities', async (t) => {
