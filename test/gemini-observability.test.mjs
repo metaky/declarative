@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildGeminiCompletionEvent,
+  getGeminiFinishReason,
   logGeminiCompletionEvent,
 } from '../services/geminiObservability.js';
 
@@ -126,4 +127,54 @@ test('logs one exact classified completion event for a failed real model attempt
     timestamp: '2026-08-13T12:01:00.000Z',
   });
   assert.doesNotMatch(logged[0], /provider response|stack must never be logged/i);
+});
+
+const SDK_FINISH_REASONS = [
+  'FINISH_REASON_UNSPECIFIED',
+  'STOP',
+  'MAX_TOKENS',
+  'SAFETY',
+  'RECITATION',
+  'LANGUAGE',
+  'OTHER',
+  'BLOCKLIST',
+  'PROHIBITED_CONTENT',
+  'SPII',
+  'MALFORMED_FUNCTION_CALL',
+  'IMAGE_SAFETY',
+  'UNEXPECTED_TOOL_CALL',
+  'IMAGE_PROHIBITED_CONTENT',
+  'NO_IMAGE',
+  'IMAGE_RECITATION',
+  'IMAGE_OTHER',
+];
+
+for (const finishReason of SDK_FINISH_REASONS) {
+  test(`keeps the current SDK ${finishReason} finish reason in telemetry`, () => {
+    assert.equal(getGeminiFinishReason({ candidates: [{ finishReason }] }), finishReason);
+  });
+}
+
+for (const finishReason of ['PROMPT_SECRET_VALUE', 'ARBITRARY_PROVIDER_REASON', 'STOP_NOW', '']) {
+  test(`drops unrecognized provider finish reason ${finishReason || 'empty'}`, () => {
+    assert.equal(getGeminiFinishReason({ candidates: [{ finishReason }] }), null);
+  });
+}
+
+test('does not throw or retry when the telemetry sink rejects a completion event', () => {
+  let attempts = 0;
+  const event = logGeminiCompletionEvent({
+    outcome: 'api_error',
+    config: { id: 'gemini-2.5-flash-baseline', model: 'gemini-2.5-flash', thinkingBudget: 0 },
+    mode: 'translate',
+    durationMs: 5,
+    suggestionCount: 0,
+    timestamp: '2026-08-13T12:02:00.000Z',
+  }, () => {
+    attempts += 1;
+    throw new Error('telemetry destination unavailable');
+  });
+
+  assert.equal(attempts, 1, 'a failed telemetry write must not trigger a second completion event attempt');
+  assert.equal(event.outcome, 'api_error');
 });

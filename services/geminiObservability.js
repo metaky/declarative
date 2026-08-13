@@ -19,6 +19,26 @@ const COMPLETION_EVENT_FIELDS = [
   'timestamp',
 ];
 
+const SDK_FINISH_REASONS = new Set([
+  'FINISH_REASON_UNSPECIFIED',
+  'STOP',
+  'MAX_TOKENS',
+  'SAFETY',
+  'RECITATION',
+  'LANGUAGE',
+  'OTHER',
+  'BLOCKLIST',
+  'PROHIBITED_CONTENT',
+  'SPII',
+  'MALFORMED_FUNCTION_CALL',
+  'IMAGE_SAFETY',
+  'UNEXPECTED_TOOL_CALL',
+  'IMAGE_PROHIBITED_CONTENT',
+  'NO_IMAGE',
+  'IMAGE_RECITATION',
+  'IMAGE_OTHER',
+]);
+
 function tokenCount(value) {
   return Number.isInteger(value) && value >= 0 ? value : null;
 }
@@ -29,7 +49,7 @@ function nonNegativeInteger(value) {
 
 function safeFinishReason(value) {
   const normalized = typeof value === 'string' ? value.trim().toUpperCase() : '';
-  return /^[A-Z][A-Z0-9_]{0,63}$/.test(normalized) ? normalized : null;
+  return SDK_FINISH_REASONS.has(normalized) ? normalized : null;
 }
 
 export function getGeminiFinishReason(response) {
@@ -75,6 +95,10 @@ export function buildGeminiCompletionEvent({
 
 export function logGeminiCompletionEvent(details, log = console.info) {
   const event = buildGeminiCompletionEvent(details);
-  log(JSON.stringify(event));
+  try {
+    log(JSON.stringify(event));
+  } catch {
+    // Completion telemetry is best effort and must not change the request result.
+  }
   return event;
 }
