@@ -24,16 +24,35 @@ const manifestPath = path.join(repoRoot, 'evals', 'gemini-migration-prompt-set.j
 
 function zeroLedger() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
-    budgetUsd: 10,
-    generation: { calls: 0, spendUsd: 0 },
-    evaluation: { calls: 0, spendUsd: 0 },
-    totalSpendUsd: 0,
-    reservedUsd: 0,
+    unit: 'nano-usd',
+    budgetNanoUsd: 10_000_000_000,
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+    totalSpendNanoUsd: 0,
+    reservedNanoUsd: 0,
     pendingReservations: [],
+    completedCalls: {},
     updatedAt: null,
+  };
+}
+
+function completedCall({ runId, type, spendNanoUsd }) {
+  const callId = `${type}:${runId}`;
+  return {
+    callId,
+    runId,
+    type,
+    configurationId: 'gemini-2.5-flash-baseline',
+    spendNanoUsd,
+    usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+    resultCheckpoint: {
+      relativePath: `.call-checkpoints/${'a'.repeat(64)}.json`,
+      sha256: 'a'.repeat(64),
+    },
+    completedAt: '2026-08-13T00:00:00.000Z',
   };
 }
 
@@ -214,10 +233,10 @@ test('generation and evaluator calls accumulate separately in one persistent led
   });
 
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.deepEqual(ledger.generation, { calls: 1, spendUsd: 1.55 });
-  assert.deepEqual(ledger.evaluation, { calls: 1, spendUsd: 0.02 });
-  assert.equal(ledger.totalSpendUsd, 1.57);
-  assert.equal(ledger.reservedUsd, 0);
+  assert.deepEqual(ledger.generation, { calls: 1, spendNanoUsd: 1_550_000_000 });
+  assert.deepEqual(ledger.evaluation, { calls: 1, spendNanoUsd: 20_000_000 });
+  assert.equal(ledger.totalSpendNanoUsd, 1_570_000_000);
+  assert.equal(ledger.reservedNanoUsd, 0);
 });
 
 test('a new process view recovers cumulative smoke and full-run spend from disk', async (t) => {
@@ -228,15 +247,15 @@ test('a new process view recovers cumulative smoke and full-run spend from disk'
     call: async () => ({ usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, thoughtsTokenCount: 0 } }),
   });
   const afterSmoke = JSON.parse(await readFile(context.ledgerPath, 'utf8'));
-  assert.equal(afterSmoke.totalSpendUsd, 0.01);
+  assert.equal(afterSmoke.totalSpendNanoUsd, 10_000_000);
 
   await runBudgetedCall({
     ...budgetedOptions(context, 'generation', 'full', 0.01),
     call: async () => ({ usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, thoughtsTokenCount: 0 } }),
   });
   const afterRestart = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.deepEqual(afterRestart.generation, { calls: 2, spendUsd: 0.02 });
-  assert.equal(afterRestart.totalSpendUsd, 0.02);
+  assert.deepEqual(afterRestart.generation, { calls: 2, spendNanoUsd: 20_000_000 });
+  assert.equal(afterRestart.totalSpendNanoUsd, 20_000_000);
 });
 
 test('aggregate gates report errors, checks, latency, token classes, and both spend types', () => {
@@ -315,9 +334,13 @@ test('aggregate gate calculation enforces quality thresholds independently for e
 test('pre-call ledger reservation stops before a call that could cross the cumulative cap', async (t) => {
   const ledger = {
     ...zeroLedger(),
-    generation: { calls: 9, spendUsd: 9.79 },
-    evaluation: { calls: 2, spendUsd: 0.2 },
-    totalSpendUsd: 9.99,
+    generation: { calls: 1, spendNanoUsd: 9_990_000_000 },
+    totalSpendNanoUsd: 9_990_000_000,
+    completedCalls: {
+      'generation:historical': completedCall({
+        runId: 'historical', type: 'generation', spendNanoUsd: 9_990_000_000,
+      }),
+    },
     updatedAt: '2026-08-13T00:00:00.000Z',
   };
   const context = await ledgerFixture(t, ledger);

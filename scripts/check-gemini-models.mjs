@@ -93,6 +93,11 @@ async function runCase(promptCase) {
         },
       },
       call: (request) => ai.models.generateContent(request),
+      serializeResult: (value) => ({
+        text: value.text,
+        usageMetadata: value.usageMetadata,
+        candidates: value.candidates,
+      }),
     });
 
     let translations;

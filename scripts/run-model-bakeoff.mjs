@@ -37,6 +37,7 @@ import {
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
   scoreRowsWithCheckpoint,
+  summarizeSpendLedger,
 } from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -283,6 +284,11 @@ async function generate(ai, candidate, testCase, run, options) {
         config,
       },
       call: (request) => ai.models.generateContent(request),
+      serializeResult: (value) => ({
+        text: value.text,
+        usageMetadata: value.usageMetadata,
+        candidates: value.candidates,
+      }),
     });
     const parsed = parseTranslations(response.text, run.operation);
     const generationUsd = calculateUsageCost(candidate, response.usageMetadata);
@@ -340,11 +346,9 @@ async function scoreResults(ai, payload, options) {
     payload,
     checkpointPath,
     getCheckpointMetadata: async () => ({
-      cumulativeSpend: await readSpendLedger({
-        repoRoot,
-        ledgerPath: options.ledgerPath,
-        budgetUsd: options.budgetUsd,
-      }),
+      cumulativeSpend: summarizeSpendLedger(await readSpendLedger({
+        repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
+      })),
     }),
     scoreRow: async (result) => {
     const testCase = getCaseById(payload, result.caseId);
@@ -392,6 +396,7 @@ async function scoreResults(ai, payload, options) {
         thinkingBudget: 0,
         maxOutputTokens: request.config.maxOutputTokens,
       }),
+      serializeResult: (value) => value,
       actualUsd: (value) => calculateUsageCost(evaluatorConfiguration, value.usageMetadata),
     });
     const calibratedVerdict = normalizeVerdict(evaluation?.setSummary?.setVerdict ?? evaluation?.verdict);
@@ -485,7 +490,10 @@ function renderBakeoffMarkdown(payload) {
   lines.push(`Per-repeat automated gates: ${JSON.stringify(payload.gates ?? [])}`);
   lines.push(`Local-only guardrails: ${payload.localChecks?.length ?? 0}; model/evaluator calls: 0.`);
   if (payload.cumulativeSpend) {
-    lines.push(`Cumulative Phase 3 smoke-plus-full spend: generation $${payload.cumulativeSpend.generation.spendUsd}; evaluation $${payload.cumulativeSpend.evaluation.spendUsd}; total $${payload.cumulativeSpend.totalSpendUsd} of $${payload.cumulativeSpend.budgetUsd}.`);
+    const spend = payload.cumulativeSpend;
+    lines.push(`Cumulative settled spend: generation $${spend.generation.settledUsd}; evaluation $${spend.evaluation.settledUsd}; total $${spend.settledUsd}.`);
+    lines.push(`Pending liabilities: generation $${spend.generation.totalLiabilityUsd} (reserved $${spend.generation.reservedLiabilityUsd}, dispatched $${spend.generation.dispatchedLiabilityUsd}, unresolved $${spend.generation.unresolvedLiabilityUsd}); evaluation $${spend.evaluation.totalLiabilityUsd} (reserved $${spend.evaluation.reservedLiabilityUsd}, dispatched $${spend.evaluation.dispatchedLiabilityUsd}, unresolved $${spend.evaluation.unresolvedLiabilityUsd}); total $${spend.liabilityUsd}.`);
+    lines.push(`Total committed $${spend.totalCommittedUsd} of $${spend.budgetUsd}; remaining capacity $${spend.remainingCapacityUsd}; pending ${spend.pendingCounts.total} (generation ${spend.pendingCounts.generation}, evaluation ${spend.pendingCounts.evaluation}).`);
   }
   if (payload.qualityScored) {
     const evaluatorPromptTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.promptTokenCount ?? 0), 0);
@@ -638,7 +646,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
     payload.aggregate = calculateAggregateMetrics(payload.results);
     payload.gates = calculateAggregateGates(payload.results);
-    payload.cumulativeSpend = await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd });
+    payload.cumulativeSpend = summarizeSpendLedger(await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd }));
     fs.mkdirSync(migrationResultsDir, { recursive: true });
     fs.writeFileSync(artifactPaths.json, `${JSON.stringify(payload, null, 2)}\n`);
     fs.writeFileSync(artifactPaths.markdown, renderBakeoffMarkdown(payload));
@@ -722,7 +730,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
   payload.aggregate = calculateAggregateMetrics(payload.results);
   payload.gates = calculateAggregateGates(payload.results);
-  payload.cumulativeSpend = await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd });
+  payload.cumulativeSpend = summarizeSpendLedger(await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd }));
 
   fs.mkdirSync(migrationResultsDir, { recursive: true });
   const artifactPaths = buildArtifactPaths({ resultsDir: migrationResultsDir, baseName: 'model-bakeoff' });

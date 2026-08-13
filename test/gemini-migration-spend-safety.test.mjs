@@ -17,7 +17,7 @@ import * as migrationUtils from '../scripts/gemini-migration-eval-utils.mjs';
 import {
   CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
   MIGRATION_TOKEN_LIMITS,
-  calculateCallUpperBoundUsd,
+  calculateCallUpperBoundNanoUsd,
   readSpendLedger,
   reconcileSpendLedger,
   resolveCanonicalSpendLedgerPath,
@@ -27,16 +27,35 @@ import {
 
 function zeroLedger() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
-    budgetUsd: 10,
-    generation: { calls: 0, spendUsd: 0 },
-    evaluation: { calls: 0, spendUsd: 0 },
-    totalSpendUsd: 0,
-    reservedUsd: 0,
+    unit: 'nano-usd',
+    budgetNanoUsd: 10_000_000_000,
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+    totalSpendNanoUsd: 0,
+    reservedNanoUsd: 0,
     pendingReservations: [],
+    completedCalls: {},
     updatedAt: null,
+  };
+}
+
+function completedCall({ runId, spendNanoUsd }) {
+  const callId = `generation:${runId}`;
+  return {
+    callId,
+    runId,
+    type: 'generation',
+    configurationId: configuration.id,
+    spendNanoUsd,
+    usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+    resultCheckpoint: {
+      relativePath: `.call-checkpoints/${'a'.repeat(64)}.json`,
+      sha256: 'a'.repeat(64),
+    },
+    completedAt: '2026-08-13T00:00:00.000Z',
   };
 }
 
@@ -129,9 +148,18 @@ safetyTest('symlink aliases and a symlinked canonical ledger are rejected', asyn
 
 safetyTest('ledger accounting invariants reject reset-like or internally inconsistent files', async (t) => {
   const variants = [
-    { ...zeroLedger(), generation: { calls: 1, spendUsd: 0.4 }, totalSpendUsd: 0 },
-    { ...zeroLedger(), reservedUsd: 0.2 },
-    { ...zeroLedger(), generation: { calls: 1, spendUsd: 0.4 }, totalSpendUsd: 0.4, updatedAt: null },
+    { ...zeroLedger(), generation: { calls: 0, spendNanoUsd: 1 }, totalSpendNanoUsd: 0 },
+    { ...zeroLedger(), reservedNanoUsd: 1 },
+    {
+      ...zeroLedger(),
+      reservedNanoUsd: 1,
+      pendingReservations: [{
+        id: 'pending', callId: 'generation:pending', runId: 'pending', type: 'generation', status: 'reserved',
+        liabilityNanoUsd: 1, ownerPid: 1, ownerToken: 'owner', configurationId: configuration.id,
+        maxInputTokens: 1, maxOutputTokens: 1, createdAt: '2026-08-13T00:00:00.000Z',
+      }],
+      updatedAt: null,
+    },
   ];
 
   for (const [index, ledger] of variants.entries()) {
@@ -165,7 +193,7 @@ safetyTest('unbounded output and oversized input are rejected before dispatch', 
 });
 
 safetyTest('missing usage remains an unresolved reserved liability after dispatch', async (t) => {
-  const upperBoundUsd = calculateCallUpperBoundUsd(configuration, limits);
+  const upperBoundNanoUsd = calculateCallUpperBoundNanoUsd(configuration, limits);
   const variants = [
     null,
     { promptTokenCount: 10, candidatesTokenCount: 5 },
@@ -182,8 +210,8 @@ safetyTest('missing usage remains an unresolved reserved liability after dispatc
     );
 
     const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
-    assert.equal(ledger.totalSpendUsd, 0);
-    assert.equal(ledger.reservedUsd, upperBoundUsd);
+    assert.equal(ledger.totalSpendNanoUsd, 0);
+    assert.equal(ledger.reservedNanoUsd, upperBoundNanoUsd);
     assert.equal(ledger.pendingReservations[0].status, 'unresolved');
     assert.equal(ledger.pendingReservations[0].reason, 'missing_usage');
   }
@@ -199,7 +227,7 @@ safetyTest('provider rejection after dispatch remains an unresolved reserved lia
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
   assert.equal(ledger.pendingReservations[0].status, 'unresolved');
   assert.equal(ledger.pendingReservations[0].reason, 'provider_rejection');
-  assert.equal(ledger.reservedUsd, ledger.pendingReservations[0].liabilityUsd);
+  assert.equal(ledger.reservedNanoUsd, ledger.pendingReservations[0].liabilityNanoUsd);
 });
 
 safetyTest('post-dispatch pricing or usage parser failure remains unresolved', async (t) => {
@@ -213,7 +241,7 @@ safetyTest('post-dispatch pricing or usage parser failure remains unresolved', a
 
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
   assert.equal(ledger.pendingReservations[0].status, 'unresolved');
-  assert.equal(ledger.pendingReservations[0].reason, 'usage_or_pricing_failure');
+  assert.equal(ledger.pendingReservations[0].reason, 'usage_pricing_or_checkpoint_failure');
 });
 
 safetyTest('settlement failure preserves the dispatched liability on disk', async (t) => {
@@ -238,7 +266,7 @@ safetyTest('settlement failure preserves the dispatched liability on disk', asyn
   await unlink(lockPath);
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
   assert.equal(ledger.pendingReservations[0].status, 'dispatched');
-  assert.equal(ledger.reservedUsd, ledger.pendingReservations[0].liabilityUsd);
+  assert.equal(ledger.reservedNanoUsd, ledger.pendingReservations[0].liabilityNanoUsd);
 });
 
 safetyTest('a stale dead-process lock is recovered safely', async (t) => {
@@ -275,23 +303,23 @@ safetyTest('a stale malformed lock from an interrupted metadata write is recover
 });
 
 safetyTest('reconciliation releases only proven-undispatched dead reservations and preserves dispatched liabilities', async (t) => {
-  const liabilityUsd = calculateCallUpperBoundUsd(configuration, limits);
+  const liabilityNanoUsd = calculateCallUpperBoundNanoUsd(configuration, limits);
   const reservations = [
     {
-      id: 'reserved-dead', runId: 'run-reserved', type: 'generation', status: 'reserved',
-      liabilityUsd, ownerPid: 999_999_991, ownerToken: 'dead-a', createdAt: '2000-01-01T00:00:00.000Z',
+      id: 'reserved-dead', callId: 'generation:run-reserved', runId: 'run-reserved', type: 'generation', status: 'reserved',
+      liabilityNanoUsd, ownerPid: 999_999_991, ownerToken: 'dead-a', createdAt: '2000-01-01T00:00:00.000Z',
       configurationId: configuration.id, maxInputTokens: limits.maxInputTokens, maxOutputTokens: limits.maxOutputTokens,
     },
     {
-      id: 'dispatched-dead', runId: 'run-dispatched', type: 'generation', status: 'dispatched',
-      liabilityUsd, ownerPid: 999_999_992, ownerToken: 'dead-b', createdAt: '2000-01-01T00:00:00.000Z',
+      id: 'dispatched-dead', callId: 'generation:run-dispatched', runId: 'run-dispatched', type: 'generation', status: 'dispatched',
+      liabilityNanoUsd, ownerPid: 999_999_992, ownerToken: 'dead-b', createdAt: '2000-01-01T00:00:00.000Z',
       dispatchedAt: '2000-01-01T00:00:01.000Z', configurationId: configuration.id,
       maxInputTokens: limits.maxInputTokens, maxOutputTokens: limits.maxOutputTokens,
     },
   ];
   const ledger = {
     ...zeroLedger(),
-    reservedUsd: Number((liabilityUsd * 2).toFixed(6)),
+    reservedNanoUsd: liabilityNanoUsd * 2,
     pendingReservations: reservations,
     updatedAt: '2000-01-01T00:00:01.000Z',
   };
@@ -304,16 +332,19 @@ safetyTest('reconciliation releases only proven-undispatched dead reservations a
   assert.equal(reconciled.pendingReservations[0].id, 'dispatched-dead');
   assert.equal(reconciled.pendingReservations[0].status, 'unresolved');
   assert.equal(reconciled.pendingReservations[0].reason, 'owner_exited_after_dispatch');
-  assert.equal(reconciled.reservedUsd, liabilityUsd);
+  assert.equal(reconciled.reservedNanoUsd, liabilityNanoUsd);
 });
 
 safetyTest('near-cap upper-bound reservation and concurrent callers never exceed ten dollars', async (t) => {
-  const upperBoundUsd = calculateCallUpperBoundUsd(configuration, limits);
-  const startingSpend = Number((10 - upperBoundUsd).toFixed(6));
+  const upperBoundNanoUsd = calculateCallUpperBoundNanoUsd(configuration, limits);
+  const startingSpendNanoUsd = 10_000_000_000 - upperBoundNanoUsd;
   const context = await fixture(t, {
     ...zeroLedger(),
-    generation: { calls: 1, spendUsd: startingSpend },
-    totalSpendUsd: startingSpend,
+    generation: { calls: 1, spendNanoUsd: startingSpendNanoUsd },
+    totalSpendNanoUsd: startingSpendNanoUsd,
+    completedCalls: {
+      'generation:historical': completedCall({ runId: 'historical', spendNanoUsd: startingSpendNanoUsd }),
+    },
     updatedAt: '2026-08-13T00:00:00.000Z',
   });
   let releaseFirst;
@@ -356,7 +387,7 @@ safetyTest('near-cap upper-bound reservation and concurrent callers never exceed
     clearTimeout(dispatchTimeout);
   }
   const during = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.equal(Number((during.totalSpendUsd + during.reservedUsd).toFixed(6)), 10);
+  assert.equal(during.totalSpendNanoUsd + during.reservedNanoUsd, 10_000_000_000);
   const second = runBudgetedCall(callOptions(context, { runId: 'second' }));
   await assert.rejects(second, /budget stop before generation call/i);
   assert.equal(callCount, 1);
@@ -364,6 +395,6 @@ safetyTest('near-cap upper-bound reservation and concurrent callers never exceed
   await first;
 
   const finalLedger = await readSpendLedger({ ...context, budgetUsd: 10 });
-  assert.ok(finalLedger.totalSpendUsd + finalLedger.reservedUsd <= 10);
+  assert.ok(finalLedger.totalSpendNanoUsd + finalLedger.reservedNanoUsd <= 10_000_000_000);
   assert.equal(finalLedger.pendingReservations.length, 0);
 });

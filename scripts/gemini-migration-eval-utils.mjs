@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {
+  chmod,
   lstat,
   link,
   mkdir,
@@ -26,6 +27,7 @@ export const ALL_CONFIGURATION_IDS = Object.freeze([
 ]);
 
 export const CANONICAL_SPEND_LEDGER_RELATIVE_PATH = 'evals/results/gemini-migration/phase-3-spend.json';
+export const NANO_USD_PER_USD = 1_000_000_000;
 export const MIGRATION_TOKEN_LIMITS = Object.freeze({
   generation: Object.freeze({ maxInputTokens: 32_768, maxOutputTokens: 1_024 }),
   evaluation: Object.freeze({ maxInputTokens: 65_536, maxOutputTokens: 4_096 }),
@@ -88,13 +90,50 @@ export function captureConfigurationMetadata(configuration) {
 }
 
 export function calculateUsageCost(configuration, usageMetadata) {
+  return nanoUsdToUsd(calculateUsageCostNanoUsd(configuration, usageMetadata));
+}
+
+function configuredNanoUsdPerToken(usdPerMillion, label) {
+  const nanoUsdPerToken = usdPerMillion * 1_000;
+  if (!Number.isSafeInteger(nanoUsdPerToken) || nanoUsdPerToken < 0) {
+    throw new Error(`${label} must resolve exactly to integer nano-USD per token.`);
+  }
+  return nanoUsdPerToken;
+}
+
+export function usdToNanoUsdCeil(value) {
+  requireFiniteNonNegative(value, 'USD amount');
+  if (value === 0) return 0;
+  const units = Math.ceil(value * NANO_USD_PER_USD);
+  if (!Number.isSafeInteger(units) || units <= 0) {
+    throw new Error('USD amount does not fit safe integer nano-USD accounting.');
+  }
+  return units;
+}
+
+export function nanoUsdToUsd(value) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error('Nano-USD amount must be a safe non-negative integer.');
+  }
+  return value / NANO_USD_PER_USD;
+}
+
+export function calculateUsageCostNanoUsd(configuration, usageMetadata) {
   const promptTokens = usageMetadata?.promptTokenCount ?? 0;
   const visibleCandidateTokens = usageMetadata?.candidatesTokenCount ?? 0;
   const thoughtTokens = usageMetadata?.thoughtsTokenCount ?? 0;
-  return roundUsd(
-    (promptTokens * configuration.inputUsdPerMillion / 1_000_000)
-    + ((visibleCandidateTokens + thoughtTokens) * configuration.outputUsdPerMillion / 1_000_000),
-  );
+  for (const [label, value] of [
+    ['prompt tokens', promptTokens],
+    ['visible candidate tokens', visibleCandidateTokens],
+    ['thought tokens', thoughtTokens],
+  ]) {
+    if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a non-negative integer.`);
+  }
+  const inputRate = configuredNanoUsdPerToken(configuration.inputUsdPerMillion, 'Input price');
+  const outputRate = configuredNanoUsdPerToken(configuration.outputUsdPerMillion, 'Output price');
+  const cost = (promptTokens * inputRate) + ((visibleCandidateTokens + thoughtTokens) * outputRate);
+  if (!Number.isSafeInteger(cost) || cost < 0) throw new Error('Usage cost exceeds safe nano-USD accounting.');
+  return cost;
 }
 
 function sourceItems(payload, sourcePath) {
@@ -256,56 +295,150 @@ export function buildArtifactPaths({ resultsDir, baseName, now = new Date() }) {
   };
 }
 
+function requireSafeNonNegativeInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} must be a safe non-negative integer.`);
+  }
+  return value;
+}
+
+function expectedBudgetNanoUsd(budgetUsd) {
+  const units = budgetUsd * NANO_USD_PER_USD;
+  if (!Number.isSafeInteger(units) || units <= 0) {
+    throw new Error('Phase 3 budget must resolve exactly to positive integer nano-USD.');
+  }
+  return units;
+}
+
+function validateUsageMetadata(usageMetadata, label) {
+  if (!usageMetadata || typeof usageMetadata !== 'object') throw new Error(`Invalid ${label} usage metadata.`);
+  for (const key of ['promptTokenCount', 'candidatesTokenCount', 'thoughtsTokenCount']) {
+    requireSafeNonNegativeInteger(usageMetadata[key], `${label} ${key}`);
+  }
+}
+
 function validateLedger(ledger, budgetUsd) {
-  if (ledger?.schemaVersion !== 2 || ledger.phase !== 'gemini-model-migration-phase-3') {
+  if (ledger?.schemaVersion !== 3 || ledger.phase !== 'gemini-model-migration-phase-3'
+    || ledger.currency !== 'USD' || ledger.unit !== 'nano-usd') {
     throw new Error('Invalid Phase 3 spend ledger schema.');
   }
-  if (ledger.budgetUsd !== roundUsd(budgetUsd)) {
-    throw new Error(`Phase 3 spend ledger budget is ${ledger.budgetUsd}, not requested ${roundUsd(budgetUsd)}.`);
+  const budgetNanoUsd = expectedBudgetNanoUsd(budgetUsd);
+  if (ledger.budgetNanoUsd !== budgetNanoUsd) {
+    throw new Error(`Phase 3 spend ledger budget is ${ledger.budgetNanoUsd} nano-USD, not requested ${budgetNanoUsd}.`);
   }
   for (const type of SPEND_TYPES) {
     if (!Number.isInteger(ledger[type]?.calls) || ledger[type].calls < 0) {
       throw new Error(`Invalid ${type} call count in Phase 3 spend ledger.`);
     }
-    requireFiniteNonNegative(ledger[type]?.spendUsd, `${type} spend`);
+    requireSafeNonNegativeInteger(ledger[type]?.spendNanoUsd, `${type} spend`);
   }
-  requireFiniteNonNegative(ledger.totalSpendUsd, 'total spend');
-  requireFiniteNonNegative(ledger.reservedUsd, 'reserved spend');
+  requireSafeNonNegativeInteger(ledger.totalSpendNanoUsd, 'total spend');
+  requireSafeNonNegativeInteger(ledger.reservedNanoUsd, 'reserved spend');
   if (!Array.isArray(ledger.pendingReservations)) {
     throw new Error('Invalid Phase 3 pending reservations.');
   }
-  const componentSpend = roundUsd(ledger.generation.spendUsd + ledger.evaluation.spendUsd);
-  if (ledger.totalSpendUsd !== componentSpend) {
+  if (!ledger.completedCalls || typeof ledger.completedCalls !== 'object' || Array.isArray(ledger.completedCalls)) {
+    throw new Error('Invalid Phase 3 completed-call journal.');
+  }
+  const componentSpend = ledger.generation.spendNanoUsd + ledger.evaluation.spendNanoUsd;
+  if (!Number.isSafeInteger(componentSpend) || ledger.totalSpendNanoUsd !== componentSpend) {
     throw new Error(`Invalid Phase 3 accounting: total spend does not equal component sums (${componentSpend}).`);
   }
-  const pendingLiabilities = roundUsd(ledger.pendingReservations.reduce((total, reservation) => {
-    if (!reservation?.id || !reservation.runId || !SPEND_TYPES.has(reservation.type)) {
+  const pendingCallIds = new Set();
+  const pendingLiabilities = ledger.pendingReservations.reduce((total, reservation) => {
+    if (!reservation?.id || !reservation.callId || !reservation.runId || !SPEND_TYPES.has(reservation.type)) {
       throw new Error('Invalid Phase 3 pending reservation identity or type.');
     }
+    if (reservation.callId !== `${reservation.type}:${reservation.runId}` || pendingCallIds.has(reservation.callId)) {
+      throw new Error('Invalid or duplicate Phase 3 pending stable call ID.');
+    }
+    pendingCallIds.add(reservation.callId);
     if (!['reserved', 'dispatched', 'unresolved'].includes(reservation.status)) {
       throw new Error(`Invalid Phase 3 pending reservation status: ${reservation.status}`);
     }
-    requireFiniteNonNegative(reservation.liabilityUsd, 'pending liability');
+    requireSafeNonNegativeInteger(reservation.liabilityNanoUsd, 'pending liability');
     if (!Number.isInteger(reservation.ownerPid) || !reservation.ownerToken || !reservation.createdAt) {
       throw new Error('Invalid Phase 3 pending reservation owner metadata.');
     }
     if (reservation.status !== 'reserved' && !reservation.dispatchedAt) {
       throw new Error('Invalid Phase 3 dispatched reservation timestamp.');
     }
-    return total + reservation.liabilityUsd;
-  }, 0));
-  if (ledger.reservedUsd !== pendingLiabilities) {
+    const next = total + reservation.liabilityNanoUsd;
+    if (!Number.isSafeInteger(next)) throw new Error('Pending liabilities exceed safe integer accounting.');
+    return next;
+  }, 0);
+  if (ledger.reservedNanoUsd !== pendingLiabilities) {
     throw new Error(`Invalid Phase 3 accounting: reserved spend does not equal pending liabilities (${pendingLiabilities}).`);
   }
-  if (roundUsd(ledger.totalSpendUsd + ledger.reservedUsd) > ledger.budgetUsd) {
+  const completedTotals = {
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+  };
+  for (const [callId, completed] of Object.entries(ledger.completedCalls)) {
+    if (completed?.callId !== callId || completed.callId !== `${completed.type}:${completed.runId}`
+      || !SPEND_TYPES.has(completed.type) || pendingCallIds.has(callId)) {
+      throw new Error('Invalid or conflicting completed stable call ID.');
+    }
+    requireSafeNonNegativeInteger(completed.spendNanoUsd, 'completed call spend');
+    validateUsageMetadata(completed.usageMetadata, 'completed call');
+    if (!completed.configurationId || !completed.completedAt
+      || typeof completed.resultCheckpoint?.relativePath !== 'string'
+      || !/^\.call-checkpoints\/[a-f0-9]{64}\.json$/.test(completed.resultCheckpoint.relativePath)
+      || !/^[a-f0-9]{64}$/.test(completed.resultCheckpoint.sha256)) {
+      throw new Error('Invalid completed call metadata or result checkpoint reference.');
+    }
+    completedTotals[completed.type].calls += 1;
+    completedTotals[completed.type].spendNanoUsd += completed.spendNanoUsd;
+  }
+  for (const type of SPEND_TYPES) {
+    if (ledger[type].calls !== completedTotals[type].calls
+      || ledger[type].spendNanoUsd !== completedTotals[type].spendNanoUsd) {
+      throw new Error(`Invalid ${type} accounting: settled totals do not match completed-call journal.`);
+    }
+  }
+  if (ledger.totalSpendNanoUsd + ledger.reservedNanoUsd > ledger.budgetNanoUsd) {
     throw new Error('Invalid Phase 3 accounting: spend plus liabilities exceeds the budget.');
   }
-  const hasActivity = ledger.totalSpendUsd > 0 || ledger.reservedUsd > 0
+  const hasActivity = ledger.totalSpendNanoUsd > 0 || ledger.reservedNanoUsd > 0
     || ledger.generation.calls > 0 || ledger.evaluation.calls > 0;
   if (hasActivity && !ledger.updatedAt) {
     throw new Error('Invalid Phase 3 accounting: updatedAt is required after activity.');
   }
   return ledger;
+}
+
+function integerZeroLedger(budgetNanoUsd) {
+  return {
+    schemaVersion: 3,
+    phase: 'gemini-model-migration-phase-3',
+    currency: 'USD',
+    unit: 'nano-usd',
+    budgetNanoUsd,
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+    totalSpendNanoUsd: 0,
+    reservedNanoUsd: 0,
+    pendingReservations: [],
+    completedCalls: {},
+    updatedAt: null,
+  };
+}
+
+function migrateCommittedZeroLedger(ledger, budgetUsd) {
+  const expectedLegacy = {
+    schemaVersion: 2,
+    phase: 'gemini-model-migration-phase-3',
+    currency: 'USD',
+    budgetUsd: 10,
+    generation: { calls: 0, spendUsd: 0 },
+    evaluation: { calls: 0, spendUsd: 0 },
+    totalSpendUsd: 0,
+    reservedUsd: 0,
+    pendingReservations: [],
+    updatedAt: null,
+  };
+  if (JSON.stringify(ledger) !== JSON.stringify(expectedLegacy) || budgetUsd !== 10) return null;
+  return integerZeroLedger(expectedBudgetNanoUsd(budgetUsd));
 }
 
 export async function resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath } = {}) {
@@ -329,15 +462,93 @@ export async function resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath,
 
 export async function readSpendLedger({ repoRoot, requestedPath, ledgerPath, budgetUsd = 10 }) {
   const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
-  const ledger = JSON.parse(await readFile(canonicalPath, 'utf8'));
-  return validateLedger(ledger, budgetUsd);
+  return withLedgerLock(canonicalPath, () => readLedgerAtCanonicalPath(canonicalPath, budgetUsd));
 }
 
-async function atomicWriteJson(filePath, value) {
-  await mkdir(path.dirname(filePath), { recursive: true });
+async function ensurePrivateDirectory(directoryPath) {
+  await mkdir(directoryPath, { recursive: true, mode: 0o700 });
+  const directoryStats = await lstat(directoryPath);
+  if (directoryStats.isSymbolicLink() || !directoryStats.isDirectory()) {
+    throw new Error('Private checkpoint parent must be a real directory.');
+  }
+  await chmod(directoryPath, 0o700);
+}
+
+async function atomicWriteJson(filePath, value, { privateFile = false } = {}) {
+  if (privateFile) {
+    await ensurePrivateDirectory(path.dirname(filePath));
+  } else {
+    await mkdir(path.dirname(filePath), { recursive: true });
+  }
   const temporaryPath = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+  const handle = await open(temporaryPath, 'wx', privateFile ? 0o600 : 0o666);
+  try {
+    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
   await rename(temporaryPath, filePath);
+}
+
+async function writePrivateCallCheckpoint({ repoRoot, callId, result }) {
+  const migrationResultsDir = path.resolve(repoRoot, path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH));
+  const checkpointDirectory = path.join(migrationResultsDir, '.call-checkpoints');
+  await ensurePrivateDirectory(checkpointDirectory);
+  const directoryStats = await lstat(checkpointDirectory);
+  if (directoryStats.isSymbolicLink() || !directoryStats.isDirectory()) {
+    throw new Error('The canonical call-checkpoint directory must be a private real directory.');
+  }
+  const expectedRealDirectory = path.join(
+    await realpath(repoRoot),
+    path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH),
+    '.call-checkpoints',
+  );
+  if (await realpath(checkpointDirectory) !== expectedRealDirectory) {
+    throw new Error('The canonical call-checkpoint directory must not contain symlink aliases.');
+  }
+  const fileName = `${crypto.createHash('sha256').update(callId).digest('hex')}.json`;
+  const checkpointPath = path.join(checkpointDirectory, fileName);
+  const checkpointPayload = { schemaVersion: 1, callId, result };
+  const serialized = `${JSON.stringify(checkpointPayload, null, 2)}\n`;
+  const temporaryPath = `${checkpointPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  const handle = await open(temporaryPath, 'wx', 0o600);
+  try {
+    await handle.writeFile(serialized);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await rename(temporaryPath, checkpointPath);
+  return {
+    relativePath: path.posix.join('.call-checkpoints', fileName),
+    sha256: crypto.createHash('sha256').update(serialized).digest('hex'),
+  };
+}
+
+async function readPrivateCallCheckpoint({ repoRoot, completedCall }) {
+  const checkpointPath = path.resolve(
+    repoRoot,
+    path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH),
+    completedCall.resultCheckpoint.relativePath,
+  );
+  const expectedPath = path.resolve(
+    repoRoot,
+    path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH),
+    '.call-checkpoints',
+    `${crypto.createHash('sha256').update(completedCall.callId).digest('hex')}.json`,
+  );
+  if (checkpointPath !== expectedPath) throw new Error('Completed-call checkpoint path is not canonical.');
+  const serialized = await readFile(checkpointPath, 'utf8');
+  const digest = crypto.createHash('sha256').update(serialized).digest('hex');
+  if (digest !== completedCall.resultCheckpoint.sha256) {
+    throw new Error(`Completed-call checkpoint integrity failure for ${completedCall.callId}.`);
+  }
+  const checkpoint = JSON.parse(serialized);
+  if (checkpoint.schemaVersion !== 1 || checkpoint.callId !== completedCall.callId) {
+    throw new Error(`Completed-call checkpoint identity failure for ${completedCall.callId}.`);
+  }
+  return checkpoint.result;
 }
 
 function scoringSourceId(payload) {
@@ -423,15 +634,15 @@ export async function scoreRowsWithCheckpoint({
       throw new Error(`Evaluator changed stable run ID ${sourceRow.runId}.`);
     }
     completed.set(sourceRow.runId, scoredRow);
-    await atomicWriteJson(checkpointPath, checkpointPayload(false));
+    await atomicWriteJson(checkpointPath, checkpointPayload(false), { privateFile: true });
     if (getCheckpointMetadata) {
       Object.assign(metadata, await getCheckpointMetadata());
-      await atomicWriteJson(checkpointPath, checkpointPayload(false));
+      await atomicWriteJson(checkpointPath, checkpointPayload(false), { privateFile: true });
     }
   }
 
   const finalPayload = checkpointPayload(true);
-  await atomicWriteJson(checkpointPath, finalPayload);
+  await atomicWriteJson(checkpointPath, finalPayload, { privateFile: true });
   return finalPayload;
 }
 
@@ -591,42 +802,63 @@ function validateBoundedRequest(request, tokenLimits) {
   return byteUpperBound;
 }
 
-export function calculateCallUpperBoundUsd(configuration, tokenLimits) {
+export function calculateCallUpperBoundNanoUsd(configuration, tokenLimits) {
   const input = tokenLimits?.maxInputTokens;
   const output = tokenLimits?.maxOutputTokens;
   if (!Number.isInteger(input) || input <= 0 || !Number.isInteger(output) || output <= 0) {
     throw new Error('Explicit positive input and output token caps are required for a call upper bound.');
   }
-  return roundUsd(
-    (input * configuration.inputUsdPerMillion / 1_000_000)
-    + (output * configuration.outputUsdPerMillion / 1_000_000),
-  );
+  const liability = (input * configuredNanoUsdPerToken(configuration.inputUsdPerMillion, 'Input price'))
+    + (output * configuredNanoUsdPerToken(configuration.outputUsdPerMillion, 'Output price'));
+  if (!Number.isSafeInteger(liability) || liability <= 0) {
+    throw new Error('Call liability does not fit positive safe integer nano-USD accounting.');
+  }
+  return liability;
+}
+
+export function calculateCallUpperBoundUsd(configuration, tokenLimits) {
+  return nanoUsdToUsd(calculateCallUpperBoundNanoUsd(configuration, tokenLimits));
 }
 
 async function readLedgerAtCanonicalPath(ledgerPath, budgetUsd) {
-  return validateLedger(JSON.parse(await readFile(ledgerPath, 'utf8')), budgetUsd);
+  const parsed = JSON.parse(await readFile(ledgerPath, 'utf8'));
+  const migrated = migrateCommittedZeroLedger(parsed, budgetUsd);
+  if (migrated) {
+    await atomicWriteJson(ledgerPath, migrated);
+    return migrated;
+  }
+  return validateLedger(parsed, budgetUsd);
 }
 
 async function reserveSpend({ ledgerPath, budgetUsd, type, runId, configuration, tokenLimits, lockOptions }) {
   if (!SPEND_TYPES.has(type)) throw new Error(`Unknown Phase 3 spend type: ${type}`);
   if (!runId) throw new Error('A stable run ID is required before reserving Phase 3 spend.');
-  const liabilityUsd = calculateCallUpperBoundUsd(configuration, tokenLimits);
+  const callId = `${type}:${runId}`;
+  const liabilityNanoUsd = calculateCallUpperBoundNanoUsd(configuration, tokenLimits);
   return withLedgerLock(ledgerPath, async () => {
     const ledger = await readLedgerAtCanonicalPath(ledgerPath, budgetUsd);
-    if (ledger.pendingReservations.some((reservation) => reservation.runId === runId)) {
-      throw new Error(`Phase 3 run already has an unresolved spend liability: ${runId}`);
+    const completedCall = ledger.completedCalls[callId];
+    if (completedCall) {
+      if (completedCall.configurationId !== configuration.id) {
+        throw new Error(`Completed stable call ${callId} used a different configuration.`);
+      }
+      return { completedCall };
     }
-    const projected = roundUsd(ledger.totalSpendUsd + ledger.reservedUsd + liabilityUsd);
-    if (projected > budgetUsd) {
-      throw new Error(`Phase 3 budget stop before ${type} call: $${projected} could exceed $${budgetUsd}.`);
+    if (ledger.pendingReservations.some((reservation) => reservation.callId === callId)) {
+      throw new Error(`Phase 3 stable call already has an unresolved spend liability: ${callId}`);
+    }
+    const projected = ledger.totalSpendNanoUsd + ledger.reservedNanoUsd + liabilityNanoUsd;
+    if (!Number.isSafeInteger(projected) || projected > ledger.budgetNanoUsd) {
+      throw new Error(`Phase 3 budget stop before ${type} call: ${projected} nano-USD could exceed ${ledger.budgetNanoUsd}.`);
     }
     const createdAt = new Date().toISOString();
     const reservation = {
       id: crypto.randomUUID(),
+      callId,
       runId,
       type,
       status: 'reserved',
-      liabilityUsd,
+      liabilityNanoUsd,
       ownerPid: process.pid,
       ownerToken: crypto.randomUUID(),
       configurationId: configuration.id,
@@ -635,10 +867,10 @@ async function reserveSpend({ ledgerPath, budgetUsd, type, runId, configuration,
       createdAt,
     };
     ledger.pendingReservations.push(reservation);
-    ledger.reservedUsd = roundUsd(ledger.reservedUsd + liabilityUsd);
+    ledger.reservedNanoUsd += liabilityNanoUsd;
     ledger.updatedAt = createdAt;
     await atomicWriteJson(ledgerPath, ledger);
-    return reservation;
+    return { reservation };
   }, lockOptions);
 }
 
@@ -679,25 +911,44 @@ async function markUnresolved(options, reason) {
   });
 }
 
-async function settleSpend({ ledgerPath, budgetUsd, reservation, actualUsd, lockOptions }) {
-  requireFiniteNonNegative(actualUsd, 'Actual call spend');
+async function settleSpend({
+  ledgerPath,
+  budgetUsd,
+  reservation,
+  actualNanoUsd,
+  usageMetadata,
+  resultCheckpoint,
+  lockOptions,
+}) {
+  requireSafeNonNegativeInteger(actualNanoUsd, 'Actual call spend');
   return withLedgerLock(ledgerPath, async () => {
     const ledger = await readLedgerAtCanonicalPath(ledgerPath, budgetUsd);
     const index = ledger.pendingReservations.findIndex(({ id }) => id === reservation.id);
     if (index < 0) throw new Error(`Phase 3 spend reservation was not found: ${reservation.id}`);
     const pending = ledger.pendingReservations[index];
     if (pending.status !== 'dispatched') throw new Error(`Phase 3 reservation is not settleable: ${pending.status}`);
-    if (actualUsd > pending.liabilityUsd) {
-      throw new Error(`Actual ${pending.type} spend $${actualUsd} exceeded bounded liability $${pending.liabilityUsd}.`);
+    if (actualNanoUsd > pending.liabilityNanoUsd) {
+      throw new Error(`Actual ${pending.type} spend ${actualNanoUsd} nano-USD exceeded bounded liability ${pending.liabilityNanoUsd}.`);
     }
     ledger.pendingReservations.splice(index, 1);
-    ledger.reservedUsd = roundUsd(ledger.reservedUsd - pending.liabilityUsd);
+    ledger.reservedNanoUsd -= pending.liabilityNanoUsd;
     ledger[pending.type].calls += 1;
-    ledger[pending.type].spendUsd = roundUsd(ledger[pending.type].spendUsd + actualUsd);
-    ledger.totalSpendUsd = roundUsd(ledger.generation.spendUsd + ledger.evaluation.spendUsd);
-    ledger.updatedAt = new Date().toISOString();
+    ledger[pending.type].spendNanoUsd += actualNanoUsd;
+    ledger.totalSpendNanoUsd = ledger.generation.spendNanoUsd + ledger.evaluation.spendNanoUsd;
+    const completedAt = new Date().toISOString();
+    ledger.completedCalls[pending.callId] = {
+      callId: pending.callId,
+      runId: pending.runId,
+      type: pending.type,
+      configurationId: pending.configurationId,
+      spendNanoUsd: actualNanoUsd,
+      usageMetadata,
+      resultCheckpoint,
+      completedAt,
+    };
+    ledger.updatedAt = completedAt;
     await atomicWriteJson(ledgerPath, ledger);
-    return ledger;
+    return ledger.completedCalls[pending.callId];
   }, lockOptions);
 }
 
@@ -723,7 +974,7 @@ export async function reconcileSpendLedger({
       return true;
     });
     if (changed) {
-      ledger.reservedUsd = roundUsd(ledger.pendingReservations.reduce((sum, item) => sum + item.liabilityUsd, 0));
+      ledger.reservedNanoUsd = ledger.pendingReservations.reduce((sum, item) => sum + item.liabilityNanoUsd, 0);
       ledger.updatedAt = new Date().toISOString();
       await atomicWriteJson(canonicalPath, ledger);
     }
@@ -742,7 +993,10 @@ export async function runBudgetedCall({
   tokenLimits,
   request,
   call,
-  actualUsd = (response) => calculateUsageCost(configuration, response.usageMetadata),
+  actualUsd,
+  serializeResult = (response) => response,
+  deserializeResult = (result) => result,
+  faultInjection = {},
   lockOptions,
 }) {
   const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
@@ -753,7 +1007,7 @@ export async function runBudgetedCall({
     budgetUsd,
     lockOptions,
   });
-  const reservation = await reserveSpend({
+  const decision = await reserveSpend({
     ledgerPath: canonicalPath,
     budgetUsd,
     type,
@@ -762,6 +1016,14 @@ export async function runBudgetedCall({
     tokenLimits,
     lockOptions,
   });
+  if (decision.completedCall) {
+    const durableResult = await readPrivateCallCheckpoint({
+      repoRoot,
+      completedCall: decision.completedCall,
+    });
+    return deserializeResult(durableResult);
+  }
+  const { reservation } = decision;
   try {
     await markDispatched({
       ledgerPath: canonicalPath,
@@ -772,6 +1034,7 @@ export async function runBudgetedCall({
   } catch (error) {
     throw new Error(`Phase 3 dispatch accounting failed before provider call: ${error.message}`, { cause: error });
   }
+  await faultInjection.afterDispatchRecord?.();
 
   let response;
   try {
@@ -785,6 +1048,7 @@ export async function runBudgetedCall({
     }, 'provider_rejection').catch(() => {});
     throw error;
   }
+  await faultInjection.afterProviderResponse?.();
 
   const promptTokens = response?.usageMetadata?.promptTokenCount;
   const visibleCandidateTokens = response?.usageMetadata?.candidatesTokenCount;
@@ -804,19 +1068,47 @@ export async function runBudgetedCall({
     throw new Error(`Phase 3 spend unresolved for ${runId}: missing usage metadata after dispatch.`);
   }
 
+  const normalizedUsageMetadata = {
+    promptTokenCount: promptTokens,
+    candidatesTokenCount: visibleCandidateTokens,
+    thoughtsTokenCount: thoughtTokens,
+  };
+  let actualNanoUsd;
+  let resultCheckpoint;
   try {
-    const actual = roundUsd(actualUsd(response));
+    actualNanoUsd = actualUsd === undefined
+      ? calculateUsageCostNanoUsd(configuration, normalizedUsageMetadata)
+      : usdToNanoUsdCeil(actualUsd(response));
     const outputTokens = visibleCandidateTokens + thoughtTokens;
     if (promptTokens > tokenLimits.maxInputTokens || outputTokens > tokenLimits.maxOutputTokens) {
       throw new Error('Provider usage exceeded or did not satisfy explicit token caps.');
     }
-    return await settleSpend({
+    resultCheckpoint = await writePrivateCallCheckpoint({
+      repoRoot,
+      callId: reservation.callId,
+      result: serializeResult(response),
+    });
+  } catch (error) {
+    await markUnresolved({
       ledgerPath: canonicalPath,
       budgetUsd,
       reservation,
-      actualUsd: actual,
       lockOptions,
-    }).then(() => response);
+    }, 'usage_pricing_or_checkpoint_failure').catch(() => {});
+    throw error;
+  }
+  await faultInjection.afterResultCheckpoint?.();
+
+  try {
+    await settleSpend({
+      ledgerPath: canonicalPath,
+      budgetUsd,
+      reservation,
+      actualNanoUsd,
+      usageMetadata: normalizedUsageMetadata,
+      resultCheckpoint,
+      lockOptions,
+    });
   } catch (error) {
     await markUnresolved({
       ledgerPath: canonicalPath,
@@ -826,6 +1118,68 @@ export async function runBudgetedCall({
     }, 'usage_or_pricing_failure').catch(() => {});
     throw error;
   }
+  await faultInjection.afterSettlement?.();
+  return response;
+}
+
+function pendingLiabilityNanoUsd(ledger, type, status) {
+  return ledger.pendingReservations
+    .filter((item) => (!type || item.type === type) && (!status || item.status === status))
+    .reduce((sum, item) => sum + item.liabilityNanoUsd, 0);
+}
+
+export function summarizeSpendLedger(ledger) {
+  validateLedger(ledger, nanoUsdToUsd(ledger.budgetNanoUsd));
+  const summarizeType = (type) => {
+    const reservedLiabilityNanoUsd = pendingLiabilityNanoUsd(ledger, type, 'reserved');
+    const dispatchedLiabilityNanoUsd = pendingLiabilityNanoUsd(ledger, type, 'dispatched');
+    const unresolvedLiabilityNanoUsd = pendingLiabilityNanoUsd(ledger, type, 'unresolved');
+    const totalLiabilityNanoUsd = reservedLiabilityNanoUsd
+      + dispatchedLiabilityNanoUsd
+      + unresolvedLiabilityNanoUsd;
+    return {
+      settledCalls: ledger[type].calls,
+      settledNanoUsd: ledger[type].spendNanoUsd,
+      settledUsd: nanoUsdToUsd(ledger[type].spendNanoUsd),
+      reservedLiabilityNanoUsd,
+      reservedLiabilityUsd: nanoUsdToUsd(reservedLiabilityNanoUsd),
+      dispatchedLiabilityNanoUsd,
+      dispatchedLiabilityUsd: nanoUsdToUsd(dispatchedLiabilityNanoUsd),
+      unresolvedLiabilityNanoUsd,
+      unresolvedLiabilityUsd: nanoUsdToUsd(unresolvedLiabilityNanoUsd),
+      totalLiabilityNanoUsd,
+      totalLiabilityUsd: nanoUsdToUsd(totalLiabilityNanoUsd),
+    };
+  };
+  const pendingCounts = {
+    total: ledger.pendingReservations.length,
+    generation: ledger.pendingReservations.filter(({ type }) => type === 'generation').length,
+    evaluation: ledger.pendingReservations.filter(({ type }) => type === 'evaluation').length,
+    reserved: ledger.pendingReservations.filter(({ status }) => status === 'reserved').length,
+    dispatched: ledger.pendingReservations.filter(({ status }) => status === 'dispatched').length,
+    unresolved: ledger.pendingReservations.filter(({ status }) => status === 'unresolved').length,
+  };
+  const settledNanoUsd = ledger.totalSpendNanoUsd;
+  const liabilityNanoUsd = ledger.reservedNanoUsd;
+  const totalCommittedNanoUsd = settledNanoUsd + liabilityNanoUsd;
+  const remainingCapacityNanoUsd = ledger.budgetNanoUsd - totalCommittedNanoUsd;
+  return {
+    currency: ledger.currency,
+    unit: ledger.unit,
+    budgetNanoUsd: ledger.budgetNanoUsd,
+    budgetUsd: nanoUsdToUsd(ledger.budgetNanoUsd),
+    generation: summarizeType('generation'),
+    evaluation: summarizeType('evaluation'),
+    settledNanoUsd,
+    settledUsd: nanoUsdToUsd(settledNanoUsd),
+    liabilityNanoUsd,
+    liabilityUsd: nanoUsdToUsd(liabilityNanoUsd),
+    totalCommittedNanoUsd,
+    totalCommittedUsd: nanoUsdToUsd(totalCommittedNanoUsd),
+    remainingCapacityNanoUsd,
+    remainingCapacityUsd: nanoUsdToUsd(remainingCapacityNanoUsd),
+    pendingCounts,
+  };
 }
 
 function percentile(values, percentileValue) {

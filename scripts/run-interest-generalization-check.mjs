@@ -134,6 +134,11 @@ async function generate(ai, interest, input, useFewerWords) {
       },
     },
     call: (request) => ai.models.generateContent(request),
+    serializeResult: (value) => ({
+      text: value.text,
+      usageMetadata: value.usageMetadata,
+      candidates: value.candidates,
+    }),
   });
 
   const translations = parseJsonArray(response.text)

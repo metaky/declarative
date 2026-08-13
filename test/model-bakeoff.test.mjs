@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -109,7 +115,8 @@ test('bakeoff summaries and Markdown distinguish visible candidates, thoughts, a
 test('evaluator checkpoints each stable run and resumes without re-scoring completed rows', async (t) => {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-score-checkpoint-'));
   t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
-  const checkpointPath = path.join(temporaryDirectory, 'score-checkpoint.json');
+  const checkpointDirectory = path.join(temporaryDirectory, '.score-checkpoints');
+  const checkpointPath = path.join(checkpointDirectory, 'score-checkpoint.json');
   const payload = {
     generatedAt: '2026-08-13T12:00:00.000Z',
     qualityScored: false,
@@ -134,6 +141,8 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
 
   assert.deepEqual(firstAttempted, ['stable-run-1', 'stable-run-2']);
   const partial = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  assert.equal((await stat(checkpointDirectory)).mode & 0o777, 0o700);
+  assert.equal((await stat(checkpointPath)).mode & 0o777, 0o600);
   assert.equal(partial.qualityScored, false);
   assert.equal(partial.scoringIncomplete, true);
   assert.deepEqual(partial.completedRunIds, ['stable-run-1']);
