@@ -118,7 +118,7 @@ The prior revisions remain available. No revision, Secret Manager secret, or his
 
 - Replacement: `projects/1083695383503/locations/global/keys/5a8613d5-4ea3-4be1-b4e2-a0b2cee0d082` (`Declarative Gemini rollback 2026-08-13 v2`) is active, restricted to `generativelanguage.googleapis.com`, stored as secret version `2`, verified on the tagged revision, and serving production.
 - Previous: `projects/1083695383503/locations/global/keys/cef8e82b-b048-46b8-af88-5a417fbe8530` (`Declarative Gemini API2`) is active as secret version `1` and pending revocation. Revocation was not requested or performed.
-- Deleted throwaway: the first replacement key was generated and its value was printed by a synchronous provider operation into internal tool output despite a field projection. It was immediately deleted and was never stored, deployed, or used. Current provider metadata does not list it, and no active key was exposed.
+- Deleted throwaway: `projects/1083695383503/locations/global/keys/41fe1ca9-6f89-4848-bd10-8f40cec39daa` was created at `2026-08-13T15:31:28.928357Z`. This newly created valid-but-never-used key was exposed to internal tool output and immediately invalidated by deletion, recorded complete at `2026-08-13T15:31:59.782776Z`. It was never stored, deployed, or used; no production or currently active credential was exposed.
 
 ### Upstash overlap conclusion
 
@@ -126,7 +126,7 @@ The live database accepts `ACL LIST`, confirming ACL capability and the possibil
 
 Three isolated attempts to create that user failed safely when the live REST control path rejected the password assignment. Each partial user was deleted, final read-only inspection confirmed the user is absent, and no Upstash replacement token or secret version was created. The default database password was never reset. Production `/api/challenge` continued to pass after the attempts.
 
-Because there is no authenticated Upstash management CLI or management API credential in this environment, a safe overlap could not be proven without expanding to an interactive provider workflow. Upstash token version `1` therefore remains active and pending rotation/revocation; no immediate-invalidation operation was attempted.
+Because there is no authenticated Upstash management CLI or management API credential in this environment, a safe overlap could not be proven without expanding to an interactive provider workflow. Upstash token version `1` therefore remains active and pending rotation/revocation; no immediate-invalidation operation was attempted. Irreversible Upstash password regeneration was not approved by Kyle and remains a separate approval-gated operation.
 
 ### Final production state and concerns
 
@@ -135,4 +135,4 @@ Because there is no authenticated Upstash management CLI or management API crede
 - Model, prompts, SDK, and visible application behavior were not changed.
 - Concern: Upstash rotation remains pending for the reason above.
 - Concern: the structured runtime schema lacks an explicit `thinking_budget` field.
-- Incident: one deleted, never-used replacement Gemini key appeared in internal tool output; no active credential value was exposed.
+- Incident: one newly created valid-but-never-used replacement Gemini key was exposed to internal tool output and immediately invalidated by deletion; no production or currently active credential was exposed.
