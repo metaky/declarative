@@ -27,7 +27,7 @@ import {
 
 function zeroLedger() {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
     unit: 'nano-usd',
@@ -38,6 +38,7 @@ function zeroLedger() {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
+    recoveryActions: [],
     updatedAt: null,
   };
 }
@@ -49,8 +50,13 @@ function completedCall({ runId, spendNanoUsd }) {
     runId,
     type: 'generation',
     configurationId: configuration.id,
+    requestHash: 'a'.repeat(64),
+    liabilityNanoUsd: spendNanoUsd,
     spendNanoUsd,
     usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+    providerDurationMs: 1,
+    resultAvailable: true,
+    resolution: 'provider_response',
     resultCheckpoint: {
       relativePath: `.call-checkpoints/${'a'.repeat(64)}.json`,
       sha256: 'a'.repeat(64),
@@ -100,6 +106,15 @@ function callOptions(context, overrides = {}) {
     configuration,
     tokenLimits: limits,
     request,
+    requestContext: {
+      harnessVersion: 'local-test-v1',
+      schemaVersion: 'local-test-schema-v1',
+      corpusSourceIdentity: 'spend-safety-fixture',
+      repeat: 1,
+      direction: null,
+      moreIdeasRound: null,
+      operation: 'generation',
+    },
     call: overrides.call ?? (async () => ({ usageMetadata: validUsage() })),
     ...overrides,
     request,
@@ -156,6 +171,7 @@ safetyTest('ledger accounting invariants reject reset-like or internally inconsi
       pendingReservations: [{
         id: 'pending', callId: 'generation:pending', runId: 'pending', type: 'generation', status: 'reserved',
         liabilityNanoUsd: 1, ownerPid: 1, ownerToken: 'owner', configurationId: configuration.id,
+        requestHash: 'd'.repeat(64),
         maxInputTokens: 1, maxOutputTokens: 1, createdAt: '2026-08-13T00:00:00.000Z',
       }],
       updatedAt: null,
@@ -308,11 +324,13 @@ safetyTest('reconciliation releases only proven-undispatched dead reservations a
     {
       id: 'reserved-dead', callId: 'generation:run-reserved', runId: 'run-reserved', type: 'generation', status: 'reserved',
       liabilityNanoUsd, ownerPid: 999_999_991, ownerToken: 'dead-a', createdAt: '2000-01-01T00:00:00.000Z',
+      requestHash: 'b'.repeat(64),
       configurationId: configuration.id, maxInputTokens: limits.maxInputTokens, maxOutputTokens: limits.maxOutputTokens,
     },
     {
       id: 'dispatched-dead', callId: 'generation:run-dispatched', runId: 'run-dispatched', type: 'generation', status: 'dispatched',
       liabilityNanoUsd, ownerPid: 999_999_992, ownerToken: 'dead-b', createdAt: '2000-01-01T00:00:00.000Z',
+      requestHash: 'c'.repeat(64),
       dispatchedAt: '2000-01-01T00:00:01.000Z', configurationId: configuration.id,
       maxInputTokens: limits.maxInputTokens, maxOutputTokens: limits.maxOutputTokens,
     },

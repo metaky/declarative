@@ -26,6 +26,7 @@
     "quality:model-bakeoff": "node scripts/run-model-bakeoff.mjs --configuration=gemini-2.5-flash-baseline --corpus=evals/gemini-migration-prompt-set.json --repeats=1 --limit=8 --phase-budget-usd=10.00 --spend-ledger=evals/results/gemini-migration/phase-3-spend.json",
     "quality:migration-smoke": "node scripts/run-model-bakeoff.mjs --configurations=gemini-2.5-flash-baseline,gemini-3.5-flash-lite-minimal,gemini-3.6-flash-minimal,gemini-3.6-flash-medium --corpus=evals/gemini-migration-prompt-set.json --repeats=1 --limit=3 --phase-budget-usd=10.00 --spend-ledger=evals/results/gemini-migration/phase-3-spend.json",
     "quality:migration-eval": "node scripts/run-model-bakeoff.mjs --configurations=gemini-2.5-flash-baseline,gemini-3.5-flash-lite-minimal,gemini-3.6-flash-minimal,gemini-3.6-flash-medium --corpus=evals/gemini-migration-prompt-set.json --repeats=3 --phase-budget-usd=10.00 --spend-ledger=evals/results/gemini-migration/phase-3-spend.json",
+    "quality:migration-recover": "node scripts/recover-gemini-migration-call.mjs",
     "quality:prompt-history": "node scripts/run-prompt-history-comparison.mjs",
     "quality:review-packet": "node scripts/build-quality-review-packet.mjs",
     "start": "node server.js",

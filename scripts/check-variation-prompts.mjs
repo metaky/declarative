@@ -10,6 +10,7 @@ import {
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
+  getProviderDurationMs,
   parseCliOptions,
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
@@ -18,6 +19,15 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
+if (process.argv.includes('--help')) {
+  console.log(`Gemini variation prompt comparison
+
+Usage:
+  node scripts/check-variation-prompts.mjs --configuration=<id> [options]
+
+Use one explicit allow-listed configuration. This help path does not load credentials or call Gemini.`);
+  process.exit(0);
+}
 const envPath = path.join(repoRoot, '.env.local');
 const options = parseCliOptions(process.argv.slice(2));
 if (options.configurations.length !== 1) {
@@ -132,8 +142,6 @@ async function runVariation(promptCase, variationKind) {
     useFewerWords: promptCase.useFewerWords,
   });
 
-  const startedAt = Date.now();
-
   const response = await runBudgetedCall({
     repoRoot,
     ledgerPath,
@@ -162,6 +170,16 @@ async function runVariation(promptCase, variationKind) {
         },
       },
     },
+    requestContext: {
+      harnessVersion: 'task-6-request-v1',
+      schemaVersion: 'translation-array-v1',
+      corpusSourceIdentity: 'evals/variation-prompt-set.json',
+      caseId: promptCase.id,
+      repeat: 1,
+      direction: variationKind,
+      moreIdeasRound: null,
+      operation: 'variation',
+    },
     call: (request) => ai.models.generateContent(request),
     serializeResult: (value) => ({
       text: value.text,
@@ -183,7 +201,7 @@ async function runVariation(promptCase, variationKind) {
   return {
     variationKind,
     label: VARIATION_KIND_LABELS[variationKind],
-    durationMs: Date.now() - startedAt,
+    durationMs: getProviderDurationMs(response),
     prompt,
     effectiveConfiguration: captureConfigurationMetadata(configuration),
     usageMetadata: response.usageMetadata ?? null,

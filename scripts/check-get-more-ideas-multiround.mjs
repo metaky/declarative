@@ -10,6 +10,7 @@ import {
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
+  getProviderDurationMs,
   parseCliOptions,
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
@@ -18,6 +19,15 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
+if (process.argv.includes('--help')) {
+  console.log(`Gemini Get More Ideas multi-round comparison
+
+Usage:
+  node scripts/check-get-more-ideas-multiround.mjs --configuration=<id> [options]
+
+Use one explicit allow-listed configuration. This help path does not load credentials or call Gemini.`);
+  process.exit(0);
+}
 const envPath = path.join(repoRoot, '.env.local');
 const options = parseCliOptions(process.argv.slice(2));
 if (options.configurations.length !== 1) {
@@ -64,7 +74,6 @@ async function runRound(promptCase, existingTranslations, round) {
     useFewerWords: promptCase.useFewerWords,
   });
 
-  const startedAt = Date.now();
   const response = await runBudgetedCall({
     repoRoot,
     ledgerPath,
@@ -93,6 +102,16 @@ async function runRound(promptCase, existingTranslations, round) {
         },
       },
     },
+    requestContext: {
+      harnessVersion: 'task-6-request-v1',
+      schemaVersion: 'translation-array-v1',
+      corpusSourceIdentity: 'evals/get-more-ideas-prompt-set.json',
+      caseId: promptCase.id,
+      repeat: 1,
+      direction: null,
+      moreIdeasRound: round,
+      operation: 'moreIdeas',
+    },
     call: (request) => ai.models.generateContent(request),
     serializeResult: (value) => ({
       text: value.text,
@@ -109,7 +128,7 @@ async function runRound(promptCase, existingTranslations, round) {
   }
 
   return {
-    durationMs: Date.now() - startedAt,
+    durationMs: getProviderDurationMs(response),
     prompt,
     effectiveConfiguration: captureConfigurationMetadata(configuration),
     usageMetadata: response.usageMetadata ?? null,

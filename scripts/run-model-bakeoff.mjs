@@ -30,6 +30,7 @@ import {
   calculateAggregateMetrics,
   calculateUsageCost,
   captureConfigurationMetadata,
+  getProviderDurationMs,
   loadEnvFile,
   loadMigrationCorpus,
   parseCliOptions,
@@ -283,6 +284,17 @@ async function generate(ai, candidate, testCase, run, options) {
         contents: prompt,
         config,
       },
+      requestContext: {
+        harnessVersion: 'task-6-request-v1',
+        schemaVersion: 'translation-array-v1',
+        corpusSourceIdentity: options.corpusIdentity,
+        caseId: testCase.id,
+        provenance: testCase.provenance,
+        repeat: run.repeat,
+        direction: run.variationKind ?? null,
+        moreIdeasRound: run.round ?? null,
+        operation: run.operation,
+      },
       call: (request) => ai.models.generateContent(request),
       serializeResult: (value) => ({
         text: value.text,
@@ -296,7 +308,7 @@ async function generate(ai, candidate, testCase, run, options) {
     return {
       ...baseResult,
       status: 'success',
-      durationMs: Date.now() - startedAt,
+      durationMs: getProviderDurationMs(response),
       usageMetadata: response.usageMetadata ?? null,
       estimatedUsd: generationUsd,
       generationUsd,
@@ -345,6 +357,12 @@ async function scoreResults(ai, payload, options) {
   return scoreRowsWithCheckpoint({
     payload,
     checkpointPath,
+    getCompletedCall: async (callId) => {
+      const ledger = await readSpendLedger({
+        repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
+      });
+      return ledger.completedCalls[callId] ?? null;
+    },
     getCheckpointMetadata: async () => ({
       cumulativeSpend: summarizeSpendLedger(await readSpendLedger({
         repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
@@ -359,11 +377,14 @@ async function scoreResults(ai, payload, options) {
 
     if (result.localOnly || result.error || result.parseError || result.contractError || !result.translations?.length) {
       return {
-        ...result,
-        excludedFromAggregate,
-        aggregateExclusionReason,
-        postprocessedVerdict: 'Error',
-        postprocessReasons: result.error ? [result.error] : ['no translations returned'],
+        scoredRow: {
+          ...result,
+          excludedFromAggregate,
+          aggregateExclusionReason,
+          postprocessedVerdict: 'Error',
+          postprocessReasons: result.error ? [result.error] : ['no translations returned'],
+        },
+        completedCall: null,
       };
     }
     console.log(`- scoring ${result.candidateId}: ${result.caseId}`);
@@ -382,15 +403,27 @@ async function scoreResults(ai, payload, options) {
         responseSchema: translationEvaluationResponseSchema(),
       },
     };
+    const evaluatorRunId = `${result.runId}:evaluation`;
     const { evaluation, usageMetadata, evaluatorModel } = await runBudgetedCall({
       repoRoot,
       ledgerPath: options.ledgerPath,
       budgetUsd: options.budgetUsd,
       type: 'evaluation',
-      runId: `${result.runId}:evaluation`,
+      runId: evaluatorRunId,
       configuration: evaluatorConfiguration,
       tokenLimits: MIGRATION_TOKEN_LIMITS.evaluation,
       request: evaluatorRequest,
+      requestContext: {
+        harnessVersion: 'task-6-request-v1',
+        evaluatorVersion: 'translation-set-evaluator-v1',
+        schemaVersion: 'translation-evaluation-response-v1',
+        corpusSourceIdentity: payload.corpus ?? 'historical-bakeoff',
+        sourceRunId: result.runId,
+        repeat: result.repeat ?? 1,
+        direction: result.variationKind ?? null,
+        moreIdeasRound: result.round ?? null,
+        operation: 'evaluation',
+      },
       call: (request) => evaluateTranslationSet(ai, evaluationInput, {
         model: request.model,
         thinkingBudget: 0,
@@ -425,12 +458,20 @@ async function scoreResults(ai, payload, options) {
       calibratedVerdict,
       interestMissing: evaluationInput.tone === 'Interest Based' && !evaluationInput.interest,
     });
+    const completedLedger = await readSpendLedger({
+      repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
+    });
+    const completedCall = completedLedger.completedCalls[`evaluation:${evaluatorRunId}`];
+    if (!completedCall) throw new Error(`Missing durable evaluator call entry for ${evaluatorRunId}.`);
     return {
-      ...scoredRow,
-      excludedFromAggregate,
-      aggregateExclusionReason,
-      postprocessedVerdict: postprocess.verdict,
-      postprocessReasons: postprocess.reasons,
+      scoredRow: {
+        ...scoredRow,
+        excludedFromAggregate,
+        aggregateExclusionReason,
+        postprocessedVerdict: postprocess.verdict,
+        postprocessReasons: postprocess.reasons,
+      },
+      completedCall,
     };
     },
   }).then((scoredPayload) => ({
@@ -678,6 +719,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         ledgerPath,
         budgetUsd: options.budgetUsd,
         existingTranslations,
+        corpusIdentity: {
+          path: path.relative(repoRoot, corpusPath),
+          importedCount: corpus.importedCount,
+          caseCount: cases.length,
+        },
       });
       results.push(result);
       if (run.operation === 'moreIdeas' && result.translations.length) {

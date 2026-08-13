@@ -24,7 +24,7 @@ const manifestPath = path.join(repoRoot, 'evals', 'gemini-migration-prompt-set.j
 
 function zeroLedger() {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
     unit: 'nano-usd',
@@ -35,6 +35,7 @@ function zeroLedger() {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
+    recoveryActions: [],
     updatedAt: null,
   };
 }
@@ -46,8 +47,13 @@ function completedCall({ runId, type, spendNanoUsd }) {
     runId,
     type,
     configurationId: 'gemini-2.5-flash-baseline',
+    requestHash: 'a'.repeat(64),
+    liabilityNanoUsd: spendNanoUsd,
     spendNanoUsd,
     usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+    providerDurationMs: 1,
+    resultAvailable: true,
+    resolution: 'provider_response',
     resultCheckpoint: {
       relativePath: `.call-checkpoints/${'a'.repeat(64)}.json`,
       sha256: 'a'.repeat(64),
@@ -79,6 +85,16 @@ function budgetedOptions(context, type, runId, actualUsd) {
       model: configuration.model,
       contents: 'Local fixture',
       config: { maxOutputTokens: tokenLimits.maxOutputTokens },
+    },
+    requestContext: {
+      harnessVersion: 'local-test-v1',
+      schemaVersion: 'local-test-schema-v1',
+      corpusSourceIdentity: 'eval-utils-fixture',
+      repeat: 1,
+      direction: null,
+      moreIdeasRound: null,
+      operation: type,
+      ...(type === 'evaluation' ? { evaluatorVersion: 'local-evaluator-v1' } : {}),
     },
     actualUsd: () => actualUsd,
   };

@@ -11,6 +11,7 @@ import {
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
+  getProviderDurationMs,
   parseCliOptions,
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
@@ -19,6 +20,15 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
+if (process.argv.includes('--help')) {
+  console.log(`Gemini interest generalization check
+
+Usage:
+  node scripts/run-interest-generalization-check.mjs --configuration=<id> [options]
+
+Use one explicit allow-listed configuration. This help path does not load credentials or call Gemini.`);
+  process.exit(0);
+}
 const envPath = path.join(repoRoot, '.env.local');
 const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
 const options = parseCliOptions(process.argv.slice(2));
@@ -104,7 +114,6 @@ async function generate(ai, interest, input, useFewerWords) {
     useFewerWords,
     existingTranslations: [],
   });
-  const startedAt = Date.now();
   const response = await runBudgetedCall({
     repoRoot,
     ledgerPath,
@@ -133,6 +142,18 @@ async function generate(ai, interest, input, useFewerWords) {
         },
       },
     },
+    requestContext: {
+      harnessVersion: 'task-6-request-v1',
+      schemaVersion: 'translation-array-v1',
+      corpusSourceIdentity: 'interest-generalization-builtins-v1',
+      caseId: input.id,
+      interest,
+      useFewerWords,
+      repeat: 1,
+      direction: null,
+      moreIdeasRound: null,
+      operation: 'translation',
+    },
     call: (request) => ai.models.generateContent(request),
     serializeResult: (value) => ({
       text: value.text,
@@ -153,7 +174,7 @@ async function generate(ai, interest, input, useFewerWords) {
     inputId: input.id,
     text: input.text,
     useFewerWords,
-    durationMs: Date.now() - startedAt,
+    durationMs: getProviderDurationMs(response),
     effectiveConfiguration: captureConfigurationMetadata(configuration),
     usageMetadata: response.usageMetadata ?? null,
     generationUsd: calculateUsageCost(configuration, response.usageMetadata),

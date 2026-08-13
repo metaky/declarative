@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "phase": "gemini-model-migration-phase-3",
   "currency": "USD",
   "unit": "nano-usd",
@@ -16,5 +16,6 @@
   "reservedNanoUsd": 0,
   "pendingReservations": [],
   "completedCalls": {},
+  "recoveryActions": [],
   "updatedAt": null
 }

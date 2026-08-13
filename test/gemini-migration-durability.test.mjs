@@ -27,6 +27,24 @@ const tinyLimits = { maxInputTokens: 16, maxOutputTokens: 1 };
 
 function zeroLedger() {
   return {
+    schemaVersion: 4,
+    phase: 'gemini-model-migration-phase-3',
+    currency: 'USD',
+    unit: 'nano-usd',
+    budgetNanoUsd: 10_000_000_000,
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+    totalSpendNanoUsd: 0,
+    reservedNanoUsd: 0,
+    pendingReservations: [],
+    completedCalls: {},
+    recoveryActions: [],
+    updatedAt: null,
+  };
+}
+
+function legacyZeroLedger() {
+  return {
     schemaVersion: 3,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
@@ -38,21 +56,6 @@ function zeroLedger() {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
-    updatedAt: null,
-  };
-}
-
-function legacyZeroLedger() {
-  return {
-    schemaVersion: 2,
-    phase: 'gemini-model-migration-phase-3',
-    currency: 'USD',
-    budgetUsd: 10,
-    generation: { calls: 0, spendUsd: 0 },
-    evaluation: { calls: 0, spendUsd: 0 },
-    totalSpendUsd: 0,
-    reservedUsd: 0,
-    pendingReservations: [],
     updatedAt: null,
   };
 }
@@ -97,6 +100,16 @@ function options(context, overrides = {}) {
         maxOutputTokens: tinyLimits.maxOutputTokens,
       },
     },
+    requestContext: {
+      harnessVersion: 'local-test-v1',
+      schemaVersion: 'local-test-schema-v1',
+      corpusSourceIdentity: 'durability-fixture',
+      repeat: 1,
+      direction: null,
+      moreIdeasRound: null,
+      operation: type,
+      ...(type === 'evaluation' ? { evaluatorVersion: 'local-evaluator-v1' } : {}),
+    },
     serializeResult: (value) => ({
       text: value.text,
       usageMetadata: value.usageMetadata,
@@ -107,24 +120,37 @@ function options(context, overrides = {}) {
   };
 }
 
-durabilityTest('only the exact committed schema-2 zero state migrates to the integer ledger', async (t) => {
+durabilityTest('only the exact committed schema-3 zero state migrates to the request-bound ledger', async (t) => {
   const context = await fixture(t, legacyZeroLedger());
 
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
 
   assert.deepEqual(ledger, zeroLedger());
-  assert.equal(JSON.parse(await readFile(context.ledgerPath, 'utf8')).schemaVersion, 3);
+  assert.equal(JSON.parse(await readFile(context.ledgerPath, 'utf8')).schemaVersion, 4);
 
   const activeLegacy = {
     ...legacyZeroLedger(),
-    generation: { calls: 1, spendUsd: 0.01 },
-    totalSpendUsd: 0.01,
+    generation: { calls: 1, spendNanoUsd: 10_000_000 },
+    totalSpendNanoUsd: 10_000_000,
     updatedAt: '2026-08-13T00:00:00.000Z',
   };
   const activeContext = await fixture(t, activeLegacy);
   await assert.rejects(
     readSpendLedger({ ...activeContext, budgetUsd: 10 }),
     /only.*zero.*migrat|invalid.*schema/i,
+  );
+});
+
+durabilityTest('ledger validation rejects completed spend above its reserved liability', async (t) => {
+  const context = await fixture(t);
+  await runBudgetedCall(options(context, { runId: 'tamper-liability' }));
+  const ledger = JSON.parse(await readFile(context.ledgerPath, 'utf8'));
+  ledger.completedCalls['generation:tamper-liability'].liabilityNanoUsd = 299;
+  await writeFile(context.ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+
+  await assert.rejects(
+    readSpendLedger({ ...context, budgetUsd: 10 }),
+    /spend.*liability/i,
   );
 });
 
@@ -164,8 +190,13 @@ durabilityTest('many tiny positive calls all consume budget and cannot cross the
         runId: 'historical',
         type: 'generation',
         configurationId: baseline.id,
+        requestHash: 'a'.repeat(64),
+        liabilityNanoUsd: 10_000_000_000 - liabilityNanoUsd,
         spendNanoUsd: 10_000_000_000 - liabilityNanoUsd,
         usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+        providerDurationMs: 1,
+        resultAvailable: true,
+        resolution: 'provider_response',
         resultCheckpoint: { relativePath: `.call-checkpoints/${'a'.repeat(64)}.json`, sha256: 'a'.repeat(64) },
         completedAt: '2026-08-13T00:00:00.000Z',
       },
@@ -284,11 +315,13 @@ durabilityTest('machine and Markdown reports expose settled spend and committed 
       {
         id: 'g-reserved', callId: 'generation:g', runId: 'g', type: 'generation', status: 'reserved',
         liabilityNanoUsd: 250_000_000, ownerPid: 1, ownerToken: 'a', configurationId: baseline.id,
+        requestHash: 'c'.repeat(64),
         maxInputTokens: 1, maxOutputTokens: 1, createdAt: '2026-08-13T00:00:00.000Z',
       },
       {
         id: 'e-unresolved', callId: 'evaluation:e', runId: 'e', type: 'evaluation', status: 'unresolved',
         liabilityNanoUsd: 750_000_000, ownerPid: 2, ownerToken: 'b', configurationId: baseline.id,
+        requestHash: 'd'.repeat(64),
         maxInputTokens: 1, maxOutputTokens: 1, createdAt: '2026-08-13T00:00:00.000Z',
         dispatchedAt: '2026-08-13T00:00:01.000Z', unresolvedAt: '2026-08-13T00:00:02.000Z', reason: 'test',
       },
@@ -296,15 +329,19 @@ durabilityTest('machine and Markdown reports expose settled spend and committed 
     completedCalls: {
       'generation:done': {
         callId: 'generation:done', runId: 'done', type: 'generation', configurationId: baseline.id,
+        requestHash: 'a'.repeat(64), liabilityNanoUsd: 1_000_000_000,
         spendNanoUsd: 1_000_000_000,
         usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+        providerDurationMs: 1, resultAvailable: true, resolution: 'provider_response',
         resultCheckpoint: { relativePath: `.call-checkpoints/${'a'.repeat(64)}.json`, sha256: 'a'.repeat(64) },
         completedAt: '2026-08-13T00:00:00.000Z',
       },
       'evaluation:done': {
         callId: 'evaluation:done', runId: 'done', type: 'evaluation', configurationId: baseline.id,
+        requestHash: 'b'.repeat(64), liabilityNanoUsd: 500_000_000,
         spendNanoUsd: 500_000_000,
         usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+        providerDurationMs: 1, resultAvailable: true, resolution: 'provider_response',
         resultCheckpoint: { relativePath: `.call-checkpoints/${'b'.repeat(64)}.json`, sha256: 'b'.repeat(64) },
         completedAt: '2026-08-13T00:00:00.000Z',
       },

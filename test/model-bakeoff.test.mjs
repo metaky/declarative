@@ -23,6 +23,28 @@ const CURRENT_IDS = [
   'gemini-3.6-flash-medium',
 ];
 
+function evaluatorCompletedCall(runId, marker = 'a') {
+  const evaluatorRunId = `${runId}:evaluation`;
+  return {
+    callId: `evaluation:${evaluatorRunId}`,
+    runId: evaluatorRunId,
+    type: 'evaluation',
+    configurationId: CURRENT_IDS[0],
+    requestHash: marker.repeat(64),
+    liabilityNanoUsd: 1_000_000,
+    spendNanoUsd: 10_000,
+    usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2, thoughtsTokenCount: 0 },
+    providerDurationMs: 25,
+    resultAvailable: true,
+    resolution: 'provider_response',
+    resultCheckpoint: {
+      relativePath: `.call-checkpoints/${marker.repeat(64)}.json`,
+      sha256: marker.repeat(64),
+    },
+    completedAt: '2026-08-13T12:00:01.000Z',
+  };
+}
+
 function currentCandidate(id) {
   return { id, model: 'legacy-metadata-must-not-survive' };
 }
@@ -127,6 +149,10 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
     ],
   };
   const firstAttempted = [];
+  const completedCalls = new Map([
+    ['stable-run-1', evaluatorCompletedCall('stable-run-1', 'a')],
+    ['stable-run-2', evaluatorCompletedCall('stable-run-2', 'b')],
+  ]);
 
   await assert.rejects(scoreRowsWithCheckpoint({
     payload,
@@ -134,8 +160,12 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
     scoreRow: async (row) => {
       firstAttempted.push(row.runId);
       if (row.runId === 'stable-run-2') throw new Error('simulated evaluator stop');
-      return { ...row, postprocessedVerdict: 'Pass', evaluatorUsd: 0.01 };
+      return {
+        scoredRow: { ...row, postprocessedVerdict: 'Pass', evaluatorUsd: 0.01 },
+        completedCall: completedCalls.get(row.runId),
+      };
     },
+    getCompletedCall: async (callId) => [...completedCalls.values()].find((item) => item.callId === callId),
     getCheckpointMetadata: async () => ({ cumulativeSpend: { totalSpendUsd: 0.01 } }),
   }), /simulated evaluator stop/);
 
@@ -148,6 +178,13 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
   assert.deepEqual(partial.completedRunIds, ['stable-run-1']);
   assert.equal(partial.results[0].postprocessedVerdict, 'Pass');
   assert.equal(partial.results[0].evaluatorUsd, 0.01);
+  assert.match(partial.results[0].evaluatorCheckpointIntegrity.sourceRowHash, /^[a-f0-9]{64}$/);
+  assert.equal(
+    partial.results[0].evaluatorCheckpointIntegrity.evaluatorRequestHash,
+    completedCalls.get('stable-run-1').requestHash,
+  );
+  assert.match(partial.results[0].evaluatorCheckpointIntegrity.scoredRowHash, /^[a-f0-9]{64}$/);
+  assert.match(partial.checkpointHash, /^[a-f0-9]{64}$/);
   assert.equal(partial.cumulativeSpend.totalSpendUsd, 0.01);
 
   const resumedAttempted = [];
@@ -156,8 +193,12 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
     checkpointPath,
     scoreRow: async (row) => {
       resumedAttempted.push(row.runId);
-      return { ...row, postprocessedVerdict: 'Pass', evaluatorUsd: 0.02 };
+      return {
+        scoredRow: { ...row, postprocessedVerdict: 'Pass', evaluatorUsd: 0.02 },
+        completedCall: completedCalls.get(row.runId),
+      };
     },
+    getCompletedCall: async (callId) => [...completedCalls.values()].find((item) => item.callId === callId),
     getCheckpointMetadata: async () => ({ cumulativeSpend: { totalSpendUsd: 0.03 } }),
   });
 
@@ -169,4 +210,82 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
   assert.deepEqual(finalCheckpoint.completedRunIds, ['stable-run-1', 'stable-run-2']);
   assert.equal(finalCheckpoint.cumulativeSpend.totalSpendUsd, 0.03);
   assert.equal(finalCheckpoint.qualityScored, true);
+});
+
+test('evaluator checkpoint tampering fails closed before any scoring callback can retry', async (t) => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-score-integrity-'));
+  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
+  const payload = {
+    generatedAt: '2026-08-13T12:00:00.000Z',
+    qualityScored: false,
+    corpus: { path: 'evals/gemini-migration-prompt-set.json', seed: 7 },
+    candidates: [{ id: CURRENT_IDS[0] }],
+    results: [{
+      runId: 'stable-tamper-row',
+      candidateId: CURRENT_IDS[0],
+      caseId: 'case-1',
+      translations: [{ translation: 'Synthetic candidate' }],
+    }],
+  };
+  const completedCall = evaluatorCompletedCall('stable-tamper-row', 'c');
+  const validPath = path.join(temporaryDirectory, '.score-checkpoints', 'valid.json');
+  await scoreRowsWithCheckpoint({
+    payload,
+    checkpointPath: validPath,
+    scoreRow: async (row) => ({
+      scoredRow: {
+        ...row,
+        postprocessedVerdict: 'Pass',
+        qualityEvaluation: { score: 4, recommendation: 'show' },
+      },
+      completedCall,
+    }),
+    getCompletedCall: async () => completedCall,
+  });
+  const valid = JSON.parse(await readFile(validPath, 'utf8'));
+
+  const variants = [
+    ['verdict', (checkpoint) => { checkpoint.results[0].postprocessedVerdict = 'Fail'; }],
+    ['score', (checkpoint) => { checkpoint.results[0].qualityEvaluation.score = 1; }],
+    ['checkpoint hash', (checkpoint) => { checkpoint.checkpointHash = 'd'.repeat(64); }],
+  ];
+  for (const [label, mutate] of variants) {
+    const checkpointPath = path.join(temporaryDirectory, '.score-checkpoints', `${label.replaceAll(' ', '-')}.json`);
+    const tampered = structuredClone(valid);
+    mutate(tampered);
+    await writeFile(checkpointPath, `${JSON.stringify(tampered, null, 2)}\n`);
+    let callbackCount = 0;
+    await assert.rejects(scoreRowsWithCheckpoint({
+      payload,
+      checkpointPath,
+      scoreRow: async () => { callbackCount += 1; throw new Error('must not retry'); },
+      getCompletedCall: async () => completedCall,
+    }), /integrity|hash|tamper/i, label);
+    assert.equal(callbackCount, 0, label);
+  }
+
+  let callbackCount = 0;
+  await assert.rejects(scoreRowsWithCheckpoint({
+    payload: {
+      ...payload,
+      results: [{ ...payload.results[0], translations: [{ translation: 'Changed source row' }] }],
+    },
+    checkpointPath: validPath,
+    scoreRow: async () => { callbackCount += 1; throw new Error('must not retry'); },
+    getCompletedCall: async () => completedCall,
+  }), /source|checkpoint.*match|integrity/i);
+  assert.equal(callbackCount, 0);
+
+  const journalTamperPath = path.join(temporaryDirectory, '.score-checkpoints', 'journal-tamper.json');
+  await writeFile(journalTamperPath, `${JSON.stringify(valid, null, 2)}\n`);
+  await assert.rejects(scoreRowsWithCheckpoint({
+    payload,
+    checkpointPath: journalTamperPath,
+    scoreRow: async () => { callbackCount += 1; throw new Error('must not retry'); },
+    getCompletedCall: async () => ({
+      ...completedCall,
+      resultCheckpoint: { ...completedCall.resultCheckpoint, sha256: 'e'.repeat(64) },
+    }),
+  }), /completed.*integrity|journal|hash/i);
+  assert.equal(callbackCount, 0);
 });

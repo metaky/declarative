@@ -10,6 +10,7 @@ import {
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
+  getProviderDurationMs,
   parseCliOptions,
   resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
@@ -18,6 +19,15 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
+if (process.argv.includes('--help')) {
+  console.log(`Gemini model comparison
+
+Usage:
+  node scripts/check-gemini-models.mjs --configurations=<id,id|all> [options]
+
+Use an explicit allow-listed configuration selection. This help path does not load credentials or call Gemini.`);
+  process.exit(0);
+}
 const envPath = path.join(repoRoot, '.env.local');
 const options = parseCliOptions(process.argv.slice(2));
 const ledgerPath = await resolveCanonicalSpendLedgerPath({
@@ -63,7 +73,6 @@ async function runCase(promptCase) {
 
   const outputs = [];
   for (const model of models) {
-    const startedAt = Date.now();
     const response = await runBudgetedCall({
       repoRoot,
       ledgerPath,
@@ -92,6 +101,16 @@ async function runCase(promptCase) {
           },
         },
       },
+      requestContext: {
+        harnessVersion: 'task-6-request-v1',
+        schemaVersion: 'translation-array-v1',
+        corpusSourceIdentity: 'evals/gemini-translation-prompt-set.json',
+        caseId: promptCase.id,
+        repeat: 1,
+        direction: null,
+        moreIdeasRound: null,
+        operation: 'translation',
+      },
       call: (request) => ai.models.generateContent(request),
       serializeResult: (value) => ({
         text: value.text,
@@ -112,7 +131,7 @@ async function runCase(promptCase) {
       model: model.model,
       label: model.id,
       effectiveConfiguration: captureConfigurationMetadata(model),
-      durationMs: Date.now() - startedAt,
+      durationMs: getProviderDurationMs(response),
       usageMetadata: response.usageMetadata ?? null,
       generationUsd: calculateUsageCost(model, response.usageMetadata),
       translations,

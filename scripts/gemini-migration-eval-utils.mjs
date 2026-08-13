@@ -34,6 +34,12 @@ export const MIGRATION_TOKEN_LIMITS = Object.freeze({
 });
 
 const SPEND_TYPES = new Set(['generation', 'evaluation']);
+const RECOVERY_REASON_CODES = new Set([
+  'provider-outcome-unknown',
+  'checkpoint-damaged',
+  'settlement-interrupted',
+]);
+const providerDurations = new WeakMap();
 const registry = listEvaluationConfigurations();
 const registryById = new Map(registry.map((configuration) => [configuration.id, configuration]));
 
@@ -302,6 +308,92 @@ function requireSafeNonNegativeInteger(value, label) {
   return value;
 }
 
+function canonicalJson(value) {
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('Canonical request identity cannot contain non-finite numbers.');
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => (item === undefined ? 'null' : canonicalJson(item))).join(',')}]`;
+  }
+  if (typeof value === 'object') {
+    const entries = Object.keys(value)
+      .filter((key) => value[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`);
+    return `{${entries.join(',')}}`;
+  }
+  throw new Error(`Canonical request identity cannot contain ${typeof value} values.`);
+}
+
+export function hashCanonicalValue(value) {
+  return crypto.createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex');
+}
+
+export function buildRequestIdentityHash({ type, runId, configuration, request, requestContext }) {
+  if (!SPEND_TYPES.has(type)) throw new Error(`Unknown Phase 3 spend type: ${type}`);
+  if (typeof runId !== 'string' || !runId) throw new Error('A stable logical call ID is required.');
+  if (!configuration?.id || !configuration?.model) throw new Error('Exact request configuration metadata is required.');
+  if (!request || typeof request !== 'object' || Array.isArray(request)) throw new Error('The effective request is required.');
+  if (request.model !== configuration.model) {
+    throw new Error(`Effective request model ${request.model ?? 'missing'} does not match configuration model ${configuration.model}.`);
+  }
+  if (!requestContext || typeof requestContext !== 'object' || Array.isArray(requestContext)
+    || Object.keys(requestContext).length === 0) {
+    throw new Error('Explicit request context is required for stable request identity.');
+  }
+  for (const field of [
+    'harnessVersion',
+    'schemaVersion',
+    'corpusSourceIdentity',
+    'repeat',
+    'direction',
+    'moreIdeasRound',
+    'operation',
+  ]) {
+    if (!Object.hasOwn(requestContext, field) || requestContext[field] === undefined) {
+      throw new Error(`Request identity requires ${field}.`);
+    }
+  }
+  if (type === 'evaluation' && !requestContext.evaluatorVersion) {
+    throw new Error('Evaluation request identity requires evaluatorVersion.');
+  }
+  if (!Number.isInteger(requestContext.repeat) || requestContext.repeat < 1) {
+    throw new Error('Request identity repeat must be a positive integer.');
+  }
+  if (requestContext.moreIdeasRound !== null
+    && (!Number.isInteger(requestContext.moreIdeasRound) || requestContext.moreIdeasRound < 1)) {
+    throw new Error('Request identity More Ideas round must be null or a positive integer.');
+  }
+  return hashCanonicalValue({
+    identitySchemaVersion: 1,
+    type,
+    stableLogicalId: runId,
+    configuration: captureConfigurationMetadata(configuration),
+    effectiveRequest: request,
+    requestContext,
+  });
+}
+
+function bindProviderDuration(result, durationMs) {
+  if (result && (typeof result === 'object' || typeof result === 'function')) {
+    providerDurations.set(result, durationMs);
+  }
+  return result;
+}
+
+export function getProviderDurationMs(result) {
+  const durationMs = result && (typeof result === 'object' || typeof result === 'function')
+    ? providerDurations.get(result)
+    : undefined;
+  if (!Number.isSafeInteger(durationMs) || durationMs < 0) {
+    throw new Error('Provider duration metadata is unavailable for this result.');
+  }
+  return durationMs;
+}
+
 function expectedBudgetNanoUsd(budgetUsd) {
   const units = budgetUsd * NANO_USD_PER_USD;
   if (!Number.isSafeInteger(units) || units <= 0) {
@@ -318,7 +410,7 @@ function validateUsageMetadata(usageMetadata, label) {
 }
 
 function validateLedger(ledger, budgetUsd) {
-  if (ledger?.schemaVersion !== 3 || ledger.phase !== 'gemini-model-migration-phase-3'
+  if (ledger?.schemaVersion !== 4 || ledger.phase !== 'gemini-model-migration-phase-3'
     || ledger.currency !== 'USD' || ledger.unit !== 'nano-usd') {
     throw new Error('Invalid Phase 3 spend ledger schema.');
   }
@@ -340,6 +432,9 @@ function validateLedger(ledger, budgetUsd) {
   if (!ledger.completedCalls || typeof ledger.completedCalls !== 'object' || Array.isArray(ledger.completedCalls)) {
     throw new Error('Invalid Phase 3 completed-call journal.');
   }
+  if (!Array.isArray(ledger.recoveryActions)) {
+    throw new Error('Invalid Phase 3 recovery audit trail.');
+  }
   const componentSpend = ledger.generation.spendNanoUsd + ledger.evaluation.spendNanoUsd;
   if (!Number.isSafeInteger(componentSpend) || ledger.totalSpendNanoUsd !== componentSpend) {
     throw new Error(`Invalid Phase 3 accounting: total spend does not equal component sums (${componentSpend}).`);
@@ -353,6 +448,9 @@ function validateLedger(ledger, budgetUsd) {
       throw new Error('Invalid or duplicate Phase 3 pending stable call ID.');
     }
     pendingCallIds.add(reservation.callId);
+    if (!/^[a-f0-9]{64}$/.test(reservation.requestHash ?? '')) {
+      throw new Error('Invalid Phase 3 pending request hash.');
+    }
     if (!['reserved', 'dispatched', 'unresolved'].includes(reservation.status)) {
       throw new Error(`Invalid Phase 3 pending reservation status: ${reservation.status}`);
     }
@@ -380,11 +478,25 @@ function validateLedger(ledger, budgetUsd) {
       throw new Error('Invalid or conflicting completed stable call ID.');
     }
     requireSafeNonNegativeInteger(completed.spendNanoUsd, 'completed call spend');
+    requireSafeNonNegativeInteger(completed.liabilityNanoUsd, 'completed call liability');
+    if (completed.spendNanoUsd > completed.liabilityNanoUsd) {
+      throw new Error('Invalid completed call accounting: spend exceeds reserved liability.');
+    }
+    if (completed.providerDurationMs !== null) {
+      requireSafeNonNegativeInteger(completed.providerDurationMs, 'completed call provider duration');
+    }
     validateUsageMetadata(completed.usageMetadata, 'completed call');
+    const validReplayableResult = completed.resultAvailable === true
+      && completed.resolution === 'provider_response'
+      && typeof completed.resultCheckpoint?.relativePath === 'string'
+      && /^\.call-checkpoints\/[a-f0-9]{64}\.json$/.test(completed.resultCheckpoint.relativePath)
+      && /^[a-f0-9]{64}$/.test(completed.resultCheckpoint.sha256);
+    const validRecoveredResult = completed.resultAvailable === false
+      && completed.resolution === 'operator-settled-upper-bound'
+      && completed.resultCheckpoint === null;
     if (!completed.configurationId || !completed.completedAt
-      || typeof completed.resultCheckpoint?.relativePath !== 'string'
-      || !/^\.call-checkpoints\/[a-f0-9]{64}\.json$/.test(completed.resultCheckpoint.relativePath)
-      || !/^[a-f0-9]{64}$/.test(completed.resultCheckpoint.sha256)) {
+      || !/^[a-f0-9]{64}$/.test(completed.requestHash ?? '')
+      || (!validReplayableResult && !validRecoveredResult)) {
       throw new Error('Invalid completed call metadata or result checkpoint reference.');
     }
     completedTotals[completed.type].calls += 1;
@@ -395,6 +507,22 @@ function validateLedger(ledger, budgetUsd) {
       || ledger[type].spendNanoUsd !== completedTotals[type].spendNanoUsd) {
       throw new Error(`Invalid ${type} accounting: settled totals do not match completed-call journal.`);
     }
+  }
+  const recoveryIds = new Set();
+  for (const action of ledger.recoveryActions) {
+    if (!action?.actionId || recoveryIds.has(action.actionId)
+      || !ledger.completedCalls[action.originalCallId]
+      || action.originalRequestHash !== ledger.completedCalls[action.originalCallId].requestHash
+      || !RECOVERY_REASON_CODES.has(action.reasonCode)
+      || !/^[A-Za-z0-9._-]{1,64}$/.test(action.operatorId ?? '')
+      || !action.resolvedAt || !action.retryRunId || !action.retryCallId
+      || action.retryCallId !== `${ledger.completedCalls[action.originalCallId].type}:${action.retryRunId}`
+      || !Number.isInteger(action.retryAttempt) || action.retryAttempt < 1
+      || (action.retryRequestHash !== null && !/^[a-f0-9]{64}$/.test(action.retryRequestHash))) {
+      throw new Error('Invalid Phase 3 recovery audit metadata.');
+    }
+    requireSafeNonNegativeInteger(action.settledNanoUsd, 'recovery settled spend');
+    recoveryIds.add(action.actionId);
   }
   if (ledger.totalSpendNanoUsd + ledger.reservedNanoUsd > ledger.budgetNanoUsd) {
     throw new Error('Invalid Phase 3 accounting: spend plus liabilities exceeds the budget.');
@@ -409,7 +537,7 @@ function validateLedger(ledger, budgetUsd) {
 
 function integerZeroLedger(budgetNanoUsd) {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
     unit: 'nano-usd',
@@ -420,21 +548,24 @@ function integerZeroLedger(budgetNanoUsd) {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
+    recoveryActions: [],
     updatedAt: null,
   };
 }
 
 function migrateCommittedZeroLedger(ledger, budgetUsd) {
   const expectedLegacy = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
-    budgetUsd: 10,
-    generation: { calls: 0, spendUsd: 0 },
-    evaluation: { calls: 0, spendUsd: 0 },
-    totalSpendUsd: 0,
-    reservedUsd: 0,
+    unit: 'nano-usd',
+    budgetNanoUsd: 10_000_000_000,
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+    totalSpendNanoUsd: 0,
+    reservedNanoUsd: 0,
     pendingReservations: [],
+    completedCalls: {},
     updatedAt: null,
   };
   if (JSON.stringify(ledger) !== JSON.stringify(expectedLegacy) || budgetUsd !== 10) return null;
@@ -491,7 +622,7 @@ async function atomicWriteJson(filePath, value, { privateFile = false } = {}) {
   await rename(temporaryPath, filePath);
 }
 
-async function writePrivateCallCheckpoint({ repoRoot, callId, result }) {
+async function writePrivateCallCheckpoint({ repoRoot, callId, requestHash, result }) {
   const migrationResultsDir = path.resolve(repoRoot, path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH));
   const checkpointDirectory = path.join(migrationResultsDir, '.call-checkpoints');
   await ensurePrivateDirectory(checkpointDirectory);
@@ -509,7 +640,7 @@ async function writePrivateCallCheckpoint({ repoRoot, callId, result }) {
   }
   const fileName = `${crypto.createHash('sha256').update(callId).digest('hex')}.json`;
   const checkpointPath = path.join(checkpointDirectory, fileName);
-  const checkpointPayload = { schemaVersion: 1, callId, result };
+  const checkpointPayload = { schemaVersion: 2, callId, requestHash, result };
   const serialized = `${JSON.stringify(checkpointPayload, null, 2)}\n`;
   const temporaryPath = `${checkpointPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
   const handle = await open(temporaryPath, 'wx', 0o600);
@@ -527,6 +658,9 @@ async function writePrivateCallCheckpoint({ repoRoot, callId, result }) {
 }
 
 async function readPrivateCallCheckpoint({ repoRoot, completedCall }) {
+  if (!completedCall.resultAvailable || !completedCall.resultCheckpoint) {
+    throw new Error(`Completed stable call ${completedCall.callId} has no replayable result; use explicit recovery.`);
+  }
   const checkpointPath = path.resolve(
     repoRoot,
     path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH),
@@ -545,7 +679,8 @@ async function readPrivateCallCheckpoint({ repoRoot, completedCall }) {
     throw new Error(`Completed-call checkpoint integrity failure for ${completedCall.callId}.`);
   }
   const checkpoint = JSON.parse(serialized);
-  if (checkpoint.schemaVersion !== 1 || checkpoint.callId !== completedCall.callId) {
+  if (checkpoint.schemaVersion !== 2 || checkpoint.callId !== completedCall.callId
+    || checkpoint.requestHash !== completedCall.requestHash) {
     throw new Error(`Completed-call checkpoint identity failure for ${completedCall.callId}.`);
   }
   return checkpoint.result;
@@ -559,11 +694,14 @@ function scoringSourceId(payload) {
   if (new Set(runIds).size !== runIds.length) {
     throw new Error('Evaluator checkpoint run IDs must be unique.');
   }
-  return crypto.createHash('sha256').update(JSON.stringify({
+  return hashCanonicalValue({
+    sourceSchemaVersion: 2,
     generatedAt: payload.generatedAt,
-    candidateIds: (payload.candidates ?? []).map(({ id }) => id),
-    runIds,
-  })).digest('hex');
+    corpus: payload.corpus ?? null,
+    candidates: payload.candidates ?? [],
+    cases: payload.cases ?? [],
+    sourceRows: payload.results ?? [],
+  });
 }
 
 export function buildScoringCheckpointPath({ resultsDir, payload }) {
@@ -579,18 +717,82 @@ async function readScoringCheckpoint(checkpointPath) {
   }
 }
 
+function withoutProperty(value, property) {
+  const copy = { ...value };
+  delete copy[property];
+  return copy;
+}
+
+function addCheckpointHash(checkpoint) {
+  return {
+    ...checkpoint,
+    checkpointHash: hashCanonicalValue(checkpoint),
+  };
+}
+
+function addScoredRowIntegrity(sourceRow, scoredRow, completedCall) {
+  if (scoredRow?.runId !== sourceRow.runId) {
+    throw new Error(`Evaluator changed stable run ID ${sourceRow.runId}.`);
+  }
+  const rowWithoutIntegrity = withoutProperty(scoredRow, 'evaluatorCheckpointIntegrity');
+  const integrity = {
+    sourceRowHash: hashCanonicalValue(sourceRow),
+    evaluatorRequestHash: completedCall?.requestHash ?? null,
+    completedCallId: completedCall?.callId ?? null,
+    completedCallHash: completedCall ? hashCanonicalValue(completedCall) : null,
+    scoredRowHash: hashCanonicalValue(rowWithoutIntegrity),
+  };
+  if (completedCall && (completedCall.type !== 'evaluation' || completedCall.resultAvailable !== true
+    || !/^[a-f0-9]{64}$/.test(completedCall.requestHash ?? ''))) {
+    throw new Error(`Evaluator completed-call integrity metadata is invalid for ${sourceRow.runId}.`);
+  }
+  return { ...rowWithoutIntegrity, evaluatorCheckpointIntegrity: integrity };
+}
+
+async function validateScoredRowIntegrity({ sourceRow, scoredRow, getCompletedCall }) {
+  const integrity = scoredRow?.evaluatorCheckpointIntegrity;
+  if (!integrity || integrity.sourceRowHash !== hashCanonicalValue(sourceRow)
+    || integrity.scoredRowHash !== hashCanonicalValue(withoutProperty(scoredRow, 'evaluatorCheckpointIntegrity'))) {
+    throw new Error(`Evaluator scored-row integrity failure for ${sourceRow.runId}.`);
+  }
+  if (integrity.completedCallId === null) {
+    if (integrity.evaluatorRequestHash !== null || integrity.completedCallHash !== null) {
+      throw new Error(`Evaluator skipped-row integrity failure for ${sourceRow.runId}.`);
+    }
+    return;
+  }
+  if (typeof getCompletedCall !== 'function') {
+    throw new Error('A completed-call journal reader is required to trust evaluator checkpoints.');
+  }
+  const completedCall = await getCompletedCall(integrity.completedCallId);
+  if (!completedCall || completedCall.callId !== integrity.completedCallId
+    || completedCall.type !== 'evaluation' || completedCall.resultAvailable !== true
+    || completedCall.requestHash !== integrity.evaluatorRequestHash
+    || hashCanonicalValue(completedCall) !== integrity.completedCallHash) {
+    throw new Error(`Evaluator completed-call journal integrity failure for ${sourceRow.runId}.`);
+  }
+}
+
 export async function scoreRowsWithCheckpoint({
   payload,
   checkpointPath,
   scoreRow,
+  getCompletedCall,
   getCheckpointMetadata,
 }) {
   if (!checkpointPath) throw new Error('An evaluator checkpoint path is required.');
   if (typeof scoreRow !== 'function') throw new Error('An evaluator row scorer is required.');
   const sourceId = scoringSourceId(payload);
   const existing = await readScoringCheckpoint(checkpointPath);
-  if (existing && (existing.schemaVersion !== 1 || existing.sourceId !== sourceId)) {
-    throw new Error('Evaluator checkpoint does not match the requested bakeoff payload.');
+  if (existing) {
+    const checkpointWithoutHash = withoutProperty(existing, 'checkpointHash');
+    if (existing.schemaVersion !== 2
+      || existing.checkpointHash !== hashCanonicalValue(checkpointWithoutHash)) {
+      throw new Error('Evaluator checkpoint integrity hash mismatch.');
+    }
+    if (existing.sourceId !== sourceId) {
+      throw new Error('Evaluator checkpoint does not match the immutable source rows.');
+    }
   }
 
   const sourceRows = payload.results ?? [];
@@ -609,30 +811,40 @@ export async function scoreRowsWithCheckpoint({
   if (completed.size !== completedRunIds.length) {
     throw new Error('Evaluator checkpoint is missing a completed result row.');
   }
+  const sourceRowsById = new Map(sourceRows.map((row) => [row.runId, row]));
+  for (const [runId, scoredRow] of completed) {
+    await validateScoredRowIntegrity({
+      sourceRow: sourceRowsById.get(runId),
+      scoredRow,
+      getCompletedCall,
+    });
+  }
   const metadata = {};
   if (existing?.cumulativeSpend) metadata.cumulativeSpend = existing.cumulativeSpend;
 
-  const checkpointPayload = (complete) => ({
-    ...payload,
-    ...metadata,
-    schemaVersion: 1,
-    checkpointKind: 'gemini-migration-evaluator',
-    sourceId,
-    checkpointedAt: new Date().toISOString(),
-    qualityScored: complete,
-    scoringIncomplete: !complete,
-    completedRunIds: sourceRows
-      .map(({ runId }) => runId)
-      .filter((runId) => completed.has(runId)),
-    results: sourceRows.map((row) => completed.get(row.runId) ?? row),
-  });
+  const checkpointPayload = (complete) => addCheckpointHash({
+      ...payload,
+      ...metadata,
+      schemaVersion: 2,
+      checkpointKind: 'gemini-migration-evaluator',
+      sourceId,
+      checkpointedAt: new Date().toISOString(),
+      qualityScored: complete,
+      scoringIncomplete: !complete,
+      completedRunIds: sourceRows
+        .map(({ runId }) => runId)
+        .filter((runId) => completed.has(runId)),
+      results: sourceRows.map((row) => completed.get(row.runId) ?? row),
+    });
 
   for (const sourceRow of sourceRows) {
     if (completed.has(sourceRow.runId)) continue;
-    const scoredRow = await scoreRow(sourceRow);
-    if (scoredRow?.runId !== sourceRow.runId) {
-      throw new Error(`Evaluator changed stable run ID ${sourceRow.runId}.`);
-    }
+    const outcome = await scoreRow(sourceRow);
+    const scoredRow = addScoredRowIntegrity(
+      sourceRow,
+      outcome?.scoredRow ?? outcome,
+      outcome?.completedCall ?? null,
+    );
     completed.set(sourceRow.runId, scoredRow);
     await atomicWriteJson(checkpointPath, checkpointPayload(false), { privateFile: true });
     if (getCheckpointMetadata) {
@@ -830,7 +1042,16 @@ async function readLedgerAtCanonicalPath(ledgerPath, budgetUsd) {
   return validateLedger(parsed, budgetUsd);
 }
 
-async function reserveSpend({ ledgerPath, budgetUsd, type, runId, configuration, tokenLimits, lockOptions }) {
+async function reserveSpend({
+  ledgerPath,
+  budgetUsd,
+  type,
+  runId,
+  requestHash,
+  configuration,
+  tokenLimits,
+  lockOptions,
+}) {
   if (!SPEND_TYPES.has(type)) throw new Error(`Unknown Phase 3 spend type: ${type}`);
   if (!runId) throw new Error('A stable run ID is required before reserving Phase 3 spend.');
   const callId = `${type}:${runId}`;
@@ -839,13 +1060,24 @@ async function reserveSpend({ ledgerPath, budgetUsd, type, runId, configuration,
     const ledger = await readLedgerAtCanonicalPath(ledgerPath, budgetUsd);
     const completedCall = ledger.completedCalls[callId];
     if (completedCall) {
-      if (completedCall.configurationId !== configuration.id) {
-        throw new Error(`Completed stable call ${callId} used a different configuration.`);
+      if (completedCall.configurationId !== configuration.id || completedCall.requestHash !== requestHash) {
+        throw new Error(`Phase 3 request identity mismatch for completed stable call ${callId}.`);
       }
       return { completedCall };
     }
-    if (ledger.pendingReservations.some((reservation) => reservation.callId === callId)) {
+    const pendingCall = ledger.pendingReservations.find((reservation) => reservation.callId === callId);
+    if (pendingCall && (pendingCall.configurationId !== configuration.id || pendingCall.requestHash !== requestHash)) {
+      throw new Error(`Phase 3 request identity mismatch for pending stable call ${callId}.`);
+    }
+    if (pendingCall) {
       throw new Error(`Phase 3 stable call already has an unresolved spend liability: ${callId}`);
+    }
+    const retryAction = ledger.recoveryActions.find((action) => action.retryCallId === callId);
+    if (/:retry-\d+$/.test(runId) && !retryAction) {
+      throw new Error(`Phase 3 retry attempt requires explicit audited recovery: ${callId}`);
+    }
+    if (retryAction?.retryRequestHash && retryAction.retryRequestHash !== requestHash) {
+      throw new Error(`Phase 3 request identity mismatch for recovered retry ${callId}.`);
     }
     const projected = ledger.totalSpendNanoUsd + ledger.reservedNanoUsd + liabilityNanoUsd;
     if (!Number.isSafeInteger(projected) || projected > ledger.budgetNanoUsd) {
@@ -862,12 +1094,17 @@ async function reserveSpend({ ledgerPath, budgetUsd, type, runId, configuration,
       ownerPid: process.pid,
       ownerToken: crypto.randomUUID(),
       configurationId: configuration.id,
+      requestHash,
       maxInputTokens: tokenLimits.maxInputTokens,
       maxOutputTokens: tokenLimits.maxOutputTokens,
       createdAt,
     };
     ledger.pendingReservations.push(reservation);
     ledger.reservedNanoUsd += liabilityNanoUsd;
+    if (retryAction) {
+      retryAction.retryRequestHash = requestHash;
+      retryAction.retryReservedAt = createdAt;
+    }
     ledger.updatedAt = createdAt;
     await atomicWriteJson(ledgerPath, ledger);
     return { reservation };
@@ -918,9 +1155,11 @@ async function settleSpend({
   actualNanoUsd,
   usageMetadata,
   resultCheckpoint,
+  providerDurationMs,
   lockOptions,
 }) {
   requireSafeNonNegativeInteger(actualNanoUsd, 'Actual call spend');
+  requireSafeNonNegativeInteger(providerDurationMs, 'Provider duration');
   return withLedgerLock(ledgerPath, async () => {
     const ledger = await readLedgerAtCanonicalPath(ledgerPath, budgetUsd);
     const index = ledger.pendingReservations.findIndex(({ id }) => id === reservation.id);
@@ -941,14 +1180,149 @@ async function settleSpend({
       runId: pending.runId,
       type: pending.type,
       configurationId: pending.configurationId,
+      requestHash: pending.requestHash,
+      liabilityNanoUsd: pending.liabilityNanoUsd,
       spendNanoUsd: actualNanoUsd,
       usageMetadata,
+      providerDurationMs,
+      resultAvailable: true,
+      resolution: 'provider_response',
       resultCheckpoint,
       completedAt,
     };
     ledger.updatedAt = completedAt;
     await atomicWriteJson(ledgerPath, ledger);
     return ledger.completedCalls[pending.callId];
+  }, lockOptions);
+}
+
+function validateRecoveryOperatorMetadata(reasonCode, operatorId) {
+  if (!RECOVERY_REASON_CODES.has(reasonCode)) {
+    throw new Error(`Recovery reason code must be one of: ${[...RECOVERY_REASON_CODES].join(', ')}.`);
+  }
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(operatorId ?? '')) {
+    throw new Error('Recovery operator ID must be 1-64 safe metadata characters.');
+  }
+}
+
+export async function recoverAmbiguousCall({
+  repoRoot,
+  requestedPath,
+  ledgerPath,
+  budgetUsd = 10,
+  callId,
+  reasonCode,
+  operatorId,
+  dryRun = false,
+  lockOptions,
+}) {
+  validateRecoveryOperatorMetadata(reasonCode, operatorId);
+  if (typeof callId !== 'string' || !callId.includes(':')) {
+    throw new Error('A full stable call ID is required for recovery.');
+  }
+  const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
+  return withLedgerLock(canonicalPath, async () => {
+    const ledger = await readLedgerAtCanonicalPath(canonicalPath, budgetUsd);
+    const pendingIndex = ledger.pendingReservations.findIndex((item) => item.callId === callId);
+    const pending = pendingIndex >= 0 ? ledger.pendingReservations[pendingIndex] : null;
+    const existing = ledger.completedCalls[callId] ?? null;
+    if (!pending && !existing) throw new Error(`No ambiguous or damaged Phase 3 call found: ${callId}`);
+    if (pending?.status === 'reserved') {
+      throw new Error('A proven-undispatched reservation must be reconciled, not operator-settled as billed.');
+    }
+    if (existing) {
+      if (!existing.resultAvailable) throw new Error(`Phase 3 call was already recovered: ${callId}`);
+      if (reasonCode !== 'checkpoint-damaged') {
+        throw new Error('A settled call can be recovered only with checkpoint-damaged reason metadata.');
+      }
+      let checkpointIsValid = false;
+      try {
+        await readPrivateCallCheckpoint({ repoRoot, completedCall: existing });
+        checkpointIsValid = true;
+      } catch {
+        checkpointIsValid = false;
+      }
+      if (checkpointIsValid) throw new Error(`Completed call checkpoint is valid and cannot be recovered: ${callId}`);
+    }
+
+    const original = pending ?? existing;
+    const liabilityNanoUsd = original.liabilityNanoUsd;
+    const topUpNanoUsd = pending ? liabilityNanoUsd : liabilityNanoUsd - existing.spendNanoUsd;
+    requireSafeNonNegativeInteger(topUpNanoUsd, 'Recovery spend top-up');
+    const projected = ledger.totalSpendNanoUsd + ledger.reservedNanoUsd
+      - (pending?.liabilityNanoUsd ?? 0) + topUpNanoUsd;
+    if (!Number.isSafeInteger(projected) || projected > ledger.budgetNanoUsd) {
+      throw new Error('Phase 3 recovery cannot settle the original maximum liability without exceeding the budget.');
+    }
+    const retryAttempt = ledger.recoveryActions
+      .filter((action) => action.originalCallId === callId).length + 1;
+    const retryRunId = `${original.runId}:retry-${retryAttempt}`;
+    const retryCallId = `${original.type}:${retryRunId}`;
+    if (ledger.pendingReservations.some((item) => item.callId === retryCallId)
+      || ledger.completedCalls[retryCallId]
+      || ledger.recoveryActions.some((action) => action.retryCallId === retryCallId)) {
+      throw new Error(`Deterministic recovery retry ID already exists: ${retryCallId}`);
+    }
+    const preview = {
+      callId,
+      originalStatus: pending?.status ?? 'completed-checkpoint-damaged',
+      settledNanoUsd: liabilityNanoUsd,
+      retryAttempt,
+      retryRunId,
+      retryCallId,
+      reasonCode,
+      operatorId,
+    };
+    if (dryRun) return preview;
+
+    const resolvedAt = new Date().toISOString();
+    if (pending) {
+      ledger.pendingReservations.splice(pendingIndex, 1);
+      ledger.reservedNanoUsd -= pending.liabilityNanoUsd;
+      ledger[pending.type].calls += 1;
+      ledger[pending.type].spendNanoUsd += liabilityNanoUsd;
+      ledger.completedCalls[callId] = {
+        callId,
+        runId: pending.runId,
+        type: pending.type,
+        configurationId: pending.configurationId,
+        requestHash: pending.requestHash,
+        liabilityNanoUsd,
+        spendNanoUsd: liabilityNanoUsd,
+        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+        providerDurationMs: null,
+        resultAvailable: false,
+        resolution: 'operator-settled-upper-bound',
+        resultCheckpoint: null,
+        completedAt: resolvedAt,
+      };
+    } else {
+      existing.spendNanoUsd = liabilityNanoUsd;
+      existing.resultAvailable = false;
+      existing.resolution = 'operator-settled-upper-bound';
+      existing.resultCheckpoint = null;
+      ledger[existing.type].spendNanoUsd += topUpNanoUsd;
+    }
+    ledger.totalSpendNanoUsd = ledger.generation.spendNanoUsd + ledger.evaluation.spendNanoUsd;
+    const action = {
+      actionId: crypto.randomUUID(),
+      originalCallId: callId,
+      originalRequestHash: original.requestHash,
+      originalStatus: preview.originalStatus,
+      reasonCode,
+      operatorId,
+      resolvedAt,
+      settledNanoUsd: liabilityNanoUsd,
+      retryAttempt,
+      retryRunId,
+      retryCallId,
+      retryRequestHash: null,
+    };
+    ledger.recoveryActions.push(action);
+    ledger.updatedAt = resolvedAt;
+    validateLedger(ledger, budgetUsd);
+    await atomicWriteJson(canonicalPath, ledger);
+    return { ...preview, actionId: action.actionId, resolvedAt };
   }, lockOptions);
 }
 
@@ -992,15 +1366,18 @@ export async function runBudgetedCall({
   configuration,
   tokenLimits,
   request,
+  requestContext,
   call,
   actualUsd,
   serializeResult = (response) => response,
   deserializeResult = (result) => result,
   faultInjection = {},
   lockOptions,
+  nowMs = () => performance.now(),
 }) {
   const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
   validateBoundedRequest(request, tokenLimits);
+  const requestHash = buildRequestIdentityHash({ type, runId, configuration, request, requestContext });
   await reconcileSpendLedger({
     repoRoot,
     ledgerPath: canonicalPath,
@@ -1012,6 +1389,7 @@ export async function runBudgetedCall({
     budgetUsd,
     type,
     runId,
+    requestHash,
     configuration,
     tokenLimits,
     lockOptions,
@@ -1021,7 +1399,10 @@ export async function runBudgetedCall({
       repoRoot,
       completedCall: decision.completedCall,
     });
-    return deserializeResult(durableResult);
+    return bindProviderDuration(
+      deserializeResult(durableResult),
+      decision.completedCall.providerDurationMs,
+    );
   }
   const { reservation } = decision;
   try {
@@ -1037,8 +1418,12 @@ export async function runBudgetedCall({
   await faultInjection.afterDispatchRecord?.();
 
   let response;
+  let providerDurationMs;
   try {
+    const providerStartedAt = nowMs();
     response = await call(request);
+    providerDurationMs = Math.max(0, Math.round(nowMs() - providerStartedAt));
+    requireSafeNonNegativeInteger(providerDurationMs, 'Provider duration');
   } catch (error) {
     await markUnresolved({
       ledgerPath: canonicalPath,
@@ -1086,6 +1471,7 @@ export async function runBudgetedCall({
     resultCheckpoint = await writePrivateCallCheckpoint({
       repoRoot,
       callId: reservation.callId,
+      requestHash: reservation.requestHash,
       result: serializeResult(response),
     });
   } catch (error) {
@@ -1107,6 +1493,7 @@ export async function runBudgetedCall({
       actualNanoUsd,
       usageMetadata: normalizedUsageMetadata,
       resultCheckpoint,
+      providerDurationMs,
       lockOptions,
     });
   } catch (error) {
@@ -1119,7 +1506,7 @@ export async function runBudgetedCall({
     throw error;
   }
   await faultInjection.afterSettlement?.();
-  return response;
+  return bindProviderDuration(response, providerDurationMs);
 }
 
 function pendingLiabilityNanoUsd(ledger, type, status) {
