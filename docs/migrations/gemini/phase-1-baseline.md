@@ -94,14 +94,16 @@ No environment-variable secret reference uses `latest`.
 - Initial translation returned 3 non-empty suggestions.
 - More Ideas returned 3 non-empty suggestions distinct from supplied history.
 - `shorter`, `longer`, `warmer`, `more_straightforward`, and `more_playful` each returned exactly 2 deduplicated suggestions distinct from the source.
-- Interest Based without an interest returned HTTP 400 before challenge verification or a model call.
+- Interest Based without an interest returned HTTP 400 with the expected rejection. That response proves rejection, not by itself the absence of a model call; the original operation did not retain a request-correlated no-usage window.
 - A bounded candidate-only variation burst returned the expected calm HTTP 429 on request 4 after 3 successes.
 
 Allowlisted structured logs for this revision contained 10 Gemini usage rows across `translate`, `moreIdeas`, and `variation`. Every row identified `gemini-2.5-flash`; no row reported positive thought tokens; and every token total equaled prompt plus candidate tokens. The deployed source pins `thinkingBudget: 0`.
 
-`declarative-gemini-rotation` was created at `2026-08-13T15:34:19.488611Z`, tagged `gemini-rotation`, and kept at zero traffic while the replacement Gemini credential was tested. Its complete tagged suite passed with 4 initial suggestions, 4 distinct More Ideas suggestions, exactly 2 deduplicated suggestions for every variation direction, the one-time challenge and missing-interest guards, and the calm request-4 HTTP 429. Its allowlisted logs contained 22 usage rows across all three modes, all on `gemini-2.5-flash`, with no positive thought-token rows and exact zero-thought token accounting.
+`declarative-gemini-rotation` was created at `2026-08-13T15:34:19.488611Z`, tagged `gemini-rotation`, and kept at zero traffic while the replacement Gemini credential was tested. Its tagged suite passed with 4 initial suggestions, 4 distinct More Ideas suggestions, exactly 2 deduplicated suggestions for every variation direction, the one-time challenge guard, the missing-interest HTTP 400 rejection, and the calm request-4 HTTP 429. Its allowlisted logs contained 22 usage rows across all three modes, all on `gemini-2.5-flash`, with no positive thought-token rows and exact zero-thought token accounting. As with the rollback revision, the retained evidence does not isolate the missing-interest request in its own precise no-usage window, so it is not recorded as proof that a model call was absent.
 
 The runtime logger does not emit an explicit `thinking_budget` field. The zero-thinking claim therefore combines exact deployed-source inspection (`thinkingBudget: 0`) with the allowlisted runtime token accounting above; no log evidence was invented.
+
+Fix Round 2 makes the pre-traffic sequence explicit for future execution: treat `declarative-secret-baseline` only as a rollback candidate; resolve its `secret-baseline` tagged URL; prove it is at zero traffic; verify all three exact numeric Secret Manager references with no literal values; run the complete bounded behavior suite; correlate the missing-interest request to an exact UTC window and revision and require zero allowlisted Gemini usage events in that window; then pass the allowlisted model, thought-token, token-accounting, and rate-limit gates. Only then may it be designated `ROLLBACK_REVISION`, and no replacement-key candidate may be deployed or promoted before that designation. This documentation-only fix did not rerun production or query logs, so it does not retroactively add the missing request-correlation evidence to the original operation record.
 
 ### Traffic exercise and custom-domain checks
 
@@ -120,6 +122,8 @@ The prior revisions remain available. No revision, Secret Manager secret, or his
 - Previous: `projects/1083695383503/locations/global/keys/cef8e82b-b048-46b8-af88-5a417fbe8530` (`Declarative Gemini API2`) is active as secret version `1` and pending revocation. Revocation was not requested or performed.
 - Deleted throwaway: `projects/1083695383503/locations/global/keys/41fe1ca9-6f89-4848-bd10-8f40cec39daa` was created at `2026-08-13T15:31:28.928357Z`. This newly created valid-but-never-used key was exposed to internal tool output and immediately invalidated by deletion, recorded complete at `2026-08-13T15:31:59.782776Z`. It was never stored, deployed, or used; no production or currently active credential was exposed.
 
+The replacement retry used asynchronous creation and exact-one metadata discovery under a unique display identifier, verified the sole API target as `generativelanguage.googleapis.com`, redirected credential retrieval to owner-only material with controlled stderr, transferred that material directly into Secret Manager, verified the enabled numeric version, and verified local cleanup. The reproducible runbook now includes safe abort handling for discovery, restriction, retrieval, version, and cleanup failures. It expressly prohibits synchronous API-key operation-result inspection, the path that exposed the deleted throwaway key.
+
 ### Upstash overlap conclusion
 
 The live database accepts `ACL LIST`, confirming ACL capability and the possibility of separate ACL REST tokens in principle. The intended replacement policy was limited to `SET`, `EXISTS`, and `DEL` on `declarative:challenge:*`.
@@ -135,4 +139,5 @@ Because there is no authenticated Upstash management CLI or management API crede
 - Model, prompts, SDK, and visible application behavior were not changed.
 - Concern: Upstash rotation remains pending for the reason above.
 - Concern: the structured runtime schema lacks an explicit `thinking_budget` field.
+- Concern: the original Task 2 execution did not retain a precise request-correlated no-usage window for the missing-interest rejection; the corrected runbook requires that evidence before future rollback designation or candidate promotion.
 - Incident: one newly created valid-but-never-used replacement Gemini key was exposed to internal tool output and immediately invalidated by deletion; no production or currently active credential was exposed.

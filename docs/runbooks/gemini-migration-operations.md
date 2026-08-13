@@ -11,7 +11,7 @@ export SERVICE="declarative"
 export PROJECT="gen-lang-client-0598048123"
 export REGION="us-west1"
 export LEGACY_REVISION="declarative-00102-5l7"
-export ROLLBACK_REVISION="declarative-secret-baseline"
+export ROLLBACK_CANDIDATE_REVISION="declarative-secret-baseline"
 export ROLLBACK_SUFFIX="secret-baseline"
 export ROLLBACK_TAG="secret-baseline"
 export CANDIDATE_REVISION="declarative-gemini-rotation"
@@ -19,12 +19,11 @@ export CANDIDATE_SUFFIX="gemini-rotation"
 export CANDIDATE_TAG="gemini-rotation"
 export CUSTOM_DOMAIN="declarativeapp.org"
 export LOG_LIMIT="100"
-export LOG_FRESHNESS="1h"
-export LOG_FILTER="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SERVICE\" AND resource.labels.revision_name=\"$CANDIDATE_REVISION\" AND jsonPayload.event=\"gemini_usage_metadata\""
-export RATE_LIMIT_LOG_FILTER="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SERVICE\" AND resource.labels.revision_name=\"$CANDIDATE_REVISION\" AND jsonPayload.event=\"rate_limit_hit\""
+export LOG_SETTLE_SECONDS="60"
+unset ROLLBACK_REVISION
 ```
 
-`LEGACY_REVISION` is the historical literal-credential revision and is used only to capture the immutable image and identify the already-completed one-time migration rehearsal. `ROLLBACK_REVISION` is the secret-managed Gemini 2.5 Flash rollback target. After Gemini credential rotation, never roll operational traffic back to `LEGACY_REVISION`.
+`LEGACY_REVISION` is the historical literal-credential revision and is used only to capture the immutable image and identify the already-completed one-time migration rehearsal. `ROLLBACK_CANDIDATE_REVISION` is only a proposed rollback target. Do not set `ROLLBACK_REVISION` until the proposed revision has passed the tagged zero-traffic, complete behavior, missing-interest correlation, and allowlisted model/thought gates below. After Gemini credential rotation, never roll operational traffic back to `LEGACY_REVISION`.
 
 ## Identity and permission preflight
 
@@ -242,18 +241,18 @@ IMMUTABLE_IMAGE="$(gcloud run revisions describe "$LEGACY_REVISION" \
 }
 ```
 
-## Deploy the secret-managed rollback revision
+## Deploy the proposed secret-managed rollback revision
 
-The deterministic suffix produces `declarative-secret-baseline`. Confirm that an existing revision with that name has the intended immutable image before reusing it; otherwise abort rather than replacing history.
+The deterministic suffix produces `declarative-secret-baseline`. At this point it is only `ROLLBACK_CANDIDATE_REVISION`; it is not yet authorized as `ROLLBACK_REVISION`. Confirm that an existing revision with that name has the intended immutable image before reusing it; otherwise abort rather than replacing history.
 
 ```bash
-if gcloud run revisions describe "$ROLLBACK_REVISION" \
+if gcloud run revisions describe "$ROLLBACK_CANDIDATE_REVISION" \
   --project "$PROJECT" --region "$REGION" --format='value(metadata.name)' >/dev/null 2>&1; then
-  existing_image="$(gcloud run revisions describe "$ROLLBACK_REVISION" \
+  existing_image="$(gcloud run revisions describe "$ROLLBACK_CANDIDATE_REVISION" \
     --project "$PROJECT" --region "$REGION" \
     --format='value(spec.containers[0].image)')"
   [ "$existing_image" = "$IMMUTABLE_IMAGE" ] || {
-    printf '%s\n' 'Existing rollback revision image mismatch.' >&2
+    printf '%s\n' 'Existing rollback-candidate image mismatch.' >&2
     exit 1
   }
 else
@@ -293,76 +292,55 @@ verify_revision_secret_refs() {
 }
 
 verify_revision_secret_refs \
-  "$ROLLBACK_REVISION" \
+  "$ROLLBACK_CANDIDATE_REVISION" \
   "$GEMINI_SECRET_VERSION" \
   "$UPSTASH_URL_SECRET_VERSION" \
   "$UPSTASH_TOKEN_SECRET_VERSION"
 ```
 
-## Deploy a rotated Gemini candidate from the same image
+## Reusable zero-traffic, behavior, correlation, and log gates
 
-Set `GEMINI_REPLACEMENT_SECRET_VERSION` to the verified enabled numeric version created by the separately safe key-rotation procedure. The candidate keeps the rollback revision's exact image and Upstash versions.
+Define these helpers before validating either tagged revision. They emit only URL-resolution booleans, HTTP status/count metadata, revision names, and allowlisted usage/rate-limit counts. They never emit `SMOKE_TEXT`, challenge IDs, prompts, suggestions, response error text, or raw logs.
 
-```bash
-: "${GEMINI_REPLACEMENT_SECRET_VERSION:?Set the enabled numeric replacement version privately.}"
-case "$GEMINI_REPLACEMENT_SECRET_VERSION" in
-  ''|*[!0-9]*) printf '%s\n' 'Replacement Gemini version must be numeric.' >&2; exit 1 ;;
-esac
-
-ROLLBACK_IMAGE="$(gcloud run revisions describe "$ROLLBACK_REVISION" \
-  --project "$PROJECT" --region "$REGION" \
-  --format='value(spec.containers[0].image)')"
-[ "$ROLLBACK_IMAGE" = "$IMMUTABLE_IMAGE" ] || {
-  printf '%s\n' 'Rollback image drift detected.' >&2
-  exit 1
-}
-
-gcloud run deploy "$SERVICE" \
-  --image "$ROLLBACK_IMAGE" \
-  --revision-suffix "$CANDIDATE_SUFFIX" \
-  --tag "$CANDIDATE_TAG" \
-  --no-traffic \
-  --update-secrets "GEMINI_API_KEY=declarative-gemini-api-key:${GEMINI_REPLACEMENT_SECRET_VERSION}" \
-  --project "$PROJECT" --region "$REGION" --quiet
-```
-
-## Candidate URL, zero-traffic, and secret-reference metadata gate
-
-Resolve the tagged URL from service metadata, prove the candidate has zero traffic, and verify all three variables are exact numeric Secret Manager references with no literal field.
+`resolve_zero_traffic_tag` resolves exactly one tagged URL and rejects the revision if any traffic entry for it has a nonzero percentage.
 
 ```bash
-SERVICE_JSON="$(mktemp /tmp/declarative-service.XXXXXX)"
-chmod 600 "$SERVICE_JSON"
-trap 'rm -P "$SERVICE_JSON"' EXIT
+resolve_zero_traffic_tag() (
+  set -euo pipefail
+  local revision="$1"
+  local tag="$2"
+  local metadata_dir service_file resolved_url
 
-gcloud run services describe "$SERVICE" \
-  --project "$PROJECT" --region "$REGION" --format=json >"$SERVICE_JSON"
+  umask 077
+  metadata_dir="$(mktemp -d /tmp/declarative-tag-metadata.XXXXXX)"
+  service_file="$metadata_dir/service.json"
+  trap 'find "$metadata_dir" -type f -exec rm -P {} +; rmdir "$metadata_dir"' EXIT
 
-export CANDIDATE_URL="$(jq -er --arg revision "$CANDIDATE_REVISION" --arg tag "$CANDIDATE_TAG" '
-  [.status.traffic[]? | select(.revisionName == $revision and .tag == $tag and (.url | type == "string") and (.url | length > 0))]
-  | if length == 1 then .[0].url else error("candidate URL mismatch") end
-' "$SERVICE_JSON")"
+  gcloud run services describe "$SERVICE" \
+    --project "$PROJECT" --region "$REGION" --format=json >"$service_file"
+  chmod 600 "$service_file"
 
-jq -e --arg revision "$CANDIDATE_REVISION" '
-  [.status.traffic[]? | select(.revisionName == $revision)] as $entries
-  | ($entries | length) >= 1
-    and ([$entries[] | select((.percent // 0) != 0)] | length) == 0
-' "$SERVICE_JSON" >/dev/null
+  resolved_url="$(jq -er --arg revision "$revision" --arg tag "$tag" '
+    [.status.traffic[]? | select(
+      .revisionName == $revision
+      and .tag == $tag
+      and (.url | type == "string")
+      and (.url | length > 0)
+    )]
+    | if length == 1 then .[0].url else error("tagged URL mismatch") end
+  ' "$service_file")"
 
-verify_revision_secret_refs \
-  "$CANDIDATE_REVISION" \
-  "$GEMINI_REPLACEMENT_SECRET_VERSION" \
-  "$UPSTASH_URL_SECRET_VERSION" \
-  "$UPSTASH_TOKEN_SECRET_VERSION"
+  jq -e --arg revision "$revision" '
+    [.status.traffic[]? | select(.revisionName == $revision)] as $entries
+    | ($entries | length) >= 1
+      and ([$entries[] | select((.percent // 0) != 0)] | length) == 0
+  ' "$service_file" >/dev/null
 
-rm -P "$SERVICE_JSON"
-trap - EXIT
-[ ! -e "$SERVICE_JSON" ]
+  printf '%s\n' "$resolved_url"
+)
 ```
 
-## Complete bounded behavior verifier
-
-This verifier fetches the root and emits only status codes, counts, and booleans. It keeps `SMOKE_TEXT`, challenge IDs, prompts, and suggestions in memory. Wait for prior rate-limit windows to clear before each complete run.
+The core behavior verifier fetches the root, challenge issue/reuse, initial translation, distinct More Ideas, all five variation directions, and a bounded candidate-only rate-limit sequence. It does not make or claim the missing-interest no-model assertion; that is a separate correlated gate immediately below.
 
 ```bash
 run_behavior_gate() {
@@ -463,15 +441,6 @@ for (const variationKind of variationKinds) {
   await new Promise((resolve) => setTimeout(resolve, 3500));
 }
 
-const missingInterest = await fetch(`${base}/api/translate`, {
-  method: 'POST',
-  headers: {'content-type': 'application/json'},
-  body: JSON.stringify({...initialRequest, tone: 'Interest Based', interest: ''}),
-});
-const missingInterestBody = await json(missingInterest);
-assert.equal(missingInterest.status, 400, 'Missing interest was not rejected.');
-assert.equal(missingInterestBody?.error, 'Interest Based ideas need an entered interest.', 'Unexpected missing-interest result.');
-
 await new Promise((resolve) => setTimeout(resolve, 11000));
 let rateLimit = null;
 for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -504,38 +473,394 @@ console.log(JSON.stringify({
   more_ideas_distinct: true,
   variation_counts: variationCounts,
   variations_deduplicated: true,
-  missing_interest_status: missingInterest.status,
-  missing_interest_pre_model: true,
   rate_limit_attempt: rateLimit.attempt,
   rate_limit_status: rateLimit.status,
   calm_rate_limit: rateLimit.calm,
 }));
 NODE
 }
-
-export VERIFY_BASE_URL="$CANDIDATE_URL"
-run_behavior_gate
 ```
 
-## Allowlisted structured-log verification
-
-Read only structured entries for the exact candidate and project only allowlisted metadata fields. Never use an unfiltered or raw log format.
+The missing-interest gate captures an exact UTC request window and exact revision, verifies the HTTP 400 and expected error internally, waits for structured-log ingestion, then asks only whether an allowlisted `gemini_usage_metadata` timestamp exists in that revision/window. Any row is a conservative failure. The two success booleans are emitted only after both checks pass. Run this against a zero-traffic tag whenever possible; on the custom domain, use a quiet window and rerun on any unrelated usage collision.
 
 ```bash
-gcloud logging read "$LOG_FILTER" \
-  --project "$PROJECT" --freshness "$LOG_FRESHNESS" --limit "$LOG_LIMIT" \
-  --format='csv[no-heading](timestamp,resource.labels.revision_name,jsonPayload.event,jsonPayload.model,jsonPayload.mode,jsonPayload.variation_kind,jsonPayload.duration_ms,jsonPayload.prompt_token_count,jsonPayload.candidates_token_count,jsonPayload.thoughts_token_count,jsonPayload.total_token_count,jsonPayload.cached_content_token_count)'
+verify_missing_interest_no_model() (
+  set -euo pipefail
+  : "${VERIFY_BASE_URL:?Set VERIFY_BASE_URL.}"
+  : "${VERIFY_REVISION:?Set VERIFY_REVISION.}"
+  : "${SMOKE_TEXT:?Set private SMOKE_TEXT.}"
 
-gcloud logging read "$RATE_LIMIT_LOG_FILTER" \
-  --project "$PROJECT" --freshness "$LOG_FRESHNESS" --limit "$LOG_LIMIT" \
-  --format='csv[no-heading](timestamp,resource.labels.revision_name,jsonPayload.event,jsonPayload.source,jsonPayload.endpoint,jsonPayload.mode,jsonPayload.variation_kind,jsonPayload.wait_seconds,jsonPayload.window_ms,jsonPayload.max_requests_per_window)'
+  local correlation_dir status_file usage_file log_error
+  local window_start window_end usage_filter
+  umask 077
+  correlation_dir="$(mktemp -d /tmp/declarative-missing-interest.XXXXXX)"
+  status_file="$correlation_dir/status.json"
+  usage_file="$correlation_dir/usage.timestamps"
+  log_error="$correlation_dir/log.err"
+  trap 'find "$correlation_dir" -type f -exec rm -P {} +; rmdir "$correlation_dir"' EXIT
+
+  window_start="$(node -e 'process.stdout.write(new Date().toISOString())')"
+  VERIFY_STATUS_FILE="$status_file" node --input-type=module <<'NODE'
+import assert from 'node:assert/strict';
+import {writeFileSync} from 'node:fs';
+
+const response = await fetch(`${process.env.VERIFY_BASE_URL}/api/translate`, {
+  method: 'POST',
+  headers: {'content-type': 'application/json'},
+  body: JSON.stringify({
+    mode: 'translate',
+    text: process.env.SMOKE_TEXT,
+    existingTranslations: [],
+    tone: 'Interest Based',
+    interest: '',
+    useFewerWords: false,
+  }),
+});
+const body = await response.json().catch(() => null);
+assert.equal(response.status, 400, 'Missing interest was not rejected.');
+assert.equal(body?.error, 'Interest Based ideas need an entered interest.', 'Unexpected missing-interest result.');
+writeFileSync(process.env.VERIFY_STATUS_FILE, JSON.stringify({status: response.status, rejected: true}), {mode: 0o600});
+NODE
+  window_end="$(node -e 'process.stdout.write(new Date().toISOString())')"
+
+  sleep "$LOG_SETTLE_SECONDS"
+  usage_filter="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${SERVICE}\" AND resource.labels.revision_name=\"${VERIFY_REVISION}\" AND jsonPayload.event=\"gemini_usage_metadata\" AND timestamp>=\"${window_start}\" AND timestamp<=\"${window_end}\""
+  gcloud logging read "$usage_filter" \
+    --project "$PROJECT" --limit=1 --order=asc \
+    --format='value(timestamp)' >"$usage_file" 2>"$log_error"
+  chmod 600 "$status_file" "$usage_file" "$log_error"
+
+  jq -e '.status == 400 and .rejected == true' "$status_file" >/dev/null
+  [ ! -s "$usage_file" ] || {
+    printf '%s\n' 'Missing-interest correlation found a Gemini usage event; aborting.' >&2
+    return 1
+  }
+
+  jq -nc --arg revision "$VERIFY_REVISION" '{
+    revision: $revision,
+    missing_interest_rejected: true,
+    missing_interest_model_call_absent: true
+  }'
+)
 ```
 
-The current logger does not emit `thinking_budget`. Confirm `thinkingBudget: 0` in the exact deployed source and verify every usage row has no positive thought count and satisfies `total_token_count = prompt_token_count + candidates_token_count`. Record the schema limitation; do not invent a field.
+The allowlisted usage gate projects only known metadata fields into owner-only files. It requires usage in all three modes, `gemini-2.5-flash` on every row, no positive thought-token count, exact token accounting, and at least one server rate-limit event. The logger has no explicit `thinking_budget` field, so separately require the immutable deployed source attestation for `thinkingBudget: 0`; do not invent a log field.
+
+```bash
+run_allowlisted_usage_gate() (
+  set -euo pipefail
+  local revision="$1"
+  local window_start="$2"
+  local window_end="$3"
+  local gate_dir usage_file rate_file usage_error rate_error usage_filter rate_filter
+
+  umask 077
+  gate_dir="$(mktemp -d /tmp/declarative-usage-gate.XXXXXX)"
+  usage_file="$gate_dir/usage.json"
+  rate_file="$gate_dir/rate.json"
+  usage_error="$gate_dir/usage.err"
+  rate_error="$gate_dir/rate.err"
+  trap 'find "$gate_dir" -type f -exec rm -P {} +; rmdir "$gate_dir"' EXIT
+
+  sleep "$LOG_SETTLE_SECONDS"
+  usage_filter="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${SERVICE}\" AND resource.labels.revision_name=\"${revision}\" AND jsonPayload.event=\"gemini_usage_metadata\" AND timestamp>=\"${window_start}\" AND timestamp<=\"${window_end}\""
+  rate_filter="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${SERVICE}\" AND resource.labels.revision_name=\"${revision}\" AND jsonPayload.event=\"rate_limit_hit\" AND timestamp>=\"${window_start}\" AND timestamp<=\"${window_end}\""
+
+  gcloud logging read "$usage_filter" \
+    --project "$PROJECT" --limit "$LOG_LIMIT" --order=asc \
+    --format='json(timestamp,resource.labels.revision_name,jsonPayload.event,jsonPayload.model,jsonPayload.mode,jsonPayload.variation_kind,jsonPayload.duration_ms,jsonPayload.prompt_token_count,jsonPayload.candidates_token_count,jsonPayload.thoughts_token_count,jsonPayload.total_token_count,jsonPayload.cached_content_token_count)' \
+    >"$usage_file" 2>"$usage_error"
+
+  gcloud logging read "$rate_filter" \
+    --project "$PROJECT" --limit "$LOG_LIMIT" --order=asc \
+    --format='json(timestamp,resource.labels.revision_name,jsonPayload.event,jsonPayload.source,jsonPayload.endpoint,jsonPayload.mode,jsonPayload.variation_kind,jsonPayload.wait_seconds,jsonPayload.window_ms,jsonPayload.max_requests_per_window)' \
+    >"$rate_file" 2>"$rate_error"
+  chmod 600 "$usage_file" "$rate_file" "$usage_error" "$rate_error"
+
+  jq -e --arg revision "$revision" '
+    length > 0
+    and all(.[].resource.labels.revision_name == $revision)
+    and all(.[].jsonPayload.event == "gemini_usage_metadata")
+    and all(.[].jsonPayload.model == "gemini-2.5-flash")
+    and (([.[].jsonPayload.mode] | unique) as $modes
+      | (["translate", "moreIdeas", "variation"] - $modes | length) == 0)
+    and all(((.[].jsonPayload.thoughts_token_count // 0) | tonumber) == 0)
+    and all(
+      (.[].jsonPayload.total_token_count | tonumber)
+      == ((.[].jsonPayload.prompt_token_count | tonumber) + (.[].jsonPayload.candidates_token_count | tonumber))
+    )
+  ' "$usage_file" >/dev/null
+  jq -e --arg revision "$revision" '
+    length >= 1
+    and all(.[].resource.labels.revision_name == $revision)
+    and all(.[].jsonPayload.event == "rate_limit_hit")
+  ' "$rate_file" >/dev/null
+
+  jq -n \
+    --arg revision "$revision" \
+    --argjson usage_rows "$(jq 'length' "$usage_file")" \
+    --argjson rate_rows "$(jq 'length' "$rate_file")" \
+    --argjson modes "$(jq '[.[].jsonPayload.mode] | unique | sort' "$usage_file")" '{
+      revision: $revision,
+      usage_rows: $usage_rows,
+      modes: $modes,
+      model: "gemini-2.5-flash",
+      positive_thought_rows: 0,
+      token_accounting_valid: true,
+      rate_limit_rows: $rate_rows
+    }'
+)
+
+verify_deployed_model_and_thinking_source() {
+  [ "$(rg -c "model: 'gemini-2.5-flash'" server.js)" -ge 1 ]
+  [ "$(rg -c 'thinkingBudget:[[:space:]]*0' server.js)" -eq 1 ]
+}
+
+run_complete_revision_gate() {
+  local revision="$1"
+  local resolved_url="$2"
+  local behavior_start behavior_end
+
+  export VERIFY_REVISION="$revision"
+  export VERIFY_BASE_URL="$resolved_url"
+  behavior_start="$(node -e 'process.stdout.write(new Date().toISOString())')"
+  run_behavior_gate
+  behavior_end="$(node -e 'process.stdout.write(new Date().toISOString())')"
+  verify_missing_interest_no_model
+  verify_deployed_model_and_thinking_source
+  run_allowlisted_usage_gate "$revision" "$behavior_start" "$behavior_end"
+}
+```
+
+## Pre-traffic rollback validation and designation
+
+Sequencing is mandatory: resolve the `secret-baseline` tagged URL, prove the proposed revision has zero traffic, verify all three numeric secret references, run the complete behavior and correlated missing-interest gates, then run the allowlisted model/thought/rate-limit gate. Only after every command passes may the revision be exported as `ROLLBACK_REVISION`. Candidate deployment and promotion both require that designation.
+
+```bash
+export ROLLBACK_CANDIDATE_URL="$(resolve_zero_traffic_tag \
+  "$ROLLBACK_CANDIDATE_REVISION" "$ROLLBACK_TAG")"
+
+verify_revision_secret_refs \
+  "$ROLLBACK_CANDIDATE_REVISION" \
+  "$GEMINI_SECRET_VERSION" \
+  "$UPSTASH_URL_SECRET_VERSION" \
+  "$UPSTASH_TOKEN_SECRET_VERSION"
+
+run_complete_revision_gate \
+  "$ROLLBACK_CANDIDATE_REVISION" \
+  "$ROLLBACK_CANDIDATE_URL"
+
+export ROLLBACK_REVISION="$ROLLBACK_CANDIDATE_REVISION"
+export ROLLBACK_GATE_PASSED="true"
+```
+
+If any step fails, leave `ROLLBACK_REVISION` unset, keep public traffic unchanged, and stop. Do not deploy or promote a replacement-key candidate without a validated rollback target.
+
+## Reproducible replacement Gemini key rotation
+
+This procedure creates a unique display identifier, confirms no preexisting exact metadata match, launches key creation asynchronously, and discovers completion only through key-list metadata. It never waits on, describes, or retrieves a long-running operation result. Any command capable of returning credential material redirects stdout directly to an owner-only file and controls stderr separately.
+
+On failure, the trap removes and verifies local temporary material. If exactly one newly created resource has been proven, the trap requests asynchronous deletion of only that never-deployed key, with all output contained; it never touches an old key. If exact-one discovery fails, no key is guessed or deleted: stop with the unique display identifier for a metadata-only audit. If a Secret Manager version was added before a later failure, retain that version, do not deploy it, and record it for review; the newly created key is still requested for invalidation.
+
+```bash
+create_restricted_gemini_secret_version() (
+  set -euo pipefail
+  set +x
+  umask 077
+
+  local rotation_dir metadata_file key_file
+  local create_stdout create_stderr list_stderr key_stderr secret_stderr state_stderr
+  local abort_stdout abort_stderr
+  local rotation_id rotation_display_name match_count new_key_resource=""
+  local version_resource secret_version state rotation_complete="false"
+
+  rotation_dir="$(mktemp -d /tmp/declarative-gemini-rotation.XXXXXX)"
+  chmod 700 "$rotation_dir"
+  metadata_file="$rotation_dir/keys.json"
+  key_file="$rotation_dir/key"
+  create_stdout="$rotation_dir/create.out"
+  create_stderr="$rotation_dir/create.err"
+  list_stderr="$rotation_dir/list.err"
+  key_stderr="$rotation_dir/key.err"
+  secret_stderr="$rotation_dir/secret.err"
+  state_stderr="$rotation_dir/state.err"
+  abort_stdout="$rotation_dir/abort.out"
+  abort_stderr="$rotation_dir/abort.err"
+
+  cleanup_rotation() {
+    local status="$?"
+    trap - EXIT HUP INT TERM
+    set +e
+    if [ "$rotation_complete" != "true" ] \
+      && [[ "$new_key_resource" =~ ^projects/[0-9]+/locations/global/keys/[A-Za-z0-9-]+$ ]]; then
+      gcloud services api-keys delete "$new_key_resource" \
+        --project "$PROJECT" --async --quiet --format=none \
+        >"$abort_stdout" 2>"$abort_stderr" || true
+    fi
+    if [ -d "$rotation_dir" ]; then
+      find "$rotation_dir" -type f -exec chmod 600 {} +
+      find "$rotation_dir" -type f -exec rm -P {} +
+      rmdir "$rotation_dir" || status=1
+    fi
+    [ ! -e "$rotation_dir" ] || status=1
+    exit "$status"
+  }
+  trap cleanup_rotation EXIT HUP INT TERM
+
+  rotation_id="$(date -u +%Y%m%dT%H%M%SZ)-$(printf '%05d%05d' "$RANDOM" "$RANDOM")"
+  rotation_display_name="Declarative Gemini rotation ${rotation_id}"
+
+  gcloud services api-keys list \
+    --project "$PROJECT" --format=json \
+    >"$metadata_file" 2>"$list_stderr"
+  chmod 600 "$metadata_file" "$list_stderr"
+  match_count="$(jq --arg display "$rotation_display_name" '[.[] | select(.displayName == $display)] | length' "$metadata_file")"
+  [ "$match_count" -eq 0 ] || {
+    printf '%s\n' 'Unique display-name preflight failed.' >&2
+    return 1
+  }
+
+  gcloud services api-keys create \
+    --display-name="$rotation_display_name" \
+    --api-target='service=generativelanguage.googleapis.com' \
+    --project "$PROJECT" --async --format='value(name)' \
+    >"$create_stdout" 2>"$create_stderr"
+  chmod 600 "$create_stdout" "$create_stderr"
+
+  match_count=0
+  for _attempt in $(seq 1 30); do
+    gcloud services api-keys list \
+      --project "$PROJECT" --format=json \
+      >"$metadata_file" 2>"$list_stderr"
+    match_count="$(jq --arg display "$rotation_display_name" '[.[] | select(.displayName == $display)] | length' "$metadata_file")"
+    [ "$match_count" -le 1 ] || {
+      printf '%s\n' 'Replacement-key discovery was not unique; no key will be guessed or deleted.' >&2
+      return 1
+    }
+    [ "$match_count" -eq 1 ] && break
+    sleep 2
+  done
+  [ "$match_count" -eq 1 ] || {
+    printf '%s\n' 'Replacement-key metadata did not converge to exactly one match.' >&2
+    return 1
+  }
+
+  new_key_resource="$(jq -er --arg display "$rotation_display_name" '
+    [.[] | select(.displayName == $display)]
+    | if length == 1 then .[0].name else error("exact-one discovery failed") end
+  ' "$metadata_file")"
+  [[ "$new_key_resource" =~ ^projects/[0-9]+/locations/global/keys/[A-Za-z0-9-]+$ ]] || {
+    printf '%s\n' 'Replacement-key resource metadata was invalid.' >&2
+    return 1
+  }
+
+  jq -e --arg display "$rotation_display_name" '
+    length >= 1
+    and ([.[] | select(.displayName == $display)] | length == 1)
+    and ([.[] | select(.displayName == $display)][0].restrictions.apiTargets // [] | length == 1)
+    and ([.[] | select(.displayName == $display)][0].restrictions.apiTargets[0].service == "generativelanguage.googleapis.com")
+  ' "$metadata_file" >/dev/null || {
+    printf '%s\n' 'Replacement-key API restriction verification failed.' >&2
+    return 1
+  }
+
+  gcloud services api-keys get-key-string "$new_key_resource" \
+    --project "$PROJECT" --format='value(keyString)' \
+    >"$key_file" 2>"$key_stderr"
+  chmod 600 "$key_file" "$key_stderr"
+  [ -s "$key_file" ] \
+    && grep -q '[^[:space:]]' "$key_file" \
+    && [ "$(awk 'END { print NR }' "$key_file")" -eq 1 ] || {
+      printf '%s\n' 'Owner-only credential retrieval validation failed.' >&2
+      return 1
+    }
+
+  version_resource="$(gcloud secrets versions add declarative-gemini-api-key \
+    --project "$PROJECT" --data-file="$key_file" \
+    --format='value(name)' 2>"$secret_stderr")"
+  chmod 600 "$secret_stderr"
+  secret_version="${version_resource##*/}"
+  case "$secret_version" in
+    ''|*[!0-9]*)
+      printf '%s\n' 'Replacement secret version was not numeric.' >&2
+      return 1
+      ;;
+  esac
+
+  state="$(gcloud secrets versions describe "$secret_version" \
+    --secret declarative-gemini-api-key \
+    --project "$PROJECT" --format='value(state)' 2>"$state_stderr")"
+  chmod 600 "$state_stderr"
+  [ "$state" = "ENABLED" ] || {
+    printf '%s\n' 'Replacement secret version was not enabled.' >&2
+    return 1
+  }
+
+  find "$rotation_dir" -type f -exec chmod 600 {} +
+  find "$rotation_dir" -type f -exec rm -P {} +
+  rmdir "$rotation_dir"
+  [ ! -e "$rotation_dir" ] || {
+    printf '%s\n' 'Replacement-key temporary cleanup failed.' >&2
+    return 1
+  }
+  rotation_complete="true"
+  trap - EXIT HUP INT TERM
+  printf '%s\n' "$secret_version"
+)
+
+GEMINI_REPLACEMENT_SECRET_VERSION="$(create_restricted_gemini_secret_version)" || exit 1
+export GEMINI_REPLACEMENT_SECRET_VERSION
+```
+
+The synchronous operation-result path is prohibited even with a field projection: do not run API-key `operations describe`, `operations wait`, or any equivalent wait-for-result command. Do not print the temporary files, key string, or a hash of it.
+
+## Deploy and gate the rotated Gemini candidate
+
+The candidate may be deployed only after the proposed rollback has become `ROLLBACK_REVISION`. It keeps that revision's exact image and Upstash versions, pins the newly enabled numeric Gemini version, and starts at zero traffic.
+
+```bash
+[ "${ROLLBACK_GATE_PASSED:-}" = "true" ] || {
+  printf '%s\n' 'Validated rollback gate is required before candidate deployment.' >&2
+  exit 1
+}
+: "${ROLLBACK_REVISION:?ROLLBACK_REVISION must be designated after its full tagged gate.}"
+: "${GEMINI_REPLACEMENT_SECRET_VERSION:?Set the enabled numeric replacement version.}"
+case "$GEMINI_REPLACEMENT_SECRET_VERSION" in
+  ''|*[!0-9]*) printf '%s\n' 'Replacement Gemini version must be numeric.' >&2; exit 1 ;;
+esac
+
+ROLLBACK_IMAGE="$(gcloud run revisions describe "$ROLLBACK_REVISION" \
+  --project "$PROJECT" --region "$REGION" \
+  --format='value(spec.containers[0].image)')"
+[ "$ROLLBACK_IMAGE" = "$IMMUTABLE_IMAGE" ] || {
+  printf '%s\n' 'Rollback image drift detected.' >&2
+  exit 1
+}
+
+gcloud run deploy "$SERVICE" \
+  --image "$ROLLBACK_IMAGE" \
+  --revision-suffix "$CANDIDATE_SUFFIX" \
+  --tag "$CANDIDATE_TAG" \
+  --no-traffic \
+  --update-secrets "GEMINI_API_KEY=declarative-gemini-api-key:${GEMINI_REPLACEMENT_SECRET_VERSION}" \
+  --project "$PROJECT" --region "$REGION" --quiet
+
+export CANDIDATE_URL="$(resolve_zero_traffic_tag \
+  "$CANDIDATE_REVISION" "$CANDIDATE_TAG")"
+verify_revision_secret_refs \
+  "$CANDIDATE_REVISION" \
+  "$GEMINI_REPLACEMENT_SECRET_VERSION" \
+  "$UPSTASH_URL_SECRET_VERSION" \
+  "$UPSTASH_TOKEN_SECRET_VERSION"
+run_complete_revision_gate "$CANDIDATE_REVISION" "$CANDIDATE_URL"
+export CANDIDATE_GATE_PASSED="true"
+```
+
+If any candidate gate fails, leave it tagged at zero traffic and stop. A passing candidate does not weaken the requirement that the already validated secret-managed rollback remain available.
 
 ## Promotion, rollback, and restoration
 
-Run the complete behavior verifier against the tagged candidate before promotion. After each traffic change, verify the exact 100% revision from service metadata, fetch the custom domain root, and rerun the same verifier against the custom domain after the prior request windows clear.
+Promotion is allowed only when both tagged zero-traffic gates passed. After each traffic change, verify the exact 100% revision from service metadata and rerun the same complete verifier against the custom domain. This fetches the custom-domain root and verifies challenge, translation, rate limiting, correlated missing-interest absence, and allowlisted model/thought evidence for the exact live revision. Wait for prior request windows to clear; a correlation collision is a conservative failure and must be rerun in a quiet window.
 
 ```bash
 assert_full_traffic() {
@@ -550,37 +875,31 @@ assert_full_traffic() {
       ' >/dev/null
 }
 
+[ "${ROLLBACK_GATE_PASSED:-}" = "true" ]
+[ "${CANDIDATE_GATE_PASSED:-}" = "true" ]
+
 gcloud run services update-traffic "$SERVICE" \
   --to-revisions "${CANDIDATE_REVISION}=100" \
   --project "$PROJECT" --region "$REGION" --quiet
 assert_full_traffic "$CANDIDATE_REVISION"
-export VERIFY_BASE_URL="https://${CUSTOM_DOMAIN}"
-run_behavior_gate
+run_complete_revision_gate "$CANDIDATE_REVISION" "https://${CUSTOM_DOMAIN}"
 
-# Operational rollback after Gemini rotation: always use the secret-managed baseline.
+# Operational rollback after Gemini rotation: always use the validated secret-managed rollback.
 gcloud run services update-traffic "$SERVICE" \
   --to-revisions "${ROLLBACK_REVISION}=100" \
   --project "$PROJECT" --region "$REGION" --quiet
 assert_full_traffic "$ROLLBACK_REVISION"
-export VERIFY_BASE_URL="https://${CUSTOM_DOMAIN}"
-run_behavior_gate
+run_complete_revision_gate "$ROLLBACK_REVISION" "https://${CUSTOM_DOMAIN}"
 
 # Restore the verified rotated candidate.
 gcloud run services update-traffic "$SERVICE" \
   --to-revisions "${CANDIDATE_REVISION}=100" \
   --project "$PROJECT" --region "$REGION" --quiet
 assert_full_traffic "$CANDIDATE_REVISION"
-export VERIFY_BASE_URL="https://${CUSTOM_DOMAIN}"
-run_behavior_gate
+run_complete_revision_gate "$CANDIDATE_REVISION" "https://${CUSTOM_DOMAIN}"
 ```
 
-The completed one-time legacy rollback rehearsal is evidence in the Phase 1 baseline; do not rerun it after credential rotation. Keep both historical revisions available and do not delete them.
-
-## Replacement Gemini key safety
-
-Create replacement API keys asynchronously and discover completion by metadata. Do not synchronously wait on or describe an API-key operation: provider operation output can include the key string even when a field projection is requested.
-
-Any command capable of returning a credential must send stdout directly to owner-only temporary material or a Secret Manager input pipeline, with stderr controlled separately. Validate non-empty material without printing it, pin the returned numeric Secret Manager version on a zero-traffic revision, verify secure cleanup, and run the complete metadata/behavior/log gate before promotion.
+The completed one-time legacy rollback rehearsal is evidence in the Phase 1 baseline; do not rerun it after credential rotation. Keep both historical revisions available and do not delete them. After rotation, `ROLLBACK_REVISION` remains the validated secret-managed baseline, never `LEGACY_REVISION`.
 
 ## Upstash overlap safety
 
