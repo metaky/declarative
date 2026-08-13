@@ -13,6 +13,8 @@ export CANDIDATE_URL="replace-with-tagged-revision-url"
 export CUSTOM_DOMAIN="declarativeapp.org"
 export SOURCE_DIR="."
 export LOG_LIMIT="100"
+export LOG_FRESHNESS="1h"
+export LOG_FILTER="resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SERVICE\" AND resource.labels.revision_name=\"$CANDIDATE_REVISION\" AND jsonPayload.event:* AND jsonPayload.config_id:*"
 ```
 
 ## Read-only state capture
@@ -42,10 +44,10 @@ gcloud run revisions describe "$CANDIDATE_REVISION" --project "$PROJECT" --regio
 ## Log inspection
 
 ```bash
-gcloud run services logs read "$SERVICE" --project "$PROJECT" --region "$REGION" --limit "$LOG_LIMIT"
+gcloud logging read "$LOG_FILTER" --project "$PROJECT" --freshness "$LOG_FRESHNESS" --limit "$LOG_LIMIT" --format='csv[no-heading](timestamp,jsonPayload.event,jsonPayload.outcome,jsonPayload.revision,jsonPayload.config_id,jsonPayload.model,jsonPayload.thinking_level,jsonPayload.thinking_budget,jsonPayload.mode,jsonPayload.variation_kind,jsonPayload.duration_ms,jsonPayload.prompt_token_count,jsonPayload.candidates_token_count,jsonPayload.thoughts_token_count,jsonPayload.total_token_count,jsonPayload.cached_content_token_count,jsonPayload.suggestion_count,jsonPayload.finish_reason)'
 ```
 
-Inspect only for non-sensitive operational fields such as revision, configuration ID, model, thinking metadata, outcome, duration, and token counts. Do not request, print, or retain prompts, generated text, API keys, Redis values, challenge IDs, or raw provider payloads.
+The filter is limited to the selected Cloud Run candidate revision and structured entries that contain both `event` and `config_id`. The CSV projection emits only timestamp, event, outcome, revision, configuration ID, model, thinking metadata, mode, variation kind, duration, token counts, suggestion count, and finish reason. Do not request, print, or retain prompts, generated text, API keys, Redis values, challenge IDs, or raw provider payloads.
 
 ## Health verification
 
