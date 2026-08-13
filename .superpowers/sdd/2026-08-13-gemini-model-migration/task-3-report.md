@@ -79,3 +79,30 @@ This round addresses only the three specified Important findings. No cloud calls
 - The existing Vite build warnings for outdated Browserslist data and bundle-size advisories remain outside this round's scope.
 - Pricing remains marked verified on `2026-08-13` and must be refreshed before Phase 3 paid evaluation.
 - The two reviewer Minor suggestions are deliberately deferred and were not changed in this round.
+
+## Fix Round 2
+
+### Status
+
+`COMPLETE`
+
+This round addresses the quality-review-packet token-labeling finding only. No cloud calls, paid Gemini calls, SDK changes, prompt changes, deployments, traffic changes, or credential changes were made.
+
+### Changes
+
+- `scripts/build-quality-review-packet.mjs` now reports prompt, visible candidate, thought, and billed output `(candidates + thoughts)` tokens separately when it summarizes bakeoff results from rows or from a current bakeoff summary.
+- Interest-generalization totals use the same four-part token accounting.
+- Historical/static entries that do not contain thought-token data now say `thought tokens not recorded; billed output unavailable`; they no longer label visible candidate tokens as all output.
+- Historical comparison columns are renamed to visible candidate, thought, and billed output token fields. Older artifact `outputTokens` values are treated only as legacy visible-candidate values, never as billed output.
+- `test/quality-review-packet.test.mjs` builds a 40-case hand-derived bakeoff fixture through `summarizeBakeoffResults` and then through the quality-packet renderer. It requires 40,000,000 prompt tokens, 8,000,000 visible candidate tokens, 12,000,000 thought tokens, 20,000,000 billed output tokens, and the matching `$62` cost representation.
+
+### RED and GREEN evidence
+
+- RED: `node --test test/quality-review-packet.test.mjs` initially failed because `scripts/build-quality-review-packet.mjs` did not export a local packet-build boundary. That made the actual packet consumer unavailable to an isolated, no-call integration fixture.
+- GREEN focused: `node --test test/quality-review-packet.test.mjs test/model-bakeoff.test.mjs` — 3 passing tests, 0 failures.
+- Final: `npm test` — 11 passing tests, 0 failures; `npm run lint` — passed; `npm run build` — passed; `git diff --check` — passed.
+
+### Concerns
+
+- The existing Vite build warnings for outdated Browserslist data and bundle-size advisories remain outside this round's scope.
+- Historical artifacts without a recorded `thoughtsTokenCount` cannot support a billed-output total; the packet now labels that limitation explicitly rather than inferring a value.

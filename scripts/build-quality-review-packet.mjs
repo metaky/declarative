@@ -37,8 +37,8 @@ function readModelBakeoffPayloads() {
     .sort((left, right) => String(right.payload.generatedAt ?? '').localeCompare(String(left.payload.generatedAt ?? '')));
 }
 
-function latestModelBakeoffMatching(predicate) {
-  return readModelBakeoffPayloads().find(({ payload }) => predicate(payload))?.payload ?? null;
+function latestModelBakeoffMatching(predicate, payloads = readModelBakeoffPayloads()) {
+  return payloads.find(({ payload }) => predicate(payload))?.payload ?? null;
 }
 
 function readTextIfExists(relativePath) {
@@ -54,9 +54,26 @@ function formatVerdictSummary(summary) {
     `avg usable ${summary.avgUsableOptions ?? 'n/a'}`,
     `avg excellent ${summary.avgExcellentOptions ?? 'n/a'}`,
     `should-not-show ${summary.shouldNotShowOptions ?? 'n/a'}`,
-    `tokens ${summary.promptTokens ?? 'n/a'} in / ${summary.outputTokens ?? 'n/a'} out`,
+    formatTokenSummary(summary),
     `cost $${summary.estimatedUsd ?? 'n/a'}`,
   ].join('; ');
+}
+
+function formatTokenSummary({
+  promptTokens,
+  candidateOutputTokens,
+  thoughtsTokenCount,
+  thoughtTokens = thoughtsTokenCount,
+  billedOutputTokens,
+  outputTokens,
+}) {
+  const visibleCandidateTokens = candidateOutputTokens ?? outputTokens ?? 'n/a';
+  const thoughts = thoughtTokens ?? 'not recorded';
+  const billedOutput = billedOutputTokens
+    ?? (typeof visibleCandidateTokens === 'number' && typeof thoughts === 'number'
+      ? visibleCandidateTokens + thoughts
+      : 'unavailable');
+  return `tokens ${promptTokens ?? 'n/a'} prompt / ${visibleCandidateTokens} visible candidates / ${thoughts} thoughts / ${billedOutput} billed output (candidates + thoughts)`;
 }
 
 function getCaseById(payload, caseId) {
@@ -97,7 +114,12 @@ function summarizeCandidate(payload, id) {
       ? sum((row) => row.qualityEvaluation?.setSummary?.shouldNotShowOptionCount ?? 0)
       : null,
     promptTokens: sum((row) => row.usageMetadata?.promptTokenCount ?? row.generation?.usageMetadata?.promptTokenCount ?? 0),
-    outputTokens: sum((row) => row.usageMetadata?.candidatesTokenCount ?? row.generation?.usageMetadata?.candidatesTokenCount ?? 0),
+    candidateOutputTokens: sum((row) => row.usageMetadata?.candidatesTokenCount ?? row.generation?.usageMetadata?.candidatesTokenCount ?? 0),
+    thoughtTokens: sum((row) => row.usageMetadata?.thoughtsTokenCount ?? row.generation?.usageMetadata?.thoughtsTokenCount ?? 0),
+    billedOutputTokens: sum((row) => (
+      (row.usageMetadata?.candidatesTokenCount ?? row.generation?.usageMetadata?.candidatesTokenCount ?? 0)
+      + (row.usageMetadata?.thoughtsTokenCount ?? row.generation?.usageMetadata?.thoughtsTokenCount ?? 0)
+    )),
     estimatedUsd: Number(sum((row) => row.estimatedUsd ?? 0).toFixed(6)),
     avgLatencyMs: aggregateRows.length
       ? Math.round(sum((row) => row.durationMs ?? row.generation?.durationMs ?? 0) / aggregateRows.length)
@@ -145,17 +167,19 @@ function renderPromptSample(sample) {
   ].filter((line) => line !== null).join('\n');
 }
 
-function buildPacket() {
+function buildQualityReviewPacket({
+  modelBakeoffPayloads = readModelBakeoffPayloads(),
+  latestHistory = readJsonIfExists('evals/results/latest-prompt-history-comparison.json'),
+  calibratedCheck = readJsonIfExists('evals/results/latest-calibrated-evaluator-check.json'),
+  interestGeneralization = readJsonIfExists('evals/results/latest-interest-generalization.json'),
+  calibrationPacket = readTextIfExists('evals/results/evaluator-calibration-packet.md'),
+} = {}) {
   const latestHardCaseModel = latestModelBakeoffMatching((payload) => (
     payload?.qualityScored && (payload?.summary?.length ?? 0) > 1
-  ));
+  ), modelBakeoffPayloads);
   const latestFullModel = latestModelBakeoffMatching((payload) => (
     payload?.qualityScored && payload?.summary?.some((item) => (item.runs ?? 0) >= 40)
-  ));
-  const latestHistory = readJsonIfExists('evals/results/latest-prompt-history-comparison.json');
-  const calibratedCheck = readJsonIfExists('evals/results/latest-calibrated-evaluator-check.json');
-  const interestGeneralization = readJsonIfExists('evals/results/latest-interest-generalization.json');
-  const calibrationPacket = readTextIfExists('evals/results/evaluator-calibration-packet.md');
+  ), modelBakeoffPayloads);
 
   const timestamp = new Date().toISOString();
   const lines = [];
@@ -191,10 +215,10 @@ function buildPacket() {
   if (flashSummary?.excludedFromAggregate) {
     lines.push(`- Guardrail rows excluded from aggregate: ${flashSummary.excludedFromAggregate}.`);
   }
-  lines.push('- Variance run A after latest Interest Based changes: Pass 32, Borderline 4, Fail 3; prompt tokens 37,024; output tokens 3,565; estimated generation cost $0.020017.');
-  lines.push('- Variance run B after latest Interest Based changes: Pass 35, Borderline 4, Fail 0; prompt tokens 37,024; output tokens 3,625; estimated generation cost $0.020167.');
-  lines.push('- Prior full Flash baseline before Fewer Words/Interest Based tightening: Pass 21, Borderline 4, Fail 15; prompt tokens 27,098; output tokens 4,540; estimated generation cost $0.019481.');
-  lines.push('- Current read: quality improved meaningfully. Production generation cost rose slightly in the latest full run, driven by longer prompt instructions, while output tokens are lower than the older baseline.');
+  lines.push('- Variance run A after latest Interest Based changes: Pass 32, Borderline 4, Fail 3; prompt tokens 37,024; visible candidate tokens 3,565; thought tokens not recorded; billed output unavailable; estimated generation cost $0.020017.');
+  lines.push('- Variance run B after latest Interest Based changes: Pass 35, Borderline 4, Fail 0; prompt tokens 37,024; visible candidate tokens 3,625; thought tokens not recorded; billed output unavailable; estimated generation cost $0.020167.');
+  lines.push('- Prior full Flash baseline before Fewer Words/Interest Based tightening: Pass 21, Borderline 4, Fail 15; prompt tokens 27,098; visible candidate tokens 4,540; thought tokens not recorded; billed output unavailable; estimated generation cost $0.019481.');
+  lines.push('- Current read: quality improved meaningfully. Production generation cost rose slightly in the latest full run, driven by longer prompt instructions, while visible candidate tokens are lower than the older baseline.');
   lines.push('');
 
   lines.push('## Full-Set Remaining Non-Pass Examples');
@@ -233,10 +257,11 @@ function buildPacket() {
   lines.push('');
   if (interestGeneralization?.results?.length) {
     const promptTokens = interestGeneralization.results.reduce((sum, row) => sum + (row.usageMetadata?.promptTokenCount ?? 0), 0);
-    const outputTokens = interestGeneralization.results.reduce((sum, row) => sum + (row.usageMetadata?.candidatesTokenCount ?? 0), 0);
+    const candidateOutputTokens = interestGeneralization.results.reduce((sum, row) => sum + (row.usageMetadata?.candidatesTokenCount ?? 0), 0);
+    const thoughtTokens = interestGeneralization.results.reduce((sum, row) => sum + (row.usageMetadata?.thoughtsTokenCount ?? 0), 0);
     lines.push(`- Runs: ${interestGeneralization.results.length}`);
     lines.push(`- Interests: ${interestGeneralization.interests?.join(', ') ?? 'n/a'}`);
-    lines.push(`- Tokens: ${promptTokens} in / ${outputTokens} out`);
+    lines.push(`- ${formatTokenSummary({ promptTokens, candidateOutputTokens, thoughtTokens, billedOutputTokens: candidateOutputTokens + thoughtTokens })}`);
     lines.push('');
     for (const row of interestGeneralization.results) {
       lines.push(`### ${row.interest} / ${row.inputId}`);
@@ -338,10 +363,16 @@ function buildPacket() {
   lines.push('## Historical Comparison Summary');
   lines.push('');
   if (latestHistory?.summary?.length) {
-    lines.push('| Prompt Variant | Runs | Verdicts | Avg Usable | Avg Excellent | Prompt Tokens | Output Tokens |');
-    lines.push('|---|---:|---|---:|---:|---:|---:|');
+    lines.push('| Prompt Variant | Runs | Verdicts | Avg Usable | Avg Excellent | Prompt Tokens | Visible Candidate Tokens | Thought Tokens | Billed Output Tokens (Candidates + Thoughts) |');
+    lines.push('|---|---:|---|---:|---:|---:|---:|---:|---:|');
     for (const summary of latestHistory.summary) {
-      lines.push(`| ${summary.variantId} | ${summary.runs} | ${summary.postprocessedVerdicts ?? 'not scored'} | ${summary.avgUsableOptions ?? 'n/a'} | ${summary.avgExcellentOptions ?? 'n/a'} | ${summary.promptTokens ?? 'n/a'} | ${summary.outputTokens ?? 'n/a'} |`);
+      const visibleCandidateTokens = summary.candidateOutputTokens ?? summary.outputTokens ?? 'n/a';
+      const thoughtTokens = summary.thoughtTokens ?? 'not recorded';
+      const billedOutputTokens = summary.billedOutputTokens
+        ?? (typeof visibleCandidateTokens === 'number' && typeof thoughtTokens === 'number'
+          ? visibleCandidateTokens + thoughtTokens
+          : 'unavailable');
+      lines.push(`| ${summary.variantId} | ${summary.runs} | ${summary.postprocessedVerdicts ?? 'not scored'} | ${summary.avgUsableOptions ?? 'n/a'} | ${summary.avgExcellentOptions ?? 'n/a'} | ${summary.promptTokens ?? 'n/a'} | ${visibleCandidateTokens} | ${thoughtTokens} | ${billedOutputTokens} |`);
     }
   } else {
     lines.push('Historical comparison report was not found.');
@@ -374,12 +405,16 @@ function buildPacket() {
   return `${lines.join('\n')}\n`;
 }
 
-fs.mkdirSync(resultsDir, { recursive: true });
-const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const markdown = buildPacket();
-const timestampedPath = path.join(resultsDir, `quality-review-packet-${timestamp}.md`);
-const latestPath = path.join(resultsDir, 'latest-quality-review-packet.md');
-fs.writeFileSync(timestampedPath, markdown);
-fs.writeFileSync(latestPath, markdown);
-console.log(`Wrote ${timestampedPath}`);
-console.log(`Updated ${latestPath}`);
+export { buildQualityReviewPacket };
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  fs.mkdirSync(resultsDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const markdown = buildQualityReviewPacket();
+  const timestampedPath = path.join(resultsDir, `quality-review-packet-${timestamp}.md`);
+  const latestPath = path.join(resultsDir, 'latest-quality-review-packet.md');
+  fs.writeFileSync(timestampedPath, markdown);
+  fs.writeFileSync(latestPath, markdown);
+  console.log(`Wrote ${timestampedPath}`);
+  console.log(`Updated ${latestPath}`);
+}
