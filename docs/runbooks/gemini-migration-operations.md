@@ -668,20 +668,25 @@ create_restricted_gemini_secret_version() (
   set +x
   umask 077
 
-  local rotation_dir metadata_file key_file
-  local create_stdout create_stderr list_stderr key_stderr secret_stderr state_stderr
+  local rotation_dir metadata_file credential_response_file key_file
+  local create_stdout create_stderr list_stderr key_stderr json_stderr extract_stderr
+  local secret_stderr state_stderr
   local abort_stdout abort_stderr
   local rotation_id rotation_display_name match_count new_key_resource=""
-  local version_resource secret_version state rotation_complete="false"
+  local expected_key_bytes key_bytes version_resource secret_version state
+  local rotation_complete="false"
 
   rotation_dir="$(mktemp -d /tmp/declarative-gemini-rotation.XXXXXX)"
   chmod 700 "$rotation_dir"
   metadata_file="$rotation_dir/keys.json"
+  credential_response_file="$rotation_dir/key-response.json"
   key_file="$rotation_dir/key"
   create_stdout="$rotation_dir/create.out"
   create_stderr="$rotation_dir/create.err"
   list_stderr="$rotation_dir/list.err"
   key_stderr="$rotation_dir/key.err"
+  json_stderr="$rotation_dir/json.err"
+  extract_stderr="$rotation_dir/extract.err"
   secret_stderr="$rotation_dir/secret.err"
   state_stderr="$rotation_dir/state.err"
   abort_stdout="$rotation_dir/abort.out"
@@ -765,13 +770,45 @@ create_restricted_gemini_secret_version() (
   }
 
   gcloud services api-keys get-key-string "$new_key_resource" \
-    --project "$PROJECT" --format='value(keyString)' \
-    >"$key_file" 2>"$key_stderr"
-  chmod 600 "$key_file" "$key_stderr"
-  [ -s "$key_file" ] \
-    && grep -q '[^[:space:]]' "$key_file" \
-    && [ "$(awk 'END { print NR }' "$key_file")" -eq 1 ] || {
-      printf '%s\n' 'Owner-only credential retrieval validation failed.' >&2
+    --project "$PROJECT" --format=json \
+    >"$credential_response_file" 2>"$key_stderr"
+  chmod 600 "$credential_response_file" "$key_stderr"
+
+  jq -e '
+    type == "object"
+    and (keys == ["keyString"])
+    and (.keyString | type == "string")
+    and (.keyString | length > 0)
+    and (.keyString | index("\r") == null)
+    and (.keyString | index("\n") == null)
+    and (.keyString | index("\u0000") == null)
+  ' "$credential_response_file" > /dev/null 2>"$json_stderr" || {
+      chmod 600 "$json_stderr"
+      printf '%s\n' 'Credential response shape or character validation failed.' >&2
+      return 1
+    }
+  chmod 600 "$json_stderr"
+
+  jq -j '.keyString' "$credential_response_file" \
+    >"$key_file" 2>"$extract_stderr"
+  chmod 600 "$key_file" "$extract_stderr"
+
+  expected_key_bytes="$(jq -j '.keyString' "$credential_response_file" 2>>"$extract_stderr" \
+    | wc -c | tr -d '[:space:]')"
+  key_bytes="$(wc -c <"$key_file" | tr -d '[:space:]')"
+  case "$expected_key_bytes:$key_bytes" in
+    *[!0-9:]*|:*|*:|0:*|*:0)
+      printf '%s\n' 'Credential byte-count validation failed.' >&2
+      return 1
+      ;;
+  esac
+  [ "$expected_key_bytes" -eq "$key_bytes" ] || {
+    printf '%s\n' 'Extracted credential byte count did not match structured input.' >&2
+    return 1
+  }
+  LC_ALL=C od -An -t u1 "$key_file" \
+    | awk '{ for (i = 1; i <= NF; i += 1) if ($i == 0 || $i == 10 || $i == 13) exit 1 }' || {
+      printf '%s\n' 'Extracted credential contains a prohibited byte.' >&2
       return 1
     }
 
