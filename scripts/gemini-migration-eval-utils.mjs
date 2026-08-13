@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import {
   chmod,
@@ -34,11 +35,6 @@ export const MIGRATION_TOKEN_LIMITS = Object.freeze({
 });
 
 const SPEND_TYPES = new Set(['generation', 'evaluation']);
-const RECOVERY_REASON_CODES = new Set([
-  'provider-outcome-unknown',
-  'checkpoint-damaged',
-  'settlement-interrupted',
-]);
 const providerDurations = new WeakMap();
 const registry = listEvaluationConfigurations();
 const registryById = new Map(registry.map((configuration) => [configuration.id, configuration]));
@@ -410,9 +406,34 @@ function validateUsageMetadata(usageMetadata, label) {
 }
 
 function validateLedger(ledger, budgetUsd) {
-  if (ledger?.schemaVersion !== 4 || ledger.phase !== 'gemini-model-migration-phase-3'
+  if (ledger?.schemaVersion !== 5 || ledger.phase !== 'gemini-model-migration-phase-3'
     || ledger.currency !== 'USD' || ledger.unit !== 'nano-usd') {
     throw new Error('Invalid Phase 3 spend ledger schema.');
+  }
+  if (Object.hasOwn(ledger, 'recoveryActions')) {
+    throw new Error('Invalid Phase 3 ledger: recovery entries and authorizations are not supported.');
+  }
+  const allowedLedgerFields = new Set([
+    'schemaVersion',
+    'phase',
+    'currency',
+    'unit',
+    'budgetNanoUsd',
+    'generation',
+    'evaluation',
+    'totalSpendNanoUsd',
+    'reservedNanoUsd',
+    'pendingReservations',
+    'completedCalls',
+    'updatedAt',
+  ]);
+  const unexpectedField = Object.keys(ledger).find((field) => !allowedLedgerFields.has(field));
+  if (unexpectedField) {
+    throw new Error(`Invalid Phase 3 ledger: unexpected schema field ${unexpectedField}.`);
+  }
+  const missingField = [...allowedLedgerFields].find((field) => !Object.hasOwn(ledger, field));
+  if (missingField) {
+    throw new Error(`Invalid Phase 3 ledger: missing required schema field ${missingField}.`);
   }
   const budgetNanoUsd = expectedBudgetNanoUsd(budgetUsd);
   if (ledger.budgetNanoUsd !== budgetNanoUsd) {
@@ -431,9 +452,6 @@ function validateLedger(ledger, budgetUsd) {
   }
   if (!ledger.completedCalls || typeof ledger.completedCalls !== 'object' || Array.isArray(ledger.completedCalls)) {
     throw new Error('Invalid Phase 3 completed-call journal.');
-  }
-  if (!Array.isArray(ledger.recoveryActions)) {
-    throw new Error('Invalid Phase 3 recovery audit trail.');
   }
   const componentSpend = ledger.generation.spendNanoUsd + ledger.evaluation.spendNanoUsd;
   if (!Number.isSafeInteger(componentSpend) || ledger.totalSpendNanoUsd !== componentSpend) {
@@ -491,12 +509,9 @@ function validateLedger(ledger, budgetUsd) {
       && typeof completed.resultCheckpoint?.relativePath === 'string'
       && /^\.call-checkpoints\/[a-f0-9]{64}\.json$/.test(completed.resultCheckpoint.relativePath)
       && /^[a-f0-9]{64}$/.test(completed.resultCheckpoint.sha256);
-    const validRecoveredResult = completed.resultAvailable === false
-      && completed.resolution === 'operator-settled-upper-bound'
-      && completed.resultCheckpoint === null;
     if (!completed.configurationId || !completed.completedAt
       || !/^[a-f0-9]{64}$/.test(completed.requestHash ?? '')
-      || (!validReplayableResult && !validRecoveredResult)) {
+      || !validReplayableResult) {
       throw new Error('Invalid completed call metadata or result checkpoint reference.');
     }
     completedTotals[completed.type].calls += 1;
@@ -507,22 +522,6 @@ function validateLedger(ledger, budgetUsd) {
       || ledger[type].spendNanoUsd !== completedTotals[type].spendNanoUsd) {
       throw new Error(`Invalid ${type} accounting: settled totals do not match completed-call journal.`);
     }
-  }
-  const recoveryIds = new Set();
-  for (const action of ledger.recoveryActions) {
-    if (!action?.actionId || recoveryIds.has(action.actionId)
-      || !ledger.completedCalls[action.originalCallId]
-      || action.originalRequestHash !== ledger.completedCalls[action.originalCallId].requestHash
-      || !RECOVERY_REASON_CODES.has(action.reasonCode)
-      || !/^[A-Za-z0-9._-]{1,64}$/.test(action.operatorId ?? '')
-      || !action.resolvedAt || !action.retryRunId || !action.retryCallId
-      || action.retryCallId !== `${ledger.completedCalls[action.originalCallId].type}:${action.retryRunId}`
-      || !Number.isInteger(action.retryAttempt) || action.retryAttempt < 1
-      || (action.retryRequestHash !== null && !/^[a-f0-9]{64}$/.test(action.retryRequestHash))) {
-      throw new Error('Invalid Phase 3 recovery audit metadata.');
-    }
-    requireSafeNonNegativeInteger(action.settledNanoUsd, 'recovery settled spend');
-    recoveryIds.add(action.actionId);
   }
   if (ledger.totalSpendNanoUsd + ledger.reservedNanoUsd > ledger.budgetNanoUsd) {
     throw new Error('Invalid Phase 3 accounting: spend plus liabilities exceeds the budget.');
@@ -537,7 +536,7 @@ function validateLedger(ledger, budgetUsd) {
 
 function integerZeroLedger(budgetNanoUsd) {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
     unit: 'nano-usd',
@@ -548,14 +547,13 @@ function integerZeroLedger(budgetNanoUsd) {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
-    recoveryActions: [],
     updatedAt: null,
   };
 }
 
 function migrateCommittedZeroLedger(ledger, budgetUsd) {
   const expectedLegacy = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
     unit: 'nano-usd',
@@ -566,6 +564,7 @@ function migrateCommittedZeroLedger(ledger, budgetUsd) {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
+    recoveryActions: [],
     updatedAt: null,
   };
   if (JSON.stringify(ledger) !== JSON.stringify(expectedLegacy) || budgetUsd !== 10) return null;
@@ -625,6 +624,7 @@ async function atomicWriteJson(filePath, value, { privateFile = false } = {}) {
 async function writePrivateCallCheckpoint({ repoRoot, callId, requestHash, result }) {
   const migrationResultsDir = path.resolve(repoRoot, path.dirname(CANONICAL_SPEND_LEDGER_RELATIVE_PATH));
   const checkpointDirectory = path.join(migrationResultsDir, '.call-checkpoints');
+  await ensurePrivateDirectory(migrationResultsDir);
   await ensurePrivateDirectory(checkpointDirectory);
   const directoryStats = await lstat(checkpointDirectory);
   if (directoryStats.isSymbolicLink() || !directoryStats.isDirectory()) {
@@ -659,7 +659,7 @@ async function writePrivateCallCheckpoint({ repoRoot, callId, requestHash, resul
 
 async function readPrivateCallCheckpoint({ repoRoot, completedCall }) {
   if (!completedCall.resultAvailable || !completedCall.resultCheckpoint) {
-    throw new Error(`Completed stable call ${completedCall.callId} has no replayable result; use explicit recovery.`);
+    throw new Error(`Completed stable call ${completedCall.callId} has no replayable result; automated recovery is disabled.`);
   }
   const checkpointPath = path.resolve(
     repoRoot,
@@ -867,6 +867,19 @@ function isProcessAlive(pid) {
   }
 }
 
+function getProcessStartIdentity(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  try {
+    const startedAt = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return startedAt ? `ps-lstart:${startedAt}` : null;
+  } catch {
+    return null;
+  }
+}
+
 async function quarantineLock(lockPath, expectedToken, action) {
   const quarantinePath = `${lockPath}.${action}.${process.pid}.${crypto.randomUUID()}`;
   try {
@@ -895,49 +908,57 @@ async function quarantineLock(lockPath, expectedToken, action) {
   return true;
 }
 
-async function recoverDeadLock(lockPath, { staleMs, processAlive }) {
+async function recoverMalformedStaleLock(lockPath, staleMs) {
+  let lockStats;
+  try {
+    lockStats = await lstat(lockPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return true;
+    return false;
+  }
+  if ((Date.now() - lockStats.mtimeMs) < staleMs) return false;
+  const quarantinePath = `${lockPath}.malformed.${process.pid}.${crypto.randomUUID()}`;
+  try {
+    await rename(lockPath, quarantinePath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return true;
+    throw error;
+  }
+  try {
+    const currentStats = await lstat(quarantinePath);
+    const unchanged = currentStats.dev === lockStats.dev
+      && currentStats.ino === lockStats.ino
+      && currentStats.mtimeMs === lockStats.mtimeMs;
+    if (!unchanged) {
+      await rename(quarantinePath, lockPath);
+      return false;
+    }
+    await unlink(quarantinePath);
+    return true;
+  } catch (error) {
+    await rename(quarantinePath, lockPath).catch(() => {});
+    if (error?.code === 'ENOENT') return true;
+    throw error;
+  }
+}
+
+async function recoverDeadLock(lockPath, { staleMs, processIdentity }) {
   let metadata;
   try {
     metadata = JSON.parse(await readFile(lockPath, 'utf8'));
   } catch (error) {
     if (error?.code === 'ENOENT') return true;
-    let lockStats;
-    try {
-      lockStats = await lstat(lockPath);
-    } catch (statError) {
-      if (statError?.code === 'ENOENT') return true;
-      return false;
-    }
-    if ((Date.now() - lockStats.mtimeMs) < staleMs) return false;
-    const quarantinePath = `${lockPath}.malformed.${process.pid}.${crypto.randomUUID()}`;
-    try {
-      await rename(lockPath, quarantinePath);
-    } catch (renameError) {
-      if (renameError?.code === 'ENOENT') return true;
-      throw renameError;
-    }
-    try {
-      const currentStats = await lstat(quarantinePath);
-      const unchanged = currentStats.dev === lockStats.dev
-        && currentStats.ino === lockStats.ino
-        && currentStats.mtimeMs === lockStats.mtimeMs;
-      if (!unchanged) {
-        await rename(quarantinePath, lockPath);
-        return false;
-      }
-      await unlink(quarantinePath);
-      return true;
-    } catch (recoveryError) {
-      await rename(quarantinePath, lockPath).catch(() => {});
-      if (recoveryError?.code === 'ENOENT') return true;
-      throw recoveryError;
-    }
+    return recoverMalformedStaleLock(lockPath, staleMs);
   }
   const ageMs = Date.now() - Date.parse(metadata.createdAt);
   if (!Number.isInteger(metadata.ownerPid) || !metadata.ownerToken
-    || !Number.isFinite(ageMs) || ageMs < staleMs || processAlive(metadata.ownerPid)) {
-    return false;
+    || typeof metadata.ownerIdentity !== 'string' || !metadata.ownerIdentity
+    || !Number.isFinite(ageMs)) {
+    return recoverMalformedStaleLock(lockPath, staleMs);
   }
+  if (ageMs < staleMs) return false;
+  const currentIdentity = await processIdentity(metadata.ownerPid);
+  if (currentIdentity === metadata.ownerIdentity) return false;
   return quarantineLock(lockPath, metadata.ownerToken, 'stale');
 }
 
@@ -949,13 +970,18 @@ async function withLedgerLock(ledgerPath, callback, options = {}) {
     attempts: options.attempts ?? 100,
     retryMs: options.retryMs ?? 10,
     staleMs: options.staleMs ?? 30_000,
-    processAlive: options.processAlive ?? isProcessAlive,
+    processIdentity: options.processIdentity ?? getProcessStartIdentity,
   };
+  const ownerIdentity = await lockOptions.processIdentity(process.pid);
+  if (typeof ownerIdentity !== 'string' || !ownerIdentity) {
+    throw new Error('Could not establish a process-start identity for the Phase 3 spend ledger lock.');
+  }
   const candidateHandle = await open(candidatePath, 'wx');
   try {
     await candidateHandle.writeFile(`${JSON.stringify({
         ownerPid: process.pid,
         ownerToken,
+        ownerIdentity,
         createdAt: new Date().toISOString(),
       })}\n`);
     await candidateHandle.sync();
@@ -1072,12 +1098,8 @@ async function reserveSpend({
     if (pendingCall) {
       throw new Error(`Phase 3 stable call already has an unresolved spend liability: ${callId}`);
     }
-    const retryAction = ledger.recoveryActions.find((action) => action.retryCallId === callId);
-    if (/:retry-\d+$/.test(runId) && !retryAction) {
-      throw new Error(`Phase 3 retry attempt requires explicit audited recovery: ${callId}`);
-    }
-    if (retryAction?.retryRequestHash && retryAction.retryRequestHash !== requestHash) {
-      throw new Error(`Phase 3 request identity mismatch for recovered retry ${callId}.`);
+    if (/:retry-\d+$/.test(runId)) {
+      throw new Error(`Phase 3 automated retry attempts are disabled: ${callId}`);
     }
     const projected = ledger.totalSpendNanoUsd + ledger.reservedNanoUsd + liabilityNanoUsd;
     if (!Number.isSafeInteger(projected) || projected > ledger.budgetNanoUsd) {
@@ -1101,10 +1123,6 @@ async function reserveSpend({
     };
     ledger.pendingReservations.push(reservation);
     ledger.reservedNanoUsd += liabilityNanoUsd;
-    if (retryAction) {
-      retryAction.retryRequestHash = requestHash;
-      retryAction.retryReservedAt = createdAt;
-    }
     ledger.updatedAt = createdAt;
     await atomicWriteJson(ledgerPath, ledger);
     return { reservation };
@@ -1193,136 +1211,6 @@ async function settleSpend({
     ledger.updatedAt = completedAt;
     await atomicWriteJson(ledgerPath, ledger);
     return ledger.completedCalls[pending.callId];
-  }, lockOptions);
-}
-
-function validateRecoveryOperatorMetadata(reasonCode, operatorId) {
-  if (!RECOVERY_REASON_CODES.has(reasonCode)) {
-    throw new Error(`Recovery reason code must be one of: ${[...RECOVERY_REASON_CODES].join(', ')}.`);
-  }
-  if (!/^[A-Za-z0-9._-]{1,64}$/.test(operatorId ?? '')) {
-    throw new Error('Recovery operator ID must be 1-64 safe metadata characters.');
-  }
-}
-
-export async function recoverAmbiguousCall({
-  repoRoot,
-  requestedPath,
-  ledgerPath,
-  budgetUsd = 10,
-  callId,
-  reasonCode,
-  operatorId,
-  dryRun = false,
-  lockOptions,
-}) {
-  validateRecoveryOperatorMetadata(reasonCode, operatorId);
-  if (typeof callId !== 'string' || !callId.includes(':')) {
-    throw new Error('A full stable call ID is required for recovery.');
-  }
-  const canonicalPath = await resolveCanonicalSpendLedgerPath({ repoRoot, requestedPath, ledgerPath });
-  return withLedgerLock(canonicalPath, async () => {
-    const ledger = await readLedgerAtCanonicalPath(canonicalPath, budgetUsd);
-    const pendingIndex = ledger.pendingReservations.findIndex((item) => item.callId === callId);
-    const pending = pendingIndex >= 0 ? ledger.pendingReservations[pendingIndex] : null;
-    const existing = ledger.completedCalls[callId] ?? null;
-    if (!pending && !existing) throw new Error(`No ambiguous or damaged Phase 3 call found: ${callId}`);
-    if (pending?.status === 'reserved') {
-      throw new Error('A proven-undispatched reservation must be reconciled, not operator-settled as billed.');
-    }
-    if (existing) {
-      if (!existing.resultAvailable) throw new Error(`Phase 3 call was already recovered: ${callId}`);
-      if (reasonCode !== 'checkpoint-damaged') {
-        throw new Error('A settled call can be recovered only with checkpoint-damaged reason metadata.');
-      }
-      let checkpointIsValid = false;
-      try {
-        await readPrivateCallCheckpoint({ repoRoot, completedCall: existing });
-        checkpointIsValid = true;
-      } catch {
-        checkpointIsValid = false;
-      }
-      if (checkpointIsValid) throw new Error(`Completed call checkpoint is valid and cannot be recovered: ${callId}`);
-    }
-
-    const original = pending ?? existing;
-    const liabilityNanoUsd = original.liabilityNanoUsd;
-    const topUpNanoUsd = pending ? liabilityNanoUsd : liabilityNanoUsd - existing.spendNanoUsd;
-    requireSafeNonNegativeInteger(topUpNanoUsd, 'Recovery spend top-up');
-    const projected = ledger.totalSpendNanoUsd + ledger.reservedNanoUsd
-      - (pending?.liabilityNanoUsd ?? 0) + topUpNanoUsd;
-    if (!Number.isSafeInteger(projected) || projected > ledger.budgetNanoUsd) {
-      throw new Error('Phase 3 recovery cannot settle the original maximum liability without exceeding the budget.');
-    }
-    const retryAttempt = ledger.recoveryActions
-      .filter((action) => action.originalCallId === callId).length + 1;
-    const retryRunId = `${original.runId}:retry-${retryAttempt}`;
-    const retryCallId = `${original.type}:${retryRunId}`;
-    if (ledger.pendingReservations.some((item) => item.callId === retryCallId)
-      || ledger.completedCalls[retryCallId]
-      || ledger.recoveryActions.some((action) => action.retryCallId === retryCallId)) {
-      throw new Error(`Deterministic recovery retry ID already exists: ${retryCallId}`);
-    }
-    const preview = {
-      callId,
-      originalStatus: pending?.status ?? 'completed-checkpoint-damaged',
-      settledNanoUsd: liabilityNanoUsd,
-      retryAttempt,
-      retryRunId,
-      retryCallId,
-      reasonCode,
-      operatorId,
-    };
-    if (dryRun) return preview;
-
-    const resolvedAt = new Date().toISOString();
-    if (pending) {
-      ledger.pendingReservations.splice(pendingIndex, 1);
-      ledger.reservedNanoUsd -= pending.liabilityNanoUsd;
-      ledger[pending.type].calls += 1;
-      ledger[pending.type].spendNanoUsd += liabilityNanoUsd;
-      ledger.completedCalls[callId] = {
-        callId,
-        runId: pending.runId,
-        type: pending.type,
-        configurationId: pending.configurationId,
-        requestHash: pending.requestHash,
-        liabilityNanoUsd,
-        spendNanoUsd: liabilityNanoUsd,
-        usageMetadata: { promptTokenCount: 0, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
-        providerDurationMs: null,
-        resultAvailable: false,
-        resolution: 'operator-settled-upper-bound',
-        resultCheckpoint: null,
-        completedAt: resolvedAt,
-      };
-    } else {
-      existing.spendNanoUsd = liabilityNanoUsd;
-      existing.resultAvailable = false;
-      existing.resolution = 'operator-settled-upper-bound';
-      existing.resultCheckpoint = null;
-      ledger[existing.type].spendNanoUsd += topUpNanoUsd;
-    }
-    ledger.totalSpendNanoUsd = ledger.generation.spendNanoUsd + ledger.evaluation.spendNanoUsd;
-    const action = {
-      actionId: crypto.randomUUID(),
-      originalCallId: callId,
-      originalRequestHash: original.requestHash,
-      originalStatus: preview.originalStatus,
-      reasonCode,
-      operatorId,
-      resolvedAt,
-      settledNanoUsd: liabilityNanoUsd,
-      retryAttempt,
-      retryRunId,
-      retryCallId,
-      retryRequestHash: null,
-    };
-    ledger.recoveryActions.push(action);
-    ledger.updatedAt = resolvedAt;
-    validateLedger(ledger, budgetUsd);
-    await atomicWriteJson(canonicalPath, ledger);
-    return { ...preview, actionId: action.actionId, resolvedAt };
   }, lockOptions);
 }
 

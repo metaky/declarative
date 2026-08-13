@@ -27,6 +27,23 @@ const tinyLimits = { maxInputTokens: 16, maxOutputTokens: 1 };
 
 function zeroLedger() {
   return {
+    schemaVersion: 5,
+    phase: 'gemini-model-migration-phase-3',
+    currency: 'USD',
+    unit: 'nano-usd',
+    budgetNanoUsd: 10_000_000_000,
+    generation: { calls: 0, spendNanoUsd: 0 },
+    evaluation: { calls: 0, spendNanoUsd: 0 },
+    totalSpendNanoUsd: 0,
+    reservedNanoUsd: 0,
+    pendingReservations: [],
+    completedCalls: {},
+    updatedAt: null,
+  };
+}
+
+function committedSchema4ZeroLedger() {
+  return {
     schemaVersion: 4,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
@@ -39,23 +56,6 @@ function zeroLedger() {
     pendingReservations: [],
     completedCalls: {},
     recoveryActions: [],
-    updatedAt: null,
-  };
-}
-
-function legacyZeroLedger() {
-  return {
-    schemaVersion: 3,
-    phase: 'gemini-model-migration-phase-3',
-    currency: 'USD',
-    unit: 'nano-usd',
-    budgetNanoUsd: 10_000_000_000,
-    generation: { calls: 0, spendNanoUsd: 0 },
-    evaluation: { calls: 0, spendNanoUsd: 0 },
-    totalSpendNanoUsd: 0,
-    reservedNanoUsd: 0,
-    pendingReservations: [],
-    completedCalls: {},
     updatedAt: null,
   };
 }
@@ -120,16 +120,16 @@ function options(context, overrides = {}) {
   };
 }
 
-durabilityTest('only the exact committed schema-3 zero state migrates to the request-bound ledger', async (t) => {
-  const context = await fixture(t, legacyZeroLedger());
+durabilityTest('only the exact committed schema-4 zero state migrates to the recovery-free ledger', async (t) => {
+  const context = await fixture(t, committedSchema4ZeroLedger());
 
   const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
 
   assert.deepEqual(ledger, zeroLedger());
-  assert.equal(JSON.parse(await readFile(context.ledgerPath, 'utf8')).schemaVersion, 4);
+  assert.equal(JSON.parse(await readFile(context.ledgerPath, 'utf8')).schemaVersion, 5);
 
   const activeLegacy = {
-    ...legacyZeroLedger(),
+    ...committedSchema4ZeroLedger(),
     generation: { calls: 1, spendNanoUsd: 10_000_000 },
     totalSpendNanoUsd: 10_000_000,
     updatedAt: '2026-08-13T00:00:00.000Z',
@@ -277,6 +277,7 @@ for (const type of ['generation', 'evaluation']) {
       path.dirname(context.ledgerPath),
       settled.completedCalls[callId].resultCheckpoint.relativePath,
     );
+    assert.equal((await stat(path.dirname(context.ledgerPath))).mode & 0o777, 0o700);
     assert.equal((await stat(path.dirname(checkpointPath))).mode & 0o777, 0o700);
     assert.equal((await stat(checkpointPath)).mode & 0o777, 0o600);
 

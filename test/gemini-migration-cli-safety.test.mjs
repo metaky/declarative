@@ -8,7 +8,6 @@ import test from 'node:test';
 
 const run = promisify(execFile);
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const cliPath = path.join(repoRoot, 'scripts', 'recover-gemini-migration-call.mjs');
 const migrationCliPaths = [
   'check-gemini-models.mjs',
   'check-get-more-ideas-multiround.mjs',
@@ -26,19 +25,16 @@ function digest(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-test('recovery CLI help and dry validation are keyless and leave the canonical ledger unchanged', { timeout: 5_000 }, async () => {
-  const before = await readFile(ledgerPath);
-  const help = await run(process.execPath, [cliPath, '--help'], { cwd: repoRoot, env: cleanEnv });
-  const validation = await run(process.execPath, [cliPath, '--dry-validate'], { cwd: repoRoot, env: cleanEnv });
-  const after = await readFile(ledgerPath);
-
-  assert.match(help.stdout, /audited.*recovery|recovery.*audited/i);
-  assert.match(help.stdout, /--dry-run/);
-  assert.match(validation.stdout, /valid.*zero|zero.*valid/i);
-  assert.equal(digest(after), digest(before));
+test('there is no executable migration recovery package command', async () => {
+  const packageJson = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'));
+  assert.equal(Object.hasOwn(packageJson.scripts, 'quality:migration-recover'), false);
+  await assert.rejects(
+    run('npm', ['run', 'quality:migration-recover', '--', '--help'], { cwd: repoRoot, env: cleanEnv }),
+    (error) => error.code === 1 && /missing script/i.test(error.stderr),
+  );
 });
 
-test('every migration CLI help path returns keyless before parsing paid-run options', { timeout: 5_000 }, async () => {
+test('every migration CLI help path returns keylessly before parsing paid-run options', { timeout: 5_000 }, async () => {
   const before = await readFile(ledgerPath);
   for (const migrationCliPath of migrationCliPaths) {
     const help = await run(process.execPath, [migrationCliPath, '--help'], { cwd: repoRoot, env: cleanEnv });

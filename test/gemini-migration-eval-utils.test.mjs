@@ -24,7 +24,7 @@ const manifestPath = path.join(repoRoot, 'evals', 'gemini-migration-prompt-set.j
 
 function zeroLedger() {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: 'gemini-model-migration-phase-3',
     currency: 'USD',
     unit: 'nano-usd',
@@ -35,7 +35,6 @@ function zeroLedger() {
     reservedNanoUsd: 0,
     pendingReservations: [],
     completedCalls: {},
-    recoveryActions: [],
     updatedAt: null,
   };
 }

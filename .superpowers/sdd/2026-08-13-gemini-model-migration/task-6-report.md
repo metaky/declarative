@@ -2,94 +2,75 @@
 
 ## Status and boundary
 
-Complete after independent-review correction rounds 1–3. Task 6 builds and locally verifies the migration harness only; Phase 3 was not run.
+Implementation is complete after four independent-review correction rounds and a final architecture simplification. Task 6 builds and verifies the harness locally only; Phase 3 has not been run.
 
-- No Gemini generation callback, evaluator callback, network request, paid call, cloud call, deployment, traffic change, or credential-backed operation occurred.
-- No API key or cloud credential was loaded or used. Keyless verification removed `GEMINI_API_KEY`, `GOOGLE_API_KEY`, and `GOOGLE_APPLICATION_CREDENTIALS` from the subprocess environment.
-- Every provider/evaluator callback in tests was a local simulation using hand-derived synthetic fixtures.
-- No real prompt, output, evaluator result, private payload, or paid-run content was created or committed.
-- Product SDK behavior, production prompts, response schemas, UI, deployment, and traffic were not changed.
-- The canonical `evals/results/gemini-migration/phase-3-spend.json` remains deterministic schema-4 zero state: zero calls, zero settled nano-USD, zero pending liability, empty completed/recovery journals, and `updatedAt: null`.
+- No Gemini generation, evaluator, network, paid, cloud, deployment, production-traffic, or credential-backed call occurred.
+- Keyless checks explicitly removed `GEMINI_API_KEY`, `GOOGLE_API_KEY`, and `GOOGLE_APPLICATION_CREDENTIALS` from subprocess environments.
+- Test callbacks used only local synthetic fixtures.
+- No real prompt, model output, evaluator result, or paid-run artifact was created or committed.
+- Product SDK behavior, production prompts, response contracts, UI, deployment, and live traffic were not changed.
+- The canonical `evals/results/gemini-migration/phase-3-spend.json` is deterministic schema-5 zero state: zero calls, zero settled nano-USD, zero liability, an empty completed-call journal, and `updatedAt: null`.
 
 ## Harness delivered
 
-- Imports the named historical corpora by stable ID, deduplicates with provenance, and preserves historical artifacts and unrelated evaluation workflows.
-- Exposes exactly four explicit allow-listed configurations. `localOnly` cases never enter generation or evaluation.
-- Uses one canonical cumulative Phase 3 ledger across smoke, full, and restarted runs; alternate paths and symlink aliases fail closed.
-- Requires explicit input/output token caps and atomically reserves a priced upper bound before every generation/evaluator callback. Settled spend plus pending liability cannot exceed $10.
-- Uses integer nano-USD accounting. Positive charges consume budget, totals derive from integer component journals, and the only automatic migration accepts the exact prior committed zero-state schema.
-- Conservatively retains post-dispatch liability for unknown usage, provider rejection, pricing/parser/checkpoint failure, settlement failure, and process interruption. Only proven pre-dispatch dead reservations may be released.
-- Stores owner PID/token/timestamp lock metadata, recovers stale dead-process locks safely, and leaves potentially billed calls unresolved.
-- Checkpoints generation results and each evaluator row atomically so settled stable calls resume without another callback.
-- Reports visible candidate tokens, thought tokens, billed output, generation/evaluation settled spend and liability, total committed budget, remaining capacity, and pending counts.
-- Every migration CLI `--help` path returns before paid-run option parsing, ledger access, environment-file/API-key loading, client construction, or callback dispatch.
+- Imports and deduplicates every named historical corpus by stable ID while retaining provenance and preserving historical artifacts.
+- Selects exactly the four approved configurations. `localOnly` cases never enter generation or evaluator call plans.
+- Uses one canonical cumulative Phase 3 ledger across smoke, full, and restarted runs. Alternate ledger paths, symlink aliases, reset routes, and unbounded calls fail closed.
+- Uses conservative integer nano-USD accounting and reserves a fully priced input/output upper bound before every local callback boundary. Settled spend plus unresolved liability cannot exceed $10.
+- Retains the full upper-bound liability after dispatch whenever provider billing is unknown, including provider rejection, missing usage, pricing/parser/checkpoint failure, settlement interruption, and process interruption. Only a proven-undispatched reservation owned by a dead process may be released.
+- Binds each logical call to an exact canonical request hash covering call type, stable ID, configuration, effective request, schema, corpus/source identity, repeat, direction, More Ideas round, operation, and evaluator version where applicable.
+- Replays a completed call only when the stable ID, configuration, request hash, durable checkpoint hash, and checkpoint identity all match. Changed requests and damaged checkpoints fail closed before callback dispatch.
+- Checkpoints generation results and evaluator rows atomically and restores original provider latency on replay.
+- Reports visible candidate tokens, thought tokens, billed output, generation/evaluation settled spend, unresolved liability, total committed budget, remaining capacity, and pending counts.
+- Every migration CLI `--help` path returns before ledger mutation, environment-file/API-key loading, client construction, or callback dispatch.
 
-## Correction round 3
+## Architecture reassessment: recovery removed
 
-### Exact request binding
+The operator recovery/retry feature added in correction round 3 was removed completely. Review showed that a recovery journal, retry authorizations, and recovery CLI created more integrity paths than the small evaluation budget justified.
 
-Before reservation, the harness canonicalizes and SHA-256 hashes:
+The final policy is deliberately simpler:
 
-- call type and deterministic stable logical ID/attempt;
-- exact registry configuration metadata, effective model, and full effective request/generation configuration;
-- exact contents/prompt data and response schema in that request;
-- harness, response-schema, and evaluator versions;
-- corpus/source identity, case/provenance identity, repeat, direction, More Ideas round, operation, and other request-affecting context.
+- There is no recovery API, CLI, package command, journal, authorization, or replacement recovery command.
+- Retry-shaped IDs are rejected before any callback.
+- A dispatched or unresolved logical call permanently retains its upper-bound liability and cannot be retried automatically.
+- A completed call with a damaged or mismatched checkpoint cannot be replayed or automatically regenerated.
+- The operator must stop and inspect the ledger/checkpoints. There is no automated release, reset, settlement, or retry route.
 
-Only the request hash—not request content—is persisted in pending/completed journal entries. Reuse requires matching call ID, configuration ID, and request hash. Prompt, config, schema, corpus, repeat, direction, or round changes fail before callback dispatch. The effective request model must match the priced allow-listed configuration.
+This may sacrifice a small amount of the $10 test budget after an interruption. That tradeoff is intentional: it prevents an ambiguous call from being paid twice and keeps the audit model understandable.
 
-### Checkpoint integrity and original latency
+The ledger moved to schema 5, which has no recovery fields. Automatic migration accepts only the byte-structure-equivalent committed schema-4 zero state at the fixed $10 budget. Active schema-4 ledgers, missing fields, unexpected fields, fabricated recovery entries, and fabricated retry authorizations are rejected.
 
-- Direct result checkpoints bind stable call ID and request hash; the ledger stores only their canonical path and SHA-256 digest.
-- Evaluator checkpoints bind the immutable source payload hash, every source-row hash, evaluator request hash, completed durable call ID/hash, scored-row hash, and a whole-checkpoint hash.
-- Resume validates all bindings against the live canonical completed-call journal before trusting or skipping a row. Verdict, score, source-row, journal, or checkpoint tampering fails closed and does not trigger an automatic callback.
-- Actual provider duration is persisted as safe completed-call metadata, restored on replay, and used in aggregate latency metrics. Cache-read duration is never substituted.
+## Lock and privacy safeguards
 
-### Audited recovery workflow
+- Lock ownership is bound to PID plus process-start identity. A stale lock is recoverable when the PID is dead or has been reused by a different process, but an old lock matching the live owner identity is never stolen.
+- Malformed stale locks are quarantined and compared by filesystem identity before removal. Concurrent callers still serialize spend reservations and cannot cross the cap.
+- Generated migration report directories are hardened to `0700` when private artifacts are created.
+- Timestamped JSON/Markdown reports, latest pointers, call checkpoints, score checkpoints, and atomic temporary files are created as `0600` and renamed atomically.
+- The canonical metadata-only ledger remains tracked and stageable with ordinary metadata permissions. All generated migration artifacts remain recursively ignored; the ledger is the sole exception.
 
-The metadata-only recovery CLI never loads credentials or dispatches a provider/evaluator call:
+## TDD evidence
 
-```text
-npm run quality:migration-recover -- --help
-npm run quality:migration-recover -- --dry-validate
-npm run quality:migration-recover -- --call-id=<type:stable-id> --reason-code=<code> --operator-id=<safe-id> --dry-run
-npm run quality:migration-recover -- --call-id=<type:stable-id> --reason-code=<code> --operator-id=<safe-id> --confirm
-```
+Observed RED failures before implementation included:
 
-`--dry-run` validates and previews without mutation. `--confirm` retains or settles the original upper-bound liability, records reason/timestamp/operator-safe metadata, marks the old result unavailable, and authorizes one new deterministic `:retry-N` attempt. The retry is not dispatched by recovery: it requires a separate full request-bound reservation and counts independently against the remaining cap. No automatic retry, release, reset, or same-attempt reuse route exists.
+1. The committed schema-4 zero ledger remained schema 4 instead of migrating to recovery-free schema 5.
+2. `recoverAmbiguousCall` was still exported, the recovery package command still existed, and retry-shaped IDs still instructed operators to use recovery.
+3. A lock with the same injected live process identity was stolen because lock ownership used PID liveness alone; process identity was not evaluated.
+4. The report writer was absent, and the migration result root remained `0755` after private checkpoint creation.
+5. A fabricated retry-authorization field and a schema missing `updatedAt` were accepted.
 
-### Git privacy
+Each failure was observed before the corresponding production change, then rerun green. Earlier correction rounds also proved integer precision, conservative unknown-billing liability, hard-cap enforcement, canonical-ledger enforcement, exact request binding, durable completed-call replay, evaluator checkpoint integrity, original latency, and Git privacy.
 
-All generated files beneath `evals/results/gemini-migration/` are ignored recursively, including nested timestamped/latest reports and private call/evaluator checkpoints. The canonical `phase-3-spend.json` is the sole exception. Existing historical artifacts outside this migration-only directory were not modified.
+## Verification evidence
 
-## TDD RED evidence
-
-Observed failures before the round-3 implementation included:
-
-1. Request-identity tests could not import `getProviderDurationMs`; after the first implementation, changed model and missing source context still produced `Missing expected rejection`.
-2. Pending-call collision coverage initially lacked a persisted request hash and mismatch guard.
-3. Evaluator integrity tests failed until scorer outcomes carried the durable completed-call binding; verdict, score, source-row, journal, and checkpoint-hash mutations then exercised fail-closed validation.
-4. Recovery tests initially failed because no recovery function/CLI existed; the first Git privacy check showed generated latest/timestamped artifacts were not ignored.
-5. A present-but-`undefined` required request field and a completed spend greater than its liability each produced `Missing expected rejection`; both now fail ledger/request validation.
-6. The final process-level keyless-help regression passed 2/3 and failed because `check-gemini-models.mjs --help` parsed required paid-run configuration first. Equivalent early guards were then added to all four legacy migration scripts.
-
-Earlier correction-round RED evidence covered sub-micro-dollar rounding to zero, repeated tiny-charge cap behavior, post-dispatch liability release, unbounded reservations, canonical-ledger bypasses, permanent stale locks, post-settlement callback replay, evaluator loop-only checkpointing, and private checkpoint permissions.
-
-## GREEN evidence
-
-- Bounded focused suite: 54/54 passed with a 5-second per-test timeout.
-- Durability/request-identity/recovery/evaluator subset: 24/24 passed in each of five consecutive runs (120/120 total), without a hang.
-- Full repository suite: 149/149 passed.
+- Focused Task 6 suite: 58/58 passed before the final two schema checks; the final full repository suite passed 155/155.
+- Critical durability/fail-closed/evaluator subset: 24/24 passed in each of five consecutive runs (120/120 total), with no hang.
 - `npm run lint`: passed.
 - `npm run build`: passed; only existing Browserslist-age and bundle-size advisories were emitted.
-- Six migration/recovery `--help` commands plus recovery `--dry-validate` passed keylessly; canonical ledger SHA-256 remained `8c361f606a6cce584e419133357574a3032f290486c8a44bae7b71bef0a27b29` before and after.
-- Six representative root, nested, latest, timestamped, call-checkpoint, and score-checkpoint paths passed `git check-ignore --no-index`; the canonical ledger remained unignored/stageable.
-- `git diff --check`: passed before report update and is rerun in final staged verification.
+- Five migration `--help` paths passed keylessly; the canonical ledger SHA-256 remained unchanged at `bf972835e0282d217a9d4b569cd93e91db092fbcf1f9590e2e269bd4db3846fc`.
+- Generated latest, timestamped, call-checkpoint, and score-checkpoint paths passed `git check-ignore --no-index`; the canonical ledger remained unignored/stageable.
+- Permission tests passed for migration directories (`0700`) and all generated report/checkpoint files (`0600`).
+- `git diff --check` is included in final pre-commit verification.
 
-Adversarial local-only coverage includes exact request replay and changed prompt/config/schema/corpus/repeat/direction/round collisions; all provider crash boundaries; completed-journal and evaluator-checkpoint tampering; original-latency replay; ambiguous and damaged-checkpoint recovery; distinct retry identity; combined old/retry cap accounting; sub-micro and repeated tiny charges; near-cap concurrency; missing usage; provider rejection; pricing and settlement failure; canonical/symlink enforcement; no reset route; and stale-lock reconciliation.
+## Remaining boundary
 
-## Changed scope and concerns
-
-Changed scope is limited to the canonical zero ledger, migration-only ignore rule, migration evaluation utilities/reporting, five existing migration call scripts, one recovery CLI/package command, local tests, and this report. Existing historical result artifacts were preserved.
-
-No live model/evaluator behavior was validated because external and paid calls were prohibited. A future paid smoke run requires separate authorization and must use the same canonical cumulative ledger. Existing build advisories are unrelated to Task 6.
+No live model or evaluator behavior was validated because external and paid calls were prohibited. A future paid smoke run requires separate authorization and must use the same canonical cumulative ledger. If any call becomes ambiguous, the run must stop for inspection; the harness intentionally provides no recovery route.

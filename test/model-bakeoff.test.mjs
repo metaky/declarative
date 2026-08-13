@@ -14,6 +14,7 @@ import {
   renderBakeoffMarkdown,
   summarizeBakeoffResults,
 } from '../scripts/run-model-bakeoff.mjs';
+import * as bakeoffModule from '../scripts/run-model-bakeoff.mjs';
 import { scoreRowsWithCheckpoint } from '../scripts/gemini-migration-eval-utils.mjs';
 
 const CURRENT_IDS = [
@@ -22,6 +23,31 @@ const CURRENT_IDS = [
   'gemini-3.6-flash-minimal',
   'gemini-3.6-flash-medium',
 ];
+
+test('migration report JSON, Markdown, latest files, and directories are private', async (t) => {
+  const { writeMigrationReportArtifacts } = bakeoffModule;
+  assert.equal(typeof writeMigrationReportArtifacts, 'function');
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-private-report-'));
+  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
+  const resultsDir = path.join(temporaryDirectory, 'gemini-migration');
+  const artifactPaths = {
+    json: path.join(resultsDir, 'model-bakeoff-timestamp.json'),
+    markdown: path.join(resultsDir, 'model-bakeoff-timestamp.md'),
+    latestJson: path.join(resultsDir, 'latest-model-bakeoff.json'),
+    latestMarkdown: path.join(resultsDir, 'latest-model-bakeoff.md'),
+  };
+
+  await writeMigrationReportArtifacts({
+    artifactPaths,
+    payload: { privatePrompt: 'do not expose' },
+    markdown: '# Private model output\n',
+  });
+
+  assert.equal((await stat(resultsDir)).mode & 0o777, 0o700);
+  for (const artifactPath of Object.values(artifactPaths)) {
+    assert.equal((await stat(artifactPath)).mode & 0o777, 0o600, artifactPath);
+  }
+});
 
 function evaluatorCompletedCall(runId, marker = 'a') {
   const evaluatorRunId = `${runId}:evaluation`;
