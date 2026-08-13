@@ -10,20 +10,52 @@ Set `SMOKE_TEXT` privately in the operator's environment before verification. It
 export SERVICE="declarative"
 export PROJECT="gen-lang-client-0598048123"
 export REGION="us-west1"
-export LEGACY_REVISION="declarative-00102-5l7"
-export ROLLBACK_CANDIDATE_REVISION="declarative-secret-baseline"
-export ROLLBACK_SUFFIX="secret-baseline"
-export ROLLBACK_TAG="secret-baseline"
-export CANDIDATE_REVISION="declarative-gemini-rotation"
-export CANDIDATE_SUFFIX="gemini-rotation"
-export CANDIDATE_TAG="gemini-rotation"
+export RETIRED_LEGACY_REVISION="declarative-00102-5l7"
+export RETIRED_SECRET_BASELINE_REVISION="declarative-secret-baseline"
+export RETIRED_GEMINI_SECRET_VERSION="1"
+export ROLLBACK_REVISION="declarative-gemini-rotation"
+export ROLLBACK_TAG="gemini-rotation"
+export ROLLBACK_GEMINI_SECRET_VERSION="2"
+export UPSTASH_URL_SECRET_VERSION="1"
+export UPSTASH_TOKEN_SECRET_VERSION="1"
 export CUSTOM_DOMAIN="declarativeapp.org"
 export LOG_LIMIT="100"
 export LOG_SETTLE_SECONDS="60"
-unset ROLLBACK_REVISION
+unset CANDIDATE_REVISION CANDIDATE_SUFFIX CANDIDATE_TAG
 ```
 
-`LEGACY_REVISION` is the historical literal-credential revision and is used only to capture the immutable image and identify the already-completed one-time migration rehearsal. `ROLLBACK_CANDIDATE_REVISION` is only a proposed rollback target. Do not set `ROLLBACK_REVISION` until the proposed revision has passed the tagged zero-traffic, complete behavior, missing-interest correlation, and allowlisted model/thought gates below. After Gemini credential rotation, never roll operational traffic back to `LEGACY_REVISION`.
+These defaults reflect the controller-verified state at `2026-08-13T17:56:19Z`. `declarative-gemini-rotation`, pinned to Gemini secret version `2`, is the only known-good Gemini 2.5 rollback target for future changes. Set candidate variables explicitly for each future operation; they have no defaults.
+
+`declarative-secret-baseline` is retained at zero traffic for history but points to Gemini secret version `1`, whose provider key is revoked. `declarative-00102-5l7` also contains the revoked credential path. Neither retired revision is a usable translation rollback, and Gemini secret version `1` is historical secret material only: never deploy it. No current command in this runbook may route traffic to either retired revision.
+
+```bash
+assert_revision_not_retired() {
+  local revision="$1"
+  case "$revision" in
+    "$RETIRED_LEGACY_REVISION"|"$RETIRED_SECRET_BASELINE_REVISION")
+      printf 'Retired revision is not deployable or routable: %s\n' "$revision" >&2
+      return 1
+      ;;
+  esac
+}
+
+assert_gemini_version_deployable() {
+  local version="$1"
+  case "$version" in
+    ''|*[!0-9]*)
+      printf '%s\n' 'Gemini secret version must be numeric.' >&2
+      return 1
+      ;;
+  esac
+  [ "$version" != "$RETIRED_GEMINI_SECRET_VERSION" ] || {
+    printf '%s\n' 'Gemini secret version 1 contains a revoked key and is never deployable.' >&2
+    return 1
+  }
+}
+
+assert_revision_not_retired "$ROLLBACK_REVISION"
+assert_gemini_version_deployable "$ROLLBACK_GEMINI_SECRET_VERSION"
+```
 
 ## Identity and permission preflight
 
@@ -118,11 +150,11 @@ done
 
 The grants above are per secret. Do not add project-wide Secret Manager access.
 
-## Validated literal-to-secret transfer
+## Historical one-time literal transfer — retired
 
-The transfer function writes revision metadata and one selected literal only to an owner-only temporary directory. It requires exactly one matching literal, rejects empty values or any `valueFrom` source, adds no version until validation passes, confirms the returned version is numeric and enabled, then securely removes and verifies cleanup of the temporary material. It outputs only the non-sensitive numeric version.
+The following block records the original one-time transfer procedure for audit history only. It is intentionally non-executable documentation. The Gemini literal it transferred became secret version `1`; its provider key is now revoked, so the transfer must never be repeated and version `1` must never be deployed.
 
-```bash
+```text
 transfer_literal_to_secret() {
   local env_name="$1"
   local secret_name="$2"
@@ -227,11 +259,11 @@ export GEMINI_SECRET_VERSION UPSTASH_URL_SECRET_VERSION UPSTASH_TOKEN_SECRET_VER
 
 Never use `latest` for an environment-variable secret reference.
 
-## Capture and reuse the immutable image
+## Historical immutable-image capture — retired
 
-Do not rebuild from a working directory for this baseline workflow. Capture the exact digest-qualified image from the legacy revision and reuse it for both secret-managed revisions.
+This records how the original baseline image was captured. Do not use the retired legacy revision as the source for a new deployment. Current credential-only candidates capture their image from `ROLLBACK_REVISION`, which is `declarative-gemini-rotation`.
 
-```bash
+```text
 IMMUTABLE_IMAGE="$(gcloud run revisions describe "$LEGACY_REVISION" \
   --project "$PROJECT" --region "$REGION" \
   --format='value(spec.containers[0].image)')"
@@ -241,11 +273,11 @@ IMMUTABLE_IMAGE="$(gcloud run revisions describe "$LEGACY_REVISION" \
 }
 ```
 
-## Deploy the proposed secret-managed rollback revision
+## Historical secret-baseline deployment — retired
 
-The deterministic suffix produces `declarative-secret-baseline`. At this point it is only `ROLLBACK_CANDIDATE_REVISION`; it is not yet authorized as `ROLLBACK_REVISION`. Confirm that an existing revision with that name has the intended immutable image before reusing it; otherwise abort rather than replacing history.
+This records the original creation and metadata check for `declarative-secret-baseline`. It is intentionally non-executable documentation. After revocation, that revision remains at zero traffic and references revoked Gemini secret version `1`; never redeploy, designate, or route traffic to it.
 
-```bash
+```text
 if gcloud run revisions describe "$ROLLBACK_CANDIDATE_REVISION" \
   --project "$PROJECT" --region "$REGION" --format='value(metadata.name)' >/dev/null 2>&1; then
   existing_image="$(gcloud run revisions describe "$ROLLBACK_CANDIDATE_REVISION" \
@@ -296,6 +328,39 @@ verify_revision_secret_refs \
   "$GEMINI_SECRET_VERSION" \
   "$UPSTASH_URL_SECRET_VERSION" \
   "$UPSTASH_TOKEN_SECRET_VERSION"
+```
+
+## Current secret-reference metadata gate
+
+Use this helper only with a non-retired revision and an explicitly deployable Gemini secret version. It verifies exact numeric Secret Manager references and rejects literal values.
+
+```bash
+verify_revision_secret_refs() {
+  local revision="$1"
+  local gemini_version="$2"
+  local upstash_url_version="$3"
+  local upstash_token_version="$4"
+
+  assert_revision_not_retired "$revision"
+  assert_gemini_version_deployable "$gemini_version"
+  gcloud run revisions describe "$revision" \
+    --project "$PROJECT" --region "$REGION" --format=json \
+    | jq -e \
+      --arg gemini_version "$gemini_version" \
+      --arg upstash_url_version "$upstash_url_version" \
+      --arg upstash_token_version "$upstash_token_version" '
+      def exact_ref($env_name; $secret_name; $version):
+        [.spec.containers[].env[]? | select(.name == $env_name)] as $matches
+        | ($matches | length) == 1
+          and ((($matches[0] | has("value"))) | not)
+          and ($matches[0].valueFrom.secretKeyRef.name == $secret_name)
+          and ($matches[0].valueFrom.secretKeyRef.key == $version)
+          and ($matches[0].valueFrom.secretKeyRef.key | test("^[0-9]+$"));
+      exact_ref("GEMINI_API_KEY"; "declarative-gemini-api-key"; $gemini_version)
+      and exact_ref("UPSTASH_REDIS_REST_URL"; "declarative-upstash-redis-rest-url"; $upstash_url_version)
+      and exact_ref("UPSTASH_REDIS_REST_TOKEN"; "declarative-upstash-redis-rest-token"; $upstash_token_version)
+    ' >/dev/null
+}
 ```
 
 ## Reusable zero-traffic, behavior, correlation, and log gates
@@ -632,29 +697,39 @@ run_complete_revision_gate() {
 }
 ```
 
-## Pre-traffic rollback validation and designation
+## Current rollback validation
 
-Sequencing is mandatory: resolve the `secret-baseline` tagged URL, prove the proposed revision has zero traffic, verify all three numeric secret references, run the complete behavior and correlated missing-interest gates, then run the allowlisted model/thought/rate-limit gate. Only after every command passes may the revision be exported as `ROLLBACK_REVISION`. Candidate deployment and promotion both require that designation.
+The controller verified at `2026-08-13T17:56:19Z` that `declarative-gemini-rotation` receives 100% traffic, pins Gemini secret version `2`, and passes public root, challenge, and live translation behavior. For every future candidate operation, revalidate that exact revision and numeric reference before changing traffic. The retired revisions and Gemini secret version `1` are rejected before any metadata or traffic command.
 
 ```bash
-export ROLLBACK_CANDIDATE_URL="$(resolve_zero_traffic_tag \
-  "$ROLLBACK_CANDIDATE_REVISION" "$ROLLBACK_TAG")"
+assert_full_traffic() {
+  local expected_revision="$1"
+  assert_revision_not_retired "$expected_revision"
+  gcloud run services describe "$SERVICE" \
+    --project "$PROJECT" --region "$REGION" --format=json \
+    | jq -e --arg revision "$expected_revision" '
+        [.status.traffic[]? | select((.percent // 0) > 0)] as $active
+        | ($active | length) == 1
+          and ($active[0].revisionName == $revision)
+          and ($active[0].percent == 100)
+      ' >/dev/null
+}
 
+assert_revision_not_retired "$ROLLBACK_REVISION"
+assert_gemini_version_deployable "$ROLLBACK_GEMINI_SECRET_VERSION"
+[ "$ROLLBACK_REVISION" = "declarative-gemini-rotation" ]
+[ "$ROLLBACK_GEMINI_SECRET_VERSION" = "2" ]
 verify_revision_secret_refs \
-  "$ROLLBACK_CANDIDATE_REVISION" \
-  "$GEMINI_SECRET_VERSION" \
+  "$ROLLBACK_REVISION" \
+  "$ROLLBACK_GEMINI_SECRET_VERSION" \
   "$UPSTASH_URL_SECRET_VERSION" \
   "$UPSTASH_TOKEN_SECRET_VERSION"
-
-run_complete_revision_gate \
-  "$ROLLBACK_CANDIDATE_REVISION" \
-  "$ROLLBACK_CANDIDATE_URL"
-
-export ROLLBACK_REVISION="$ROLLBACK_CANDIDATE_REVISION"
+assert_full_traffic "$ROLLBACK_REVISION"
+run_complete_revision_gate "$ROLLBACK_REVISION" "https://${CUSTOM_DOMAIN}"
 export ROLLBACK_GATE_PASSED="true"
 ```
 
-If any step fails, leave `ROLLBACK_REVISION` unset, keep public traffic unchanged, and stop. Do not deploy or promote a replacement-key candidate without a validated rollback target.
+If any step fails, keep public traffic unchanged and stop. Never substitute `declarative-secret-baseline`, `declarative-00102-5l7`, or Gemini secret version `1` as a fallback.
 
 ## Reproducible replacement Gemini key rotation
 
@@ -853,24 +928,31 @@ The synchronous operation-result path is prohibited even with a field projection
 
 ## Deploy and gate the rotated Gemini candidate
 
-The candidate may be deployed only after the proposed rollback has become `ROLLBACK_REVISION`. It keeps that revision's exact image and Upstash versions, pins the newly enabled numeric Gemini version, and starts at zero traffic.
+Set a new deterministic candidate revision, suffix, and tag explicitly for the future operation. The candidate may be deployed only after `declarative-gemini-rotation` passes the current rollback gate. It keeps that rollback revision's exact image and Upstash versions, pins a newly enabled numeric Gemini version, and starts at zero traffic. Version `1` and both retired revisions are rejected.
 
 ```bash
 [ "${ROLLBACK_GATE_PASSED:-}" = "true" ] || {
   printf '%s\n' 'Validated rollback gate is required before candidate deployment.' >&2
   exit 1
 }
-: "${ROLLBACK_REVISION:?ROLLBACK_REVISION must be designated after its full tagged gate.}"
+: "${CANDIDATE_REVISION:?Set a new deterministic candidate revision.}"
+: "${CANDIDATE_SUFFIX:?Set the matching deterministic candidate suffix.}"
+: "${CANDIDATE_TAG:?Set a new candidate tag.}"
 : "${GEMINI_REPLACEMENT_SECRET_VERSION:?Set the enabled numeric replacement version.}"
-case "$GEMINI_REPLACEMENT_SECRET_VERSION" in
-  ''|*[!0-9]*) printf '%s\n' 'Replacement Gemini version must be numeric.' >&2; exit 1 ;;
-esac
+assert_revision_not_retired "$ROLLBACK_REVISION"
+assert_revision_not_retired "$CANDIDATE_REVISION"
+assert_gemini_version_deployable "$GEMINI_REPLACEMENT_SECRET_VERSION"
+[ "$ROLLBACK_REVISION" = "declarative-gemini-rotation" ]
+[ "$ROLLBACK_GEMINI_SECRET_VERSION" = "2" ]
+[ "$CANDIDATE_REVISION" = "${SERVICE}-${CANDIDATE_SUFFIX}" ]
+[ "$CANDIDATE_REVISION" != "$ROLLBACK_REVISION" ]
+[ "$CANDIDATE_TAG" != "$ROLLBACK_TAG" ]
 
 ROLLBACK_IMAGE="$(gcloud run revisions describe "$ROLLBACK_REVISION" \
   --project "$PROJECT" --region "$REGION" \
   --format='value(spec.containers[0].image)')"
-[ "$ROLLBACK_IMAGE" = "$IMMUTABLE_IMAGE" ] || {
-  printf '%s\n' 'Rollback image drift detected.' >&2
+[[ "$ROLLBACK_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]] || {
+  printf '%s\n' 'Known-good rollback image is not digest-qualified.' >&2
   exit 1
 }
 
@@ -897,23 +979,15 @@ If any candidate gate fails, leave it tagged at zero traffic and stop. A passing
 
 ## Promotion, rollback, and restoration
 
-Promotion is allowed only when both tagged zero-traffic gates passed. After each traffic change, verify the exact 100% revision from service metadata and rerun the same complete verifier against the custom domain. This fetches the custom-domain root and verifies challenge, translation, rate limiting, correlated missing-interest absence, and allowlisted model/thought evidence for the exact live revision. Wait for prior request windows to clear; a correlation collision is a conservative failure and must be rerun in a quiet window.
+Promotion is allowed only when the known-good rollback and tagged zero-traffic candidate gates passed. After each traffic change, verify the exact 100% revision from service metadata and rerun the same complete verifier against the custom domain. The rollback command is hard-pinned to `declarative-gemini-rotation`; do not replace it with either retired revision. Wait for prior request windows to clear; a correlation collision is a conservative failure and must be rerun in a quiet window.
 
 ```bash
-assert_full_traffic() {
-  local expected_revision="$1"
-  gcloud run services describe "$SERVICE" \
-    --project "$PROJECT" --region "$REGION" --format=json \
-    | jq -e --arg revision "$expected_revision" '
-        [.status.traffic[]? | select((.percent // 0) > 0)] as $active
-        | ($active | length) == 1
-          and ($active[0].revisionName == $revision)
-          and ($active[0].percent == 100)
-      ' >/dev/null
-}
-
 [ "${ROLLBACK_GATE_PASSED:-}" = "true" ]
 [ "${CANDIDATE_GATE_PASSED:-}" = "true" ]
+assert_revision_not_retired "$CANDIDATE_REVISION"
+[ "$CANDIDATE_REVISION" != "$ROLLBACK_REVISION" ]
+[ "$ROLLBACK_REVISION" = "declarative-gemini-rotation" ]
+[ "$ROLLBACK_GEMINI_SECRET_VERSION" = "2" ]
 
 gcloud run services update-traffic "$SERVICE" \
   --to-revisions "${CANDIDATE_REVISION}=100" \
@@ -921,7 +995,7 @@ gcloud run services update-traffic "$SERVICE" \
 assert_full_traffic "$CANDIDATE_REVISION"
 run_complete_revision_gate "$CANDIDATE_REVISION" "https://${CUSTOM_DOMAIN}"
 
-# Operational rollback after Gemini rotation: always use the validated secret-managed rollback.
+# Operational rollback: this value is fixed to the version-2 Gemini 2.5 revision.
 gcloud run services update-traffic "$SERVICE" \
   --to-revisions "${ROLLBACK_REVISION}=100" \
   --project "$PROJECT" --region "$REGION" --quiet
@@ -936,7 +1010,7 @@ assert_full_traffic "$CANDIDATE_REVISION"
 run_complete_revision_gate "$CANDIDATE_REVISION" "https://${CUSTOM_DOMAIN}"
 ```
 
-The completed one-time legacy rollback rehearsal is evidence in the Phase 1 baseline; do not rerun it after credential rotation. Keep both historical revisions available and do not delete them. After rotation, `ROLLBACK_REVISION` remains the validated secret-managed baseline, never `LEGACY_REVISION`.
+The completed one-time legacy and secret-baseline rollback rehearsal remains historical evidence in the Phase 1 baseline; do not rerun it. Keep both retired revisions available for history, but never route traffic to them. After revocation, `ROLLBACK_REVISION` is `declarative-gemini-rotation` on Gemini secret version `2`.
 
 ## Upstash overlap safety
 

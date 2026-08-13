@@ -53,7 +53,7 @@ Task 1 adds local controls and documents this baseline only. It does not deploy 
 
 ## Task 2 secret-managed rollback baseline
 
-Status on 2026-08-13: `DONE_WITH_CONCERNS`. The required secret-managed Gemini 2.5 Flash rollback path is healthy and production is using the verified replacement Gemini credential. Upstash remains on its original active credential because a safe overlapping ACL token could not be completed through the available non-interactive control path.
+Status on 2026-08-13: `DONE_WITH_CONCERNS`. Production uses the verified replacement Gemini credential, and `declarative-gemini-rotation` is the known-good Gemini 2.5 rollback target for future changes. The previous Gemini key has been revoked. Upstash remains on its original active credential because a safe overlapping ACL token could not be completed through the available non-interactive control path.
 
 ### Verified control plane
 
@@ -71,11 +71,13 @@ The local gcloud default project pointed elsewhere, so it was not changed or rel
 
 | Secret | Enabled numeric versions | Final production reference | Credential state |
 | --- | --- | --- | --- |
-| `declarative-gemini-api-key` | `1`, `2` | `2` | Version `2` is the verified replacement; version `1` remains active pending revocation. |
+| `declarative-gemini-api-key` | `1`, `2` | `2` | Version `2` is active and verified. Version `1` is retained only as historical secret material containing a revoked key; it is never deployable. |
 | `declarative-upstash-redis-rest-url` | `1` | `1` | Active. |
 | `declarative-upstash-redis-rest-token` | `1` | `1` | Original default token remains active pending a separately safe overlap path. |
 
 The three version `1` values were transferred from the literal environment variables on `declarative-00102-5l7` through direct non-printing pipelines. No temporary secret material was created for that transfer. Gemini version `2` was transferred through an owner-only temporary location; the material was securely removed and cleanup was validated. All three secrets grant `roles/secretmanager.secretAccessor` only to the runtime service account listed above.
+
+The version-`1` restriction applies specifically to `declarative-gemini-api-key`. Upstash URL/token version `1` remains the unchanged production reference. Never deploy Gemini secret version `1`, `declarative-secret-baseline`, or `declarative-00102-5l7` as a translation rollback after revocation.
 
 Metadata inspection confirms that `declarative-gemini-rotation` contains no literal field for the three credential variables and pins these exact references:
 
@@ -99,11 +101,13 @@ No environment-variable secret reference uses `latest`.
 
 Allowlisted structured logs for this revision contained 10 Gemini usage rows across `translate`, `moreIdeas`, and `variation`. Every row identified `gemini-2.5-flash`; no row reported positive thought tokens; and every token total equaled prompt plus candidate tokens. The deployed source pins `thinkingBudget: 0`.
 
+That evidence is historical. After the previous Gemini key was revoked, `declarative-secret-baseline` remained at zero traffic but ceased to be a usable translation rollback because it still references Gemini secret version `1`. `declarative-00102-5l7` is likewise retired from translation rollback use.
+
 `declarative-gemini-rotation` was created at `2026-08-13T15:34:19.488611Z`, tagged `gemini-rotation`, and kept at zero traffic while the replacement Gemini credential was tested. Its tagged suite passed with 4 initial suggestions, 4 distinct More Ideas suggestions, exactly 2 deduplicated suggestions for every variation direction, the one-time challenge guard, the missing-interest HTTP 400 rejection, and the calm request-4 HTTP 429. Its allowlisted logs contained 22 usage rows across all three modes, all on `gemini-2.5-flash`, with no positive thought-token rows and exact zero-thought token accounting. As with the rollback revision, the retained evidence does not isolate the missing-interest request in its own precise no-usage window, so it is not recorded as proof that a model call was absent.
 
 The runtime logger does not emit an explicit `thinking_budget` field. The zero-thinking claim therefore combines exact deployed-source inspection (`thinkingBudget: 0`) with the allowlisted runtime token accounting above; no log evidence was invented.
 
-Fix Round 2 makes the pre-traffic sequence explicit for future execution: treat `declarative-secret-baseline` only as a rollback candidate; resolve its `secret-baseline` tagged URL; prove it is at zero traffic; verify all three exact numeric Secret Manager references with no literal values; run the complete bounded behavior suite; correlate the missing-interest request to an exact UTC window and revision and require zero allowlisted Gemini usage events in that window; then pass the allowlisted model, thought-token, token-accounting, and rate-limit gates. Only then may it be designated `ROLLBACK_REVISION`, and no replacement-key candidate may be deployed or promoted before that designation. This documentation-only fix did not rerun production or query logs, so it does not retroactively add the missing request-correlation evidence to the original operation record.
+Fix Round 2 historically made the pre-traffic sequence explicit for designating `declarative-secret-baseline` before old-key revocation. This documentation-only fix did not rerun production or query logs, so it did not retroactively add the missing request-correlation evidence to the original operation record. The revocation follow-up below supersedes that rollback designation: `declarative-secret-baseline` is now retired, and `declarative-gemini-rotation` is the current rollback target.
 
 ### Traffic exercise and custom-domain checks
 
@@ -119,10 +123,22 @@ The prior revisions remain available. No revision, Secret Manager secret, or his
 ### Gemini credential states
 
 - Replacement: `projects/1083695383503/locations/global/keys/5a8613d5-4ea3-4be1-b4e2-a0b2cee0d082` (`Declarative Gemini rollback 2026-08-13 v2`) is active, restricted to `generativelanguage.googleapis.com`, stored as secret version `2`, verified on the tagged revision, and serving production.
-- Previous: `projects/1083695383503/locations/global/keys/cef8e82b-b048-46b8-af88-5a417fbe8530` (`Declarative Gemini API2`) is active as secret version `1` and pending revocation. Revocation was not requested or performed.
+- Previous: `projects/1083695383503/locations/global/keys/cef8e82b-b048-46b8-af88-5a417fbe8530` (`Declarative Gemini API2`) was asynchronously deleted/revoked with output suppressed under Kyle's explicit approval. At `2026-08-13T17:56:19Z`, controller verification found it absent from active-key metadata. Its retained Secret Manager version `1` is historical material only and never deployable.
 - Deleted throwaway: `projects/1083695383503/locations/global/keys/41fe1ca9-6f89-4848-bd10-8f40cec39daa` was created at `2026-08-13T15:31:28.928357Z`. This newly created valid-but-never-used key was exposed to internal tool output and immediately invalidated by deletion, recorded complete at `2026-08-13T15:31:59.782776Z`. It was never stored, deployed, or used; no production or currently active credential was exposed.
 
 The replacement retry used asynchronous creation and exact-one metadata discovery under a unique display identifier, verified the sole API target as `generativelanguage.googleapis.com`, redirected credential retrieval to owner-only material with controlled stderr, transferred that material directly into Secret Manager, verified the enabled numeric version, and verified local cleanup. The reproducible runbook now captures retrieval as owner-only structured JSON, requires exactly one non-empty `keyString`, writes it without a record terminator, rejects CR, LF, and NUL bytes, and checks the extracted byte count before Secret Manager input. It includes safe abort handling for discovery, restriction, retrieval, version, and cleanup failures and expressly prohibits synchronous API-key operation-result inspection, the path that exposed the deleted throwaway key.
+
+### User-approved Gemini revocation follow-up
+
+Controller-verified facts at `2026-08-13T17:56:19Z`:
+
+- The previous Gemini resource was asynchronously deleted/revoked with command output suppressed and is absent from active-key metadata.
+- Production remains 100% on `declarative-gemini-rotation`, with `GEMINI_API_KEY` pinned to `declarative-gemini-api-key:2`.
+- Public root, challenge, and live translation checks passed; translation returned 4 valid suggestions.
+- `declarative-secret-baseline` remains at zero traffic but references revoked Gemini version `1`, so it is intentionally not a usable translation rollback.
+- `declarative-00102-5l7` and `declarative-secret-baseline` are retained for history only. Neither may receive traffic or be used as a deployment source after revocation.
+- `declarative-gemini-rotation` is the known-good Gemini 2.5 rollback target for future changes.
+- Upstash references and credential state are unchanged.
 
 ### Upstash overlap conclusion
 
@@ -136,6 +152,8 @@ Because there is no authenticated Upstash management CLI or management API crede
 
 - `declarative-gemini-rotation` is Ready and receives 100% of traffic.
 - `https://declarativeapp.org/` is healthy through root, challenge, and live translation behavior.
+- Current rollback target: `declarative-gemini-rotation`, pinned to Gemini secret version `2`.
+- Retired, never-routable translation revisions: `declarative-secret-baseline` and `declarative-00102-5l7`.
 - Model, prompts, SDK, and visible application behavior were not changed.
 - Concern: Upstash rotation remains pending for the reason above.
 - Concern: the structured runtime schema lacks an explicit `thinking_budget` field.
