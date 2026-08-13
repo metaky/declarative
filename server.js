@@ -6,6 +6,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { Redis } from '@upstash/redis';
 import { v4 as uuidv4 } from 'uuid';
 import { buildThinkingConfig, resolveGeminiModelConfig } from './services/geminiConfig.js';
+import {
+    classifyGeminiFailure,
+    isGeminiResponseBlocked,
+    validateGeminiResponse,
+} from './services/geminiResponse.js';
 import { buildTranslationPrompt, buildVariationPrompt, systemInstruction } from './services/translationPrompt.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -119,6 +124,17 @@ function logGeminiUsageMetadata({
         cache_tokens_details: usageMetadata.cacheTokensDetails ?? null,
         prompt_tokens_details: usageMetadata.promptTokensDetails ?? null,
         candidates_tokens_details: usageMetadata.candidatesTokensDetails ?? null,
+        timestamp: new Date().toISOString(),
+    }));
+}
+
+function logGeminiResponseFailure({ code, mode, variationKind }) {
+    console.warn(JSON.stringify({
+        event: 'gemini_response_failure',
+        source: 'server',
+        code,
+        mode,
+        variation_kind: variationKind ?? null,
         timestamp: new Date().toISOString(),
     }));
 }
@@ -744,7 +760,8 @@ app.post('/api/translate', async (req, res) => {
     }
 
     if (!apiKey) {
-        return res.status(500).json({ error: 'API key not configured on server.' });
+        logGeminiResponseFailure({ code: 'api_error', mode, variationKind });
+        return res.status(500).json({ error: 'AI translation unavailable.' });
     }
 
     const basePrompt = mode === 'variation'
@@ -794,15 +811,18 @@ app.post('/api/translate', async (req, res) => {
         });
 
         const response = await Promise.race([apiPromise, timeoutPromise]);
-        const responseText = response.text;
-        if (!responseText) {
-            return res.status(500).json({ error: 'Empty response from AI.' });
+        const blocked = isGeminiResponseBlocked(response);
+        const validation = validateGeminiResponse({
+            responseText: blocked ? '' : response.text,
+            mode,
+            existingTranslations,
+            sourceTranslation,
+            blocked,
+        });
+        if (!validation.ok) {
+            logGeminiResponseFailure({ code: validation.code, mode, variationKind });
+            return res.status(500).json({ error: 'AI translation unavailable.' });
         }
-
-        const translations = JSON.parse(responseText.trim());
-        const normalizedTranslations = mode === 'variation'
-            ? dedupeVariationTranslations(translations, sourceTranslation.translation).slice(0, 2)
-            : translations;
         logGeminiUsageMetadata({
             model: geminiModelConfig.model,
             mode,
@@ -814,14 +834,14 @@ app.post('/api/translate', async (req, res) => {
             durationMs: Date.now() - requestStartedAt,
             usageMetadata: response.usageMetadata,
         });
-        return res.json(normalizedTranslations);
+        return res.json(validation.suggestions);
     } catch (error) {
-        console.error('Gemini API Error:', error);
-        const message = error instanceof Error ? error.message : 'AI translation unavailable.';
-        if (message.includes('API key not valid')) {
-            return res.status(500).json({ error: 'API Key is not valid. Please check server configuration.' });
-        }
-        return res.status(500).json({ error: message });
+        logGeminiResponseFailure({
+            code: classifyGeminiFailure(error),
+            mode,
+            variationKind,
+        });
+        return res.status(500).json({ error: 'AI translation unavailable.' });
     }
 });
 
