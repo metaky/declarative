@@ -2,6 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import {
+  buildThinkingConfig,
+  estimateGeminiCostUsd,
+  listEvaluationConfigurations,
+} from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
 import {
   applyCalibratedDecision,
@@ -16,64 +21,7 @@ const envPath = path.join(repoRoot, '.env.local');
 const calibrationPath = path.join(repoRoot, 'evals', 'human-calibration-set.json');
 const resultsDir = path.join(repoRoot, 'evals', 'results');
 
-const MODEL_CANDIDATES = [
-  {
-    id: 'gemini-3.5-flash',
-    model: 'gemini-3.5-flash',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.75,
-    outputUsdPerMillion: 4.50,
-    pricingNote: 'Current stable Gemini 3.5 Flash pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-3.1-flash-lite',
-    model: 'gemini-3.1-flash-lite',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.25,
-    outputUsdPerMillion: 1.50,
-    pricingNote: 'Current stable Gemini 3.1 Flash-Lite pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-2.5-flash-baseline',
-    model: 'gemini-2.5-flash',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.30,
-    outputUsdPerMillion: 2.50,
-    pricingNote: 'Gemini 2.5 Flash standard paid pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-2.5-flash-thinking-256',
-    model: 'gemini-2.5-flash',
-    thinkingBudget: 256,
-    inputUsdPerMillion: 0.30,
-    outputUsdPerMillion: 2.50,
-    pricingNote: 'Same model as Flash baseline with a small thinking budget.',
-  },
-  {
-    id: 'gemini-2.5-pro',
-    model: 'gemini-2.5-pro',
-    thinkingBudget: null,
-    inputUsdPerMillion: 1.25,
-    outputUsdPerMillion: 10.00,
-    pricingNote: 'Gemini 2.5 Pro standard paid pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-3-flash-preview',
-    model: 'gemini-3-flash-preview',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.50,
-    outputUsdPerMillion: 3.00,
-    pricingNote: 'Preview model; standard paid pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-2.5-flash-lite',
-    model: 'gemini-2.5-flash-lite',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.10,
-    outputUsdPerMillion: 0.40,
-    pricingNote: 'Low-cost candidate supported in current docs; checked against official Gemini docs on 2026-06-02.',
-  },
-];
+const MODEL_CANDIDATES = listEvaluationConfigurations();
 
 function loadEnv() {
   if (!fs.existsSync(envPath)) return;
@@ -169,12 +117,6 @@ function parseJsonArray(text) {
   }
 }
 
-function estimateUsd(candidate, usageMetadata) {
-  const promptTokens = usageMetadata?.promptTokenCount ?? 0;
-  const outputTokens = usageMetadata?.candidatesTokenCount ?? 0;
-  return Number((((promptTokens / 1_000_000) * candidate.inputUsdPerMillion) + ((outputTokens / 1_000_000) * candidate.outputUsdPerMillion)).toFixed(6));
-}
-
 function addWordCounts(translations = []) {
   return translations.map((item) => ({
     ...item,
@@ -199,15 +141,11 @@ async function generate(ai, candidate, testCase) {
       },
     },
   };
-  if (candidate.thinkingBudget !== null) {
-    config.thinkingConfig = {
-      thinkingBudget: candidate.thinkingBudget,
-    };
-  }
+  config.thinkingConfig = buildThinkingConfig(candidate);
   const baseResult = {
     candidateId: candidate.id,
     model: candidate.model,
-    thinkingBudget: candidate.thinkingBudget,
+    thinkingConfig: config.thinkingConfig,
     caseId: testCase.id,
   };
 
@@ -222,7 +160,7 @@ async function generate(ai, candidate, testCase) {
       ...baseResult,
       durationMs: Date.now() - startedAt,
       usageMetadata: response.usageMetadata ?? null,
-      estimatedUsd: estimateUsd(candidate, response.usageMetadata),
+      estimatedUsd: estimateGeminiCostUsd(candidate, response.usageMetadata),
       translations: addWordCounts(parseJsonArray(response.text).map((item) => ({ translation: item.translation }))),
     };
   } catch (error) {
@@ -333,7 +271,7 @@ function renderMarkdown(payload) {
   lines.push('| Candidate | Model | Thinking | Input $/1M | Output $/1M | Note |');
   lines.push('|---|---|---:|---:|---:|---|');
   for (const candidate of payload.candidates) {
-    lines.push(`| ${candidate.id} | ${candidate.model} | ${candidate.thinkingBudget} | ${candidate.inputUsdPerMillion} | ${candidate.outputUsdPerMillion} | ${candidate.pricingNote} |`);
+    lines.push(`| ${candidate.id} | ${candidate.model} | ${JSON.stringify(buildThinkingConfig(candidate))} | ${candidate.inputUsdPerMillion} | ${candidate.outputUsdPerMillion} | ${candidate.pricingNote} |`);
   }
   lines.push('');
   lines.push('## Summary');

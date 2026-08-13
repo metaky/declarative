@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 import { Redis } from '@upstash/redis';
 import { v4 as uuidv4 } from 'uuid';
+import { buildThinkingConfig, resolveGeminiModelConfig } from './services/geminiConfig.js';
 import { buildTranslationPrompt, buildVariationPrompt, systemInstruction } from './services/translationPrompt.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,6 +25,12 @@ if (fs.existsSync(envPath)) {
         }
     }
 }
+
+const geminiModelConfig = resolveGeminiModelConfig({
+    nodeEnv: process.env.NODE_ENV,
+    configId: process.env.GEMINI_MODEL_CONFIG,
+});
+const geminiThinkingConfig = buildThinkingConfig(geminiModelConfig);
 
 const app = express();
 app.use(express.json());
@@ -767,12 +774,10 @@ app.post('/api/translate', async (req, res) => {
         );
 
         const apiPromise = ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: geminiModelConfig.model,
             contents: basePrompt,
             config: {
-                thinkingConfig: {
-                    thinkingBudget: 0,
-                },
+                thinkingConfig: geminiThinkingConfig,
                 systemInstruction,
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -799,7 +804,7 @@ app.post('/api/translate', async (req, res) => {
             ? dedupeVariationTranslations(translations, sourceTranslation.translation).slice(0, 2)
             : translations;
         logGeminiUsageMetadata({
-            model: 'gemini-2.5-flash',
+            model: geminiModelConfig.model,
             mode,
             variationKind,
             tone,
@@ -856,6 +861,14 @@ app.get('{*path}', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
+    console.info(JSON.stringify({
+        event: 'gemini_model_config',
+        source: 'server',
+        config_id: geminiModelConfig.id,
+        model: geminiModelConfig.model,
+        thinking_config: geminiThinkingConfig,
+        pricing_verified_on: geminiModelConfig.pricingVerifiedOn,
+    }));
     if (isDevChallengeBypassEnabled) {
         console.warn('⚠️  DEV_BYPASS_CHALLENGE=true - local dev requests can call /api/translate without challenge verification.');
     }
