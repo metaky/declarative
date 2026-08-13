@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "phase": "gemini-model-migration-phase-3",
+  "currency": "USD",
+  "budgetUsd": 10,
+  "generation": {
+    "calls": 0,
+    "spendUsd": 0
+  },
+  "evaluation": {
+    "calls": 0,
+    "spendUsd": 0
+  },
+  "totalSpendUsd": 0,
+  "reservedUsd": 0,
+  "pendingReservations": [],
+  "updatedAt": null
+}

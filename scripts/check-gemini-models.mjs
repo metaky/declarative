@@ -2,12 +2,22 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
+import {
+  buildArtifactPaths,
+  calculateUsageCost,
+  captureConfigurationMetadata,
+  parseCliOptions,
+  runBudgetedCall,
+} from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const envPath = path.join(repoRoot, '.env.local');
+const options = parseCliOptions(process.argv.slice(2));
+const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
 
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -28,15 +38,13 @@ if (!apiKey) {
 }
 
 const evalPath = path.join(repoRoot, 'evals', 'gemini-translation-prompt-set.json');
-const promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'));
-const resultsDir = path.join(repoRoot, 'evals', 'results');
+const promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'))
+  .filter((item) => !(item.tone === 'Interest Based' && !item.interest));
+const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
 fs.mkdirSync(resultsDir, { recursive: true });
 
 const ai = new GoogleGenAI({ apiKey });
-const models = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
-];
+const models = options.configurations;
 
 async function runCase(promptCase) {
   const prompt = buildTranslationPrompt({
@@ -50,26 +58,31 @@ async function runCase(promptCase) {
   const outputs = [];
   for (const model of models) {
     const startedAt = Date.now();
-    const response = await ai.models.generateContent({
-      model: model.id,
-      contents: prompt,
-      config: {
-        thinkingConfig: {
-          thinkingBudget: 0,
-        },
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              translation: { type: Type.STRING },
+    const response = await runBudgetedCall({
+      ledgerPath,
+      budgetUsd: options.budgetUsd,
+      type: 'generation',
+      estimatedUsd: 1,
+      call: () => ai.models.generateContent({
+        model: model.model,
+        contents: prompt,
+        config: {
+          thinkingConfig: buildThinkingConfig(model),
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                translation: { type: Type.STRING },
+              },
+              required: ['translation'],
             },
-            required: ['translation'],
           },
         },
-      },
+      }),
+      actualUsd: (value) => calculateUsageCost(model, value.usageMetadata),
     });
 
     let translations;
@@ -80,10 +93,13 @@ async function runCase(promptCase) {
     }
 
     outputs.push({
-      model: model.id,
-      label: model.label,
+      configurationId: model.id,
+      model: model.model,
+      label: model.id,
+      effectiveConfiguration: captureConfigurationMetadata(model),
       durationMs: Date.now() - startedAt,
       usageMetadata: response.usageMetadata ?? null,
+      generationUsd: calculateUsageCost(model, response.usageMetadata),
       translations,
     });
   }
@@ -188,22 +204,18 @@ async function main() {
     results.push(await runCase(promptCase));
   }
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const jsonPath = path.join(resultsDir, `gemini-model-comparison-${timestamp}.json`);
-  const markdownPath = path.join(resultsDir, `gemini-model-comparison-${timestamp}.md`);
-  const latestJsonPath = path.join(resultsDir, 'latest-gemini-model-comparison.json');
-  const latestMarkdownPath = path.join(resultsDir, 'latest-gemini-model-comparison.md');
+  const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'gemini-model-comparison' });
 
-  fs.writeFileSync(jsonPath, JSON.stringify(results, null, 2));
-  fs.writeFileSync(markdownPath, buildMarkdown(results, timestamp));
-  fs.writeFileSync(latestJsonPath, JSON.stringify(results, null, 2));
-  fs.writeFileSync(latestMarkdownPath, buildMarkdown(results, timestamp));
+  fs.writeFileSync(artifactPaths.json, JSON.stringify(results, null, 2));
+  fs.writeFileSync(artifactPaths.markdown, buildMarkdown(results, new Date().toISOString()));
+  fs.writeFileSync(artifactPaths.latestJson, JSON.stringify(results, null, 2));
+  fs.writeFileSync(artifactPaths.latestMarkdown, buildMarkdown(results, new Date().toISOString()));
 
   console.log('');
-  console.log(`Wrote JSON results to ${jsonPath}`);
-  console.log(`Wrote Markdown review report to ${markdownPath}`);
-  console.log(`Updated latest JSON at ${latestJsonPath}`);
-  console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
+  console.log(`Wrote JSON results to ${artifactPaths.json}`);
+  console.log(`Wrote Markdown review report to ${artifactPaths.markdown}`);
+  console.log(`Updated latest JSON at ${artifactPaths.latestJson}`);
+  console.log(`Updated latest Markdown at ${artifactPaths.latestMarkdown}`);
   console.log(`Completed in ${Date.now() - startedAt} ms`);
 }
 

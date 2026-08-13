@@ -3,13 +3,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 
+import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
+import {
+  buildArtifactPaths,
+  calculateUsageCost,
+  captureConfigurationMetadata,
+  parseCliOptions,
+  runBudgetedCall,
+} from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const envPath = path.join(repoRoot, '.env.local');
-const resultsDir = path.join(repoRoot, 'evals', 'results');
+const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
+const options = parseCliOptions(process.argv.slice(2));
+if (options.configurations.length !== 1) {
+  throw new Error('Interest generalization migration checks require exactly one explicit --configuration.');
+}
+const configuration = options.configurations[0];
+const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
 
 const DEFAULT_INTERESTS = ['Minecraft', 'trains', 'Disney'];
 const DEFAULT_INPUTS = [
@@ -76,7 +90,7 @@ function findCrossInterestLeaks(results) {
   });
 }
 
-async function generate(ai, model, interest, input, useFewerWords) {
+async function generate(ai, interest, input, useFewerWords) {
   const prompt = buildTranslationPrompt({
     text: input.text,
     tone: 'Interest Based',
@@ -85,24 +99,31 @@ async function generate(ai, model, interest, input, useFewerWords) {
     existingTranslations: [],
   });
   const startedAt = Date.now();
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      systemInstruction,
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            translation: { type: Type.STRING },
+  const response = await runBudgetedCall({
+    ledgerPath,
+    budgetUsd: options.budgetUsd,
+    type: 'generation',
+    estimatedUsd: 1,
+    call: () => ai.models.generateContent({
+      model: configuration.model,
+      contents: prompt,
+      config: {
+        systemInstruction,
+        thinkingConfig: buildThinkingConfig(configuration),
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              translation: { type: Type.STRING },
+            },
+            required: ['translation'],
           },
-          required: ['translation'],
         },
       },
-    },
+    }),
+    actualUsd: (value) => calculateUsageCost(configuration, value.usageMetadata),
   });
 
   const translations = parseJsonArray(response.text)
@@ -118,7 +139,9 @@ async function generate(ai, model, interest, input, useFewerWords) {
     text: input.text,
     useFewerWords,
     durationMs: Date.now() - startedAt,
+    effectiveConfiguration: captureConfigurationMetadata(configuration),
     usageMetadata: response.usageMetadata ?? null,
+    generationUsd: calculateUsageCost(configuration, response.usageMetadata),
     translations,
   };
 }
@@ -163,7 +186,6 @@ if (!apiKey) {
   process.exit(1);
 }
 
-const model = getArg('model', 'gemini-2.5-flash');
 const interests = getArg('interests')
   ? getArg('interests').split(',').map((item) => item.trim()).filter(Boolean)
   : DEFAULT_INTERESTS;
@@ -174,13 +196,14 @@ const results = [];
 for (const interest of interests) {
   for (const input of DEFAULT_INPUTS) {
     console.log(`- ${interest}: ${input.id}`);
-    results.push(await generate(ai, model, interest, input, useFewerWords));
+    results.push(await generate(ai, interest, input, useFewerWords));
   }
 }
 
 const payload = {
   generatedAt: new Date().toISOString(),
-  model,
+  model: configuration.model,
+  effectiveConfiguration: captureConfigurationMetadata(configuration),
   tone: 'Interest Based',
   useFewerWords,
   interests,
@@ -192,18 +215,14 @@ const payload = {
 };
 
 fs.mkdirSync(resultsDir, { recursive: true });
-const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const jsonPath = path.join(resultsDir, `interest-generalization-${timestamp}.json`);
-const mdPath = path.join(resultsDir, `interest-generalization-${timestamp}.md`);
-const latestJsonPath = path.join(resultsDir, 'latest-interest-generalization.json');
-const latestMdPath = path.join(resultsDir, 'latest-interest-generalization.md');
+const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'interest-generalization' });
 
-fs.writeFileSync(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(mdPath, renderMarkdown(payload));
-fs.writeFileSync(latestMdPath, renderMarkdown(payload));
+fs.writeFileSync(artifactPaths.json, `${JSON.stringify(payload, null, 2)}\n`);
+fs.writeFileSync(artifactPaths.latestJson, `${JSON.stringify(payload, null, 2)}\n`);
+fs.writeFileSync(artifactPaths.markdown, renderMarkdown(payload));
+fs.writeFileSync(artifactPaths.latestMarkdown, renderMarkdown(payload));
 
-console.log(`Wrote ${mdPath}`);
+console.log(`Wrote ${artifactPaths.markdown}`);
 
 if (payload.validation.crossInterestLeaks.length > 0) {
   console.error(`Found ${payload.validation.crossInterestLeaks.length} cross-interest leak(s).`);

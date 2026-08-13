@@ -2,12 +2,26 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
+import {
+  buildArtifactPaths,
+  calculateUsageCost,
+  captureConfigurationMetadata,
+  parseCliOptions,
+  runBudgetedCall,
+} from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const envPath = path.join(repoRoot, '.env.local');
+const options = parseCliOptions(process.argv.slice(2));
+if (options.configurations.length !== 1) {
+  throw new Error('Get More Ideas migration checks require exactly one explicit --configuration.');
+}
+const configuration = options.configurations[0];
+const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
 
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -29,11 +43,10 @@ if (!apiKey) {
 
 const evalPath = path.join(repoRoot, 'evals', 'get-more-ideas-prompt-set.json');
 const promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'));
-const resultsDir = path.join(repoRoot, 'evals', 'results');
+const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
 fs.mkdirSync(resultsDir, { recursive: true });
 
 const ai = new GoogleGenAI({ apiKey });
-const modelId = 'gemini-2.5-flash';
 const rounds = 3;
 
 async function runRound(promptCase, existingTranslations) {
@@ -46,26 +59,31 @@ async function runRound(promptCase, existingTranslations) {
   });
 
   const startedAt = Date.now();
-  const response = await ai.models.generateContent({
-    model: modelId,
-    contents: prompt,
-    config: {
-      thinkingConfig: {
-        thinkingBudget: 0,
-      },
-      systemInstruction,
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            translation: { type: Type.STRING },
+  const response = await runBudgetedCall({
+    ledgerPath,
+    budgetUsd: options.budgetUsd,
+    type: 'generation',
+    estimatedUsd: 1,
+    call: () => ai.models.generateContent({
+      model: configuration.model,
+      contents: prompt,
+      config: {
+        thinkingConfig: buildThinkingConfig(configuration),
+        systemInstruction,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              translation: { type: Type.STRING },
+            },
+            required: ['translation'],
           },
-          required: ['translation'],
         },
       },
-    },
+    }),
+    actualUsd: (value) => calculateUsageCost(configuration, value.usageMetadata),
   });
 
   let translations;
@@ -78,7 +96,9 @@ async function runRound(promptCase, existingTranslations) {
   return {
     durationMs: Date.now() - startedAt,
     prompt,
+    effectiveConfiguration: captureConfigurationMetadata(configuration),
     usageMetadata: response.usageMetadata ?? null,
+    generationUsd: calculateUsageCost(configuration, response.usageMetadata),
     translations,
   };
 }
@@ -187,22 +207,19 @@ async function main() {
     });
   }
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const jsonPath = path.join(resultsDir, `get-more-ideas-multiround-${timestamp}.json`);
-  const markdownPath = path.join(resultsDir, `get-more-ideas-multiround-${timestamp}.md`);
-  const latestJsonPath = path.join(resultsDir, 'latest-get-more-ideas-multiround.json');
-  const latestMarkdownPath = path.join(resultsDir, 'latest-get-more-ideas-multiround.md');
+  const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'get-more-ideas-multiround' });
+  const timestamp = new Date().toISOString();
 
-  fs.writeFileSync(jsonPath, JSON.stringify(results, null, 2));
-  fs.writeFileSync(markdownPath, buildMarkdown(results, timestamp));
-  fs.writeFileSync(latestJsonPath, JSON.stringify(results, null, 2));
-  fs.writeFileSync(latestMarkdownPath, buildMarkdown(results, timestamp));
+  fs.writeFileSync(artifactPaths.json, JSON.stringify(results, null, 2));
+  fs.writeFileSync(artifactPaths.markdown, buildMarkdown(results, timestamp));
+  fs.writeFileSync(artifactPaths.latestJson, JSON.stringify(results, null, 2));
+  fs.writeFileSync(artifactPaths.latestMarkdown, buildMarkdown(results, timestamp));
 
   console.log('');
-  console.log(`Wrote JSON results to ${jsonPath}`);
-  console.log(`Wrote Markdown review report to ${markdownPath}`);
-  console.log(`Updated latest JSON at ${latestJsonPath}`);
-  console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
+  console.log(`Wrote JSON results to ${artifactPaths.json}`);
+  console.log(`Wrote Markdown review report to ${artifactPaths.markdown}`);
+  console.log(`Updated latest JSON at ${artifactPaths.latestJson}`);
+  console.log(`Updated latest Markdown at ${artifactPaths.latestMarkdown}`);
   console.log(`Completed in ${Date.now() - startedAt} ms`);
 }
 

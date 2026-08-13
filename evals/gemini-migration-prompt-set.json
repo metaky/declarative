@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "seed": 20260813,
+  "description": "Explicit Gemini migration corpus manifest. Source cases are imported intact, deduplicated only by stable ID, and annotated with provenance at load time.",
+  "imports": [
+    {
+      "path": "evals/human-calibration-set.json",
+      "operation": "translation"
+    },
+    {
+      "path": "evals/gemini-translation-prompt-set.json",
+      "operation": "translation"
+    },
+    {
+      "path": "evals/get-more-ideas-prompt-set.json",
+      "operation": "moreIdeas",
+      "rounds": 3
+    },
+    {
+      "path": "evals/variation-prompt-set.json",
+      "operation": "variation",
+      "variationDirections": [
+        "shorter",
+        "longer",
+        "warmer",
+        "more_straightforward",
+        "more_playful"
+      ]
+    }
+  ],
+  "localOnlyCaseIds": [
+    "current-31-dinner-hands-interest-missing-standard",
+    "interest-based-missing-interest-fallback",
+    "variation-interest-missing-fallback"
+  ],
+  "requiredCoverage": {
+    "tones": [
+      "Default",
+      "Straightforward",
+      "Humorous",
+      "Equalizing",
+      "Interest Based"
+    ],
+    "features": [
+      "fewer-words",
+      "three-consecutive-more-ideas-rounds",
+      "safety",
+      "urgency",
+      "conflict",
+      "transition",
+      "cleanup",
+      "task-sequencing",
+      "long-messy-prompt"
+    ],
+    "variationDirections": [
+      "shorter",
+      "longer",
+      "warmer",
+      "more_straightforward",
+      "more_playful"
+    ],
+    "interests": [
+      "Minecraft",
+      "trains",
+      "Disney",
+      "Pokemon",
+      "dinosaurs",
+      "cooking"
+    ]
+  },
+  "cases": [
+    {
+      "id": "migration-interest-trains-urgent-transition",
+      "label": "Interest Based trains urgency and transition",
+      "operation": "translation",
+      "text": "We're running late; please stop arguing about the tablet, find both shoes, put them on, grab your backpack, and come to the car so we can leave for school.",
+      "intent": "Move through a tense, time-sensitive school transition without adding pressure or losing the task order.",
+      "tone": "Interest Based",
+      "interest": "trains",
+      "useFewerWords": false,
+      "coverage": [
+        "urgency",
+        "conflict",
+        "transition",
+        "task-sequencing",
+        "long-messy-prompt",
+        "interest-trains"
+      ]
+    },
+    {
+      "id": "migration-interest-disney-bedtime-transition",
+      "label": "Interest Based Disney bedtime transition",
+      "operation": "translation",
+      "text": "Please turn off the TV, put the remote on the table, come upstairs, brush your teeth, and choose one book for bed.",
+      "intent": "Support a multi-step bedtime transition while keeping the entered interest grounded in the real tasks.",
+      "tone": "Interest Based",
+      "interest": "Disney",
+      "useFewerWords": false,
+      "coverage": [
+        "transition",
+        "task-sequencing",
+        "interest-disney"
+      ]
+    },
+    {
+      "id": "migration-interest-cooking-cleanup-fewer",
+      "label": "Interest Based cooking cleanup with Fewer Words",
+      "operation": "translation",
+      "text": "Put the plate in the sink, wipe the crumbs into the trash, and wash your hands.",
+      "intent": "Complete a three-step cleanup sequence in compact language.",
+      "tone": "Interest Based",
+      "interest": "cooking",
+      "useFewerWords": true,
+      "coverage": [
+        "cleanup",
+        "task-sequencing",
+        "fewer-words",
+        "interest-cooking"
+      ]
+    },
+    {
+      "id": "migration-long-messy-safety-sequence",
+      "label": "Long messy safety and task sequence",
+      "operation": "translation",
+      "text": "Okay, I know you're trying to finish the tower and I don't want to wreck it, but there are blocks all over the stairs and your little brother is coming down, so can you move the stair blocks into the bin first, leave the tower where it is, and then bring the bin back by the shelf?",
+      "intent": "Address an immediate trip hazard while preserving the child's ongoing project and the order of cleanup tasks.",
+      "tone": "Default",
+      "useFewerWords": false,
+      "coverage": [
+        "safety",
+        "conflict",
+        "cleanup",
+        "task-sequencing",
+        "long-messy-prompt"
+      ]
+    }
+  ]
+}
