@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import {
   ALL_CONFIGURATION_IDS,
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
   buildArtifactPaths,
   buildEvaluationPlan,
   calculateAggregateMetrics,
   calculateUsageCost,
   captureConfigurationMetadata,
-  createInitialSpendLedger,
   loadMigrationCorpus,
   readSpendLedger,
   runBudgetedCall,
@@ -20,6 +21,49 @@ import {
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const manifestPath = path.join(repoRoot, 'evals', 'gemini-migration-prompt-set.json');
+
+function zeroLedger() {
+  return {
+    schemaVersion: 2,
+    phase: 'gemini-model-migration-phase-3',
+    currency: 'USD',
+    budgetUsd: 10,
+    generation: { calls: 0, spendUsd: 0 },
+    evaluation: { calls: 0, spendUsd: 0 },
+    totalSpendUsd: 0,
+    reservedUsd: 0,
+    pendingReservations: [],
+    updatedAt: null,
+  };
+}
+
+async function ledgerFixture(t, ledger = zeroLedger()) {
+  const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), 'declarative-spend-'));
+  t.after(() => rm(fixtureRoot, { recursive: true, force: true }));
+  const ledgerPath = path.join(fixtureRoot, CANONICAL_SPEND_LEDGER_RELATIVE_PATH);
+  await mkdir(path.dirname(ledgerPath), { recursive: true });
+  await writeFile(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+  return { repoRoot: fixtureRoot, ledgerPath };
+}
+
+function budgetedOptions(context, type, runId, actualUsd) {
+  const configuration = selectConfigurations('gemini-2.5-flash-baseline')[0];
+  const tokenLimits = MIGRATION_TOKEN_LIMITS[type];
+  return {
+    ...context,
+    budgetUsd: 10,
+    type,
+    runId,
+    configuration,
+    tokenLimits,
+    request: {
+      model: configuration.model,
+      contents: 'Local fixture',
+      config: { maxOutputTokens: tokenLimits.maxOutputTokens },
+    },
+    actualUsd: () => actualUsd,
+  };
+}
 
 test('CLI configuration selection accepts only explicit allow-listed IDs in requested order', () => {
   const selected = selectConfigurations('gemini-3.6-flash-medium,gemini-2.5-flash-baseline');
@@ -156,84 +200,43 @@ test('cost calculation bills visible candidates and thinking tokens as output', 
 });
 
 test('generation and evaluator calls accumulate separately in one persistent ledger', async (t) => {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-spend-'));
-  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
-  const ledgerPath = path.join(temporaryDirectory, 'phase-3-spend.json');
-  await writeFile(ledgerPath, `${JSON.stringify(createInitialSpendLedger(10), null, 2)}\n`);
+  const context = await ledgerFixture(t);
 
   await runBudgetedCall({
-    ledgerPath,
-    budgetUsd: 10,
-    type: 'generation',
-    estimatedUsd: 2,
+    ...budgetedOptions(context, 'generation', 'generation-1', 1.55),
     call: async () => ({ usageMetadata: { promptTokenCount: 1_000_000, candidatesTokenCount: 200_000, thoughtsTokenCount: 300_000 } }),
-    actualUsd: () => 1.55,
+    tokenLimits: { maxInputTokens: 1_000_000, maxOutputTokens: 500_000 },
+    request: { model: 'gemini-2.5-flash', contents: 'x', config: { maxOutputTokens: 500_000 } },
   });
   await runBudgetedCall({
-    ledgerPath,
-    budgetUsd: 10,
-    type: 'evaluation',
-    estimatedUsd: 0.7,
+    ...budgetedOptions(context, 'evaluation', 'evaluation-1', 0.02),
     call: async () => ({ usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, thoughtsTokenCount: 2 } }),
-    actualUsd: () => 0.45,
   });
 
-  const ledger = await readSpendLedger(ledgerPath, 10);
+  const ledger = await readSpendLedger({ ...context, budgetUsd: 10 });
   assert.deepEqual(ledger.generation, { calls: 1, spendUsd: 1.55 });
-  assert.deepEqual(ledger.evaluation, { calls: 1, spendUsd: 0.45 });
-  assert.equal(ledger.totalSpendUsd, 2);
+  assert.deepEqual(ledger.evaluation, { calls: 1, spendUsd: 0.02 });
+  assert.equal(ledger.totalSpendUsd, 1.57);
   assert.equal(ledger.reservedUsd, 0);
 });
 
 test('a new process view recovers cumulative smoke and full-run spend from disk', async (t) => {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-restart-'));
-  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
-  const ledgerPath = path.join(temporaryDirectory, 'phase-3-spend.json');
-  await writeFile(ledgerPath, `${JSON.stringify(createInitialSpendLedger(10), null, 2)}\n`);
+  const context = await ledgerFixture(t);
 
   await runBudgetedCall({
-    ledgerPath,
-    budgetUsd: 10,
-    type: 'generation',
-    estimatedUsd: 0.5,
-    call: async () => ({}),
-    actualUsd: () => 0.4,
+    ...budgetedOptions(context, 'generation', 'smoke', 0.01),
+    call: async () => ({ usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, thoughtsTokenCount: 0 } }),
   });
-  const afterSmoke = JSON.parse(await readFile(ledgerPath, 'utf8'));
-  assert.equal(afterSmoke.totalSpendUsd, 0.4);
+  const afterSmoke = JSON.parse(await readFile(context.ledgerPath, 'utf8'));
+  assert.equal(afterSmoke.totalSpendUsd, 0.01);
 
   await runBudgetedCall({
-    ledgerPath,
-    budgetUsd: 10,
-    type: 'generation',
-    estimatedUsd: 0.7,
-    call: async () => ({}),
-    actualUsd: () => 0.6,
+    ...budgetedOptions(context, 'generation', 'full', 0.01),
+    call: async () => ({ usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, thoughtsTokenCount: 0 } }),
   });
-  const afterRestart = await readSpendLedger(ledgerPath, 10);
-  assert.deepEqual(afterRestart.generation, { calls: 2, spendUsd: 1 });
-  assert.equal(afterRestart.totalSpendUsd, 1);
-});
-
-test('ledger persists actual response spend even when it is higher than the pre-call estimate', async (t) => {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-actual-spend-'));
-  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
-  const ledgerPath = path.join(temporaryDirectory, 'phase-3-spend.json');
-  await writeFile(ledgerPath, `${JSON.stringify(createInitialSpendLedger(10), null, 2)}\n`);
-
-  await runBudgetedCall({
-    ledgerPath,
-    budgetUsd: 10,
-    type: 'generation',
-    estimatedUsd: 0.5,
-    call: async () => ({ usageMetadata: {} }),
-    actualUsd: () => 0.6,
-  });
-
-  const ledger = await readSpendLedger(ledgerPath, 10);
-  assert.deepEqual(ledger.generation, { calls: 1, spendUsd: 0.6 });
-  assert.equal(ledger.totalSpendUsd, 0.6);
-  assert.equal(ledger.reservedUsd, 0);
+  const afterRestart = await readSpendLedger({ ...context, budgetUsd: 10 });
+  assert.deepEqual(afterRestart.generation, { calls: 2, spendUsd: 0.02 });
+  assert.equal(afterRestart.totalSpendUsd, 0.02);
 });
 
 test('aggregate gates report errors, checks, latency, token classes, and both spend types', () => {
@@ -310,27 +313,23 @@ test('aggregate gate calculation enforces quality thresholds independently for e
 });
 
 test('pre-call ledger reservation stops before a call that could cross the cumulative cap', async (t) => {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-cap-'));
-  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
-  const ledgerPath = path.join(temporaryDirectory, 'phase-3-spend.json');
-  const ledger = createInitialSpendLedger(10);
-  ledger.generation = { calls: 9, spendUsd: 9.7 };
-  ledger.evaluation = { calls: 2, spendUsd: 0.2 };
-  ledger.totalSpendUsd = 9.9;
-  await writeFile(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+  const ledger = {
+    ...zeroLedger(),
+    generation: { calls: 9, spendUsd: 9.79 },
+    evaluation: { calls: 2, spendUsd: 0.2 },
+    totalSpendUsd: 9.99,
+    updatedAt: '2026-08-13T00:00:00.000Z',
+  };
+  const context = await ledgerFixture(t, ledger);
   let called = false;
 
   await assert.rejects(
     runBudgetedCall({
-      ledgerPath,
-      budgetUsd: 10,
-      type: 'evaluation',
-      estimatedUsd: 0.11,
-      call: async () => { called = true; },
-      actualUsd: () => 0.01,
+      ...budgetedOptions(context, 'evaluation', 'near-cap', 0.01),
+      call: async () => { called = true; return { usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, thoughtsTokenCount: 0 } }; },
     }),
     /phase 3.*budget.*before evaluation call/i,
   );
   assert.equal(called, false);
-  assert.deepEqual(await readSpendLedger(ledgerPath, 10), ledger);
+  assert.deepEqual(await readSpendLedger({ ...context, budgetUsd: 10 }), ledger);
 });

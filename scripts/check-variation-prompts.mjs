@@ -5,10 +5,13 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildVariationPrompt, systemInstruction } from '../services/translationPrompt.js';
 import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
   parseCliOptions,
+  resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
 } from './gemini-migration-eval-utils.mjs';
 
@@ -21,7 +24,10 @@ if (options.configurations.length !== 1) {
   throw new Error('Variation migration checks require exactly one explicit --configuration.');
 }
 const configuration = options.configurations[0];
-const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
+const ledgerPath = await resolveCanonicalSpendLedgerPath({
+  repoRoot,
+  requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+});
 
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -129,14 +135,18 @@ async function runVariation(promptCase, variationKind) {
   const startedAt = Date.now();
 
   const response = await runBudgetedCall({
+    repoRoot,
     ledgerPath,
     budgetUsd: options.budgetUsd,
     type: 'generation',
-    estimatedUsd: 1,
-    call: () => ai.models.generateContent({
+    runId: `${configuration.id}:${promptCase.id}:${variationKind}`,
+    configuration,
+    tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+    request: {
       model: configuration.model,
       contents: prompt,
       config: {
+        maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
         thinkingConfig: buildThinkingConfig(configuration),
         systemInstruction,
         responseMimeType: 'application/json',
@@ -151,8 +161,8 @@ async function runVariation(promptCase, variationKind) {
           },
         },
       },
-    }),
-    actualUsd: (value) => calculateUsageCost(configuration, value.usageMetadata),
+    },
+    call: (request) => ai.models.generateContent(request),
   });
 
   let translations;

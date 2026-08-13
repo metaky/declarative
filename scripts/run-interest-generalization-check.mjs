@@ -6,10 +6,13 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
 import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
   parseCliOptions,
+  resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
 } from './gemini-migration-eval-utils.mjs';
 
@@ -23,7 +26,10 @@ if (options.configurations.length !== 1) {
   throw new Error('Interest generalization migration checks require exactly one explicit --configuration.');
 }
 const configuration = options.configurations[0];
-const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
+const ledgerPath = await resolveCanonicalSpendLedgerPath({
+  repoRoot,
+  requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+});
 
 const DEFAULT_INTERESTS = ['Minecraft', 'trains', 'Disney'];
 const DEFAULT_INPUTS = [
@@ -100,14 +106,18 @@ async function generate(ai, interest, input, useFewerWords) {
   });
   const startedAt = Date.now();
   const response = await runBudgetedCall({
+    repoRoot,
     ledgerPath,
     budgetUsd: options.budgetUsd,
     type: 'generation',
-    estimatedUsd: 1,
-    call: () => ai.models.generateContent({
+    runId: `${configuration.id}:${interest}:${input.id}:fewer-${useFewerWords}`,
+    configuration,
+    tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+    request: {
       model: configuration.model,
       contents: prompt,
       config: {
+        maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
         systemInstruction,
         thinkingConfig: buildThinkingConfig(configuration),
         responseMimeType: 'application/json',
@@ -122,8 +132,8 @@ async function generate(ai, interest, input, useFewerWords) {
           },
         },
       },
-    }),
-    actualUsd: (value) => calculateUsageCost(configuration, value.usageMetadata),
+    },
+    call: (request) => ai.models.generateContent(request),
   });
 
   const translations = parseJsonArray(response.text)

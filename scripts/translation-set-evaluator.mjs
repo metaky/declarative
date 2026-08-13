@@ -221,11 +221,13 @@ export function translationEvaluationResponseSchema() {
 export async function evaluateTranslationSet(ai, item, options = {}) {
   const model = options.model ?? DEFAULT_EVALUATOR_MODEL;
   const thinkingBudget = options.thinkingBudget ?? 0;
+  const maxOutputTokens = options.maxOutputTokens;
   const response = await ai.models.generateContent({
     model,
     contents: buildTranslationEvaluationPrompt(item),
     config: {
       thinkingConfig: { thinkingBudget },
+      ...(maxOutputTokens ? { maxOutputTokens } : {}),
       responseMimeType: 'application/json',
       responseSchema: translationEvaluationResponseSchema(),
     },

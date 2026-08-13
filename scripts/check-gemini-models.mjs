@@ -5,10 +5,13 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
 import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
   parseCliOptions,
+  resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
 } from './gemini-migration-eval-utils.mjs';
 
@@ -17,7 +20,10 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const envPath = path.join(repoRoot, '.env.local');
 const options = parseCliOptions(process.argv.slice(2));
-const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
+const ledgerPath = await resolveCanonicalSpendLedgerPath({
+  repoRoot,
+  requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+});
 
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -59,14 +65,18 @@ async function runCase(promptCase) {
   for (const model of models) {
     const startedAt = Date.now();
     const response = await runBudgetedCall({
+      repoRoot,
       ledgerPath,
       budgetUsd: options.budgetUsd,
       type: 'generation',
-      estimatedUsd: 1,
-      call: () => ai.models.generateContent({
+      runId: `${model.id}:${promptCase.id}`,
+      configuration: model,
+      tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+      request: {
         model: model.model,
         contents: prompt,
         config: {
+          maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
           thinkingConfig: buildThinkingConfig(model),
           systemInstruction,
           responseMimeType: 'application/json',
@@ -81,8 +91,8 @@ async function runCase(promptCase) {
             },
           },
         },
-      }),
-      actualUsd: (value) => calculateUsageCost(model, value.usageMetadata),
+      },
+      call: (request) => ai.models.generateContent(request),
     });
 
     let translations;

@@ -15,10 +15,17 @@ import {
   applyCalibratedDecision,
   normalizeVerdict,
 } from './evaluator-calibration-utils.mjs';
-import { evaluateTranslationSet } from './translation-set-evaluator.mjs';
 import {
+  buildTranslationEvaluationPrompt,
+  evaluateTranslationSet,
+  translationEvaluationResponseSchema,
+} from './translation-set-evaluator.mjs';
+import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
   buildArtifactPaths,
   buildEvaluationPlan,
+  buildScoringCheckpointPath,
   calculateAggregateGates,
   calculateAggregateMetrics,
   calculateUsageCost,
@@ -27,7 +34,9 @@ import {
   loadMigrationCorpus,
   parseCliOptions,
   readSpendLedger,
+  resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
+  scoreRowsWithCheckpoint,
 } from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,8 +47,7 @@ const calibrationPath = path.join(repoRoot, 'evals', 'human-calibration-set.json
 const historicalResultsDir = path.join(repoRoot, 'evals', 'results');
 const migrationResultsDir = path.join(historicalResultsDir, 'gemini-migration');
 const defaultCorpusPath = path.join(repoRoot, 'evals', 'gemini-migration-prompt-set.json');
-const defaultSpendLedgerPath = path.join(migrationResultsDir, 'phase-3-spend.json');
-const MAX_CALL_RESERVATION_USD = 1;
+const defaultSpendLedgerPath = path.join(repoRoot, CANONICAL_SPEND_LEDGER_RELATIVE_PATH);
 
 const MODEL_CANDIDATES = listEvaluationConfigurations();
 
@@ -228,6 +236,7 @@ async function generate(ai, candidate, testCase, run, options) {
   const prompt = buildRunPrompt(testCase, run, existingTranslations);
   const startedAt = Date.now();
   const config = {
+    maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
     systemInstruction,
     responseMimeType: 'application/json',
     responseSchema: {
@@ -261,16 +270,19 @@ async function generate(ai, candidate, testCase, run, options) {
 
   try {
     const response = await runBudgetedCall({
+      repoRoot,
       ledgerPath: options.ledgerPath,
       budgetUsd: options.budgetUsd,
       type: 'generation',
-      estimatedUsd: MAX_CALL_RESERVATION_USD,
-      call: () => ai.models.generateContent({
+      runId: run.runId,
+      configuration: candidate,
+      tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+      request: {
         model: candidate.model,
         contents: prompt,
         config,
-      }),
-      actualUsd: (value) => calculateUsageCost(candidate, value.usageMetadata),
+      },
+      call: (request) => ai.models.generateContent(request),
     });
     const parsed = parseTranslations(response.text, run.operation);
     const generationUsd = calculateUsageCost(candidate, response.usageMetadata);
@@ -319,9 +331,22 @@ function shouldExcludeFromAggregate(testCase) {
 }
 
 async function scoreResults(ai, payload, options) {
-  const rows = [];
   const evaluatorConfiguration = MODEL_CANDIDATES.find(({ id }) => id === 'gemini-2.5-flash-baseline');
-  for (const result of payload.results) {
+  const checkpointPath = buildScoringCheckpointPath({
+    resultsDir: migrationResultsDir,
+    payload,
+  });
+  return scoreRowsWithCheckpoint({
+    payload,
+    checkpointPath,
+    getCheckpointMetadata: async () => ({
+      cumulativeSpend: await readSpendLedger({
+        repoRoot,
+        ledgerPath: options.ledgerPath,
+        budgetUsd: options.budgetUsd,
+      }),
+    }),
+    scoreRow: async (result) => {
     const testCase = getCaseById(payload, result.caseId);
     const excludedFromAggregate = shouldExcludeFromAggregate(testCase);
     const aggregateExclusionReason = excludedFromAggregate
@@ -329,14 +354,13 @@ async function scoreResults(ai, payload, options) {
       : null;
 
     if (result.localOnly || result.error || result.parseError || result.contractError || !result.translations?.length) {
-      rows.push({
+      return {
         ...result,
         excludedFromAggregate,
         aggregateExclusionReason,
         postprocessedVerdict: 'Error',
         postprocessReasons: result.error ? [result.error] : ['no translations returned'],
-      });
-      continue;
+      };
     }
     console.log(`- scoring ${result.candidateId}: ${result.caseId}`);
     const evaluationInput = {
@@ -344,12 +368,30 @@ async function scoreResults(ai, payload, options) {
       id: `${result.candidateId}-${result.caseId}`,
       translations: addWordCounts(result.translations),
     };
+    const evaluatorRequest = {
+      model: evaluatorConfiguration.model,
+      contents: buildTranslationEvaluationPrompt(evaluationInput),
+      config: {
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: MIGRATION_TOKEN_LIMITS.evaluation.maxOutputTokens,
+        responseMimeType: 'application/json',
+        responseSchema: translationEvaluationResponseSchema(),
+      },
+    };
     const { evaluation, usageMetadata, evaluatorModel } = await runBudgetedCall({
+      repoRoot,
       ledgerPath: options.ledgerPath,
       budgetUsd: options.budgetUsd,
       type: 'evaluation',
-      estimatedUsd: MAX_CALL_RESERVATION_USD,
-      call: () => evaluateTranslationSet(ai, evaluationInput),
+      runId: `${result.runId}:evaluation`,
+      configuration: evaluatorConfiguration,
+      tokenLimits: MIGRATION_TOKEN_LIMITS.evaluation,
+      request: evaluatorRequest,
+      call: (request) => evaluateTranslationSet(ai, evaluationInput, {
+        model: request.model,
+        thinkingBudget: 0,
+        maxOutputTokens: request.config.maxOutputTokens,
+      }),
       actualUsd: (value) => calculateUsageCost(evaluatorConfiguration, value.usageMetadata),
     });
     const calibratedVerdict = normalizeVerdict(evaluation?.setSummary?.setVerdict ?? evaluation?.verdict);
@@ -378,20 +420,18 @@ async function scoreResults(ai, payload, options) {
       calibratedVerdict,
       interestMissing: evaluationInput.tone === 'Interest Based' && !evaluationInput.interest,
     });
-    rows.push({
+    return {
       ...scoredRow,
       excludedFromAggregate,
       aggregateExclusionReason,
       postprocessedVerdict: postprocess.verdict,
       postprocessReasons: postprocess.reasons,
-    });
-  }
-  return {
-    ...payload,
+    };
+    },
+  }).then((scoredPayload) => ({
+    ...scoredPayload,
     scoredAt: new Date().toISOString(),
-    qualityScored: true,
-    results: rows,
-  };
+  }));
 }
 
 function verdictCounts(items, selector) {
@@ -568,7 +608,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   const options = parseCliOptions(process.argv.slice(2));
   const corpusPath = path.resolve(repoRoot, options.corpus ?? defaultCorpusPath);
-  const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? defaultSpendLedgerPath);
+  const ledgerPath = await resolveCanonicalSpendLedgerPath({
+    repoRoot,
+    requestedPath: options.ledgerPath ?? defaultSpendLedgerPath,
+  });
   const corpus = await loadMigrationCorpus(corpusPath);
   const cases = options.limit ? corpus.cases.slice(0, options.limit) : corpus.cases;
   const casesById = new Map(cases.map((item) => [item.id, item]));
@@ -595,7 +638,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
     payload.aggregate = calculateAggregateMetrics(payload.results);
     payload.gates = calculateAggregateGates(payload.results);
-    payload.cumulativeSpend = await readSpendLedger(ledgerPath, options.budgetUsd);
+    payload.cumulativeSpend = await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd });
     fs.mkdirSync(migrationResultsDir, { recursive: true });
     fs.writeFileSync(artifactPaths.json, `${JSON.stringify(payload, null, 2)}\n`);
     fs.writeFileSync(artifactPaths.markdown, renderBakeoffMarkdown(payload));
@@ -679,7 +722,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
   payload.aggregate = calculateAggregateMetrics(payload.results);
   payload.gates = calculateAggregateGates(payload.results);
-  payload.cumulativeSpend = await readSpendLedger(ledgerPath, options.budgetUsd);
+  payload.cumulativeSpend = await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd });
 
   fs.mkdirSync(migrationResultsDir, { recursive: true });
   const artifactPaths = buildArtifactPaths({ resultsDir: migrationResultsDir, baseName: 'model-bakeoff' });

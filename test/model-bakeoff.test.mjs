@@ -8,6 +8,7 @@ import {
   renderBakeoffMarkdown,
   summarizeBakeoffResults,
 } from '../scripts/run-model-bakeoff.mjs';
+import { scoreRowsWithCheckpoint } from '../scripts/gemini-migration-eval-utils.mjs';
 
 const CURRENT_IDS = [
   'gemini-2.5-flash-baseline',
@@ -103,4 +104,60 @@ test('bakeoff summaries and Markdown distinguish visible candidates, thoughts, a
   assert.match(markdown, /Visible Candidate Tokens \| Thought Tokens \| Billed Output Tokens \(Candidates \+ Thoughts\)/);
   assert.match(markdown, /\| gemini-3\.5-flash-lite-minimal \| 1 \| 1 \| 0 \| 0 \| 100 \| 1000000 \| 200000 \| 300000 \| 500000 \| 1\.55 \|/);
   assert.doesNotMatch(JSON.stringify(flashLite), /"outputTokens"/, 'JSON summary still presents visible candidates as all output tokens');
+});
+
+test('evaluator checkpoints each stable run and resumes without re-scoring completed rows', async (t) => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'declarative-score-checkpoint-'));
+  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
+  const checkpointPath = path.join(temporaryDirectory, 'score-checkpoint.json');
+  const payload = {
+    generatedAt: '2026-08-13T12:00:00.000Z',
+    qualityScored: false,
+    candidates: [{ id: CURRENT_IDS[0] }],
+    results: [
+      { runId: 'stable-run-1', candidateId: CURRENT_IDS[0], caseId: 'case-1' },
+      { runId: 'stable-run-2', candidateId: CURRENT_IDS[0], caseId: 'case-2' },
+    ],
+  };
+  const firstAttempted = [];
+
+  await assert.rejects(scoreRowsWithCheckpoint({
+    payload,
+    checkpointPath,
+    scoreRow: async (row) => {
+      firstAttempted.push(row.runId);
+      if (row.runId === 'stable-run-2') throw new Error('simulated evaluator stop');
+      return { ...row, postprocessedVerdict: 'Pass', evaluatorUsd: 0.01 };
+    },
+    getCheckpointMetadata: async () => ({ cumulativeSpend: { totalSpendUsd: 0.01 } }),
+  }), /simulated evaluator stop/);
+
+  assert.deepEqual(firstAttempted, ['stable-run-1', 'stable-run-2']);
+  const partial = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  assert.equal(partial.qualityScored, false);
+  assert.equal(partial.scoringIncomplete, true);
+  assert.deepEqual(partial.completedRunIds, ['stable-run-1']);
+  assert.equal(partial.results[0].postprocessedVerdict, 'Pass');
+  assert.equal(partial.results[0].evaluatorUsd, 0.01);
+  assert.equal(partial.cumulativeSpend.totalSpendUsd, 0.01);
+
+  const resumedAttempted = [];
+  const completed = await scoreRowsWithCheckpoint({
+    payload,
+    checkpointPath,
+    scoreRow: async (row) => {
+      resumedAttempted.push(row.runId);
+      return { ...row, postprocessedVerdict: 'Pass', evaluatorUsd: 0.02 };
+    },
+    getCheckpointMetadata: async () => ({ cumulativeSpend: { totalSpendUsd: 0.03 } }),
+  });
+
+  assert.deepEqual(resumedAttempted, ['stable-run-2']);
+  assert.equal(completed.qualityScored, true);
+  assert.equal(completed.scoringIncomplete, false);
+  assert.deepEqual(completed.results.map(({ evaluatorUsd }) => evaluatorUsd), [0.01, 0.02]);
+  const finalCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  assert.deepEqual(finalCheckpoint.completedRunIds, ['stable-run-1', 'stable-run-2']);
+  assert.equal(finalCheckpoint.cumulativeSpend.totalSpendUsd, 0.03);
+  assert.equal(finalCheckpoint.qualityScored, true);
 });

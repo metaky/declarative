@@ -5,10 +5,13 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
 import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
   buildArtifactPaths,
   calculateUsageCost,
   captureConfigurationMetadata,
   parseCliOptions,
+  resolveCanonicalSpendLedgerPath,
   runBudgetedCall,
 } from './gemini-migration-eval-utils.mjs';
 
@@ -21,7 +24,10 @@ if (options.configurations.length !== 1) {
   throw new Error('Get More Ideas migration checks require exactly one explicit --configuration.');
 }
 const configuration = options.configurations[0];
-const ledgerPath = path.resolve(repoRoot, options.ledgerPath ?? 'evals/results/gemini-migration/phase-3-spend.json');
+const ledgerPath = await resolveCanonicalSpendLedgerPath({
+  repoRoot,
+  requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+});
 
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -49,7 +55,7 @@ fs.mkdirSync(resultsDir, { recursive: true });
 const ai = new GoogleGenAI({ apiKey });
 const rounds = 3;
 
-async function runRound(promptCase, existingTranslations) {
+async function runRound(promptCase, existingTranslations, round) {
   const prompt = buildTranslationPrompt({
     text: promptCase.text,
     existingTranslations,
@@ -60,14 +66,18 @@ async function runRound(promptCase, existingTranslations) {
 
   const startedAt = Date.now();
   const response = await runBudgetedCall({
+    repoRoot,
     ledgerPath,
     budgetUsd: options.budgetUsd,
     type: 'generation',
-    estimatedUsd: 1,
-    call: () => ai.models.generateContent({
+    runId: `${configuration.id}:${promptCase.id}:round-${round}`,
+    configuration,
+    tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+    request: {
       model: configuration.model,
       contents: prompt,
       config: {
+        maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
         thinkingConfig: buildThinkingConfig(configuration),
         systemInstruction,
         responseMimeType: 'application/json',
@@ -82,8 +92,8 @@ async function runRound(promptCase, existingTranslations) {
           },
         },
       },
-    }),
-    actualUsd: (value) => calculateUsageCost(configuration, value.usageMetadata),
+    },
+    call: (request) => ai.models.generateContent(request),
   });
 
   let translations;
@@ -193,7 +203,7 @@ async function main() {
     let existingTranslations = [];
 
     for (let roundIndex = 0; roundIndex < rounds; roundIndex += 1) {
-      const roundResult = await runRound(promptCase, existingTranslations);
+      const roundResult = await runRound(promptCase, existingTranslations, roundIndex + 1);
       roundResults.push({
         ...roundResult,
         existingTranslationsCount: existingTranslations.length,
