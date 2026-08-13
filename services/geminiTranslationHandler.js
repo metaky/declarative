@@ -46,11 +46,12 @@ export function createGeminiTranslationHandler({
   variationBurstRequestLog = new Map(),
   checkRateLimitFn = checkRateLimit,
   logRateLimitHit = noOpRateLimitLog,
+  timeoutMs = 30_000,
   now = () => Date.now(),
 } = {}) {
   function emitCompletion(details) {
     try {
-      completionLogger(details);
+      void Promise.resolve(completionLogger(details)).catch(() => {});
     } catch {
       // The request result must not depend on whether telemetry is available.
     }
@@ -212,7 +213,7 @@ export function createGeminiTranslationHandler({
             },
           },
         },
-      }), { timeoutMs: 30_000 });
+      }), { timeoutMs });
       const durationMs = now() - requestStartedAt;
       const finishReason = getGeminiFinishReason(response);
       const blocked = isGeminiResponseBlocked(response);

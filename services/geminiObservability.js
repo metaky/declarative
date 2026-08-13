@@ -96,7 +96,7 @@ export function buildGeminiCompletionEvent({
 export function logGeminiCompletionEvent(details, log = console.info) {
   const event = buildGeminiCompletionEvent(details);
   try {
-    log(JSON.stringify(event));
+    void Promise.resolve(log(JSON.stringify(event))).catch(() => {});
   } catch {
     // Completion telemetry is best effort and must not change the request result.
   }

@@ -25,6 +25,7 @@ async function findAvailablePort() {
 function postJson(port, body, forwardedFor) {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify(body);
+    let responseCount = 0;
     const request = http.request({
       host: '127.0.0.1',
       port,
@@ -36,10 +37,11 @@ function postJson(port, body, forwardedFor) {
         'x-forwarded-for': forwardedFor,
       },
     }, (response) => {
+      responseCount += 1;
       let responseBody = '';
       response.setEncoding('utf8');
       response.on('data', (chunk) => { responseBody += chunk; });
-      response.on('end', () => resolve({ statusCode: response.statusCode, body: responseBody }));
+      response.on('end', () => resolve({ statusCode: response.statusCode, body: responseBody, responseCount }));
     });
     request.on('error', reject);
     request.end(payload);
@@ -209,4 +211,92 @@ test('keeps the safe failure fallback when telemetry logging throws once', async
     assert.deepEqual(JSON.parse(response.body), { error: 'AI translation unavailable.' });
   });
   assert.equal(attempts, 1);
+});
+
+async function assertNoUnhandledRejection(run) {
+  const unhandled = [];
+  const capture = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', capture);
+  try {
+    await run();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(unhandled.length, 0, `telemetry rejection escaped: ${unhandled.map(String).join(', ')}`);
+  } finally {
+    process.off('unhandledRejection', capture);
+  }
+}
+
+test('keeps a successful model response successful when a rejecting telemetry thenable is returned once', async () => {
+  let attempts = 0;
+  await assertNoUnhandledRejection(async () => {
+    await withTranslationServer({
+      createGeminiClient: () => ({ models: { generateContent: () => Promise.resolve(successfulSdkResponse()) } }),
+      completionLogger: () => {
+        attempts += 1;
+        return {
+          then(resolve, reject) {
+            reject(new Error('asynchronous telemetry sink unavailable'));
+          },
+        };
+      },
+    }, async ({ port }) => {
+      const response = await postJson(port, { mode: 'translate', text: 'Please put the blocks away.' }, '203.0.113.23');
+
+      assert.equal(response.statusCode, 200);
+      assert.equal(JSON.parse(response.body).length, 3);
+    });
+  });
+  assert.equal(attempts, 1);
+});
+
+test('keeps the safe failure fallback when an asynchronous telemetry logger rejects once', async () => {
+  let attempts = 0;
+  await assertNoUnhandledRejection(async () => {
+    await withTranslationServer({
+      createGeminiClient: () => ({ models: { generateContent: () => Promise.reject(new Error('provider unavailable')) } }),
+      completionLogger: () => {
+        attempts += 1;
+        return Promise.reject(new Error('asynchronous telemetry sink unavailable'));
+      },
+    }, async ({ port }) => {
+      const response = await postJson(port, { mode: 'translate', text: 'Please put the blocks away.' }, '203.0.113.24');
+
+      assert.equal(response.statusCode, 500);
+      assert.deepEqual(JSON.parse(response.body), { error: 'AI translation unavailable.' });
+    });
+  });
+  assert.equal(attempts, 1);
+});
+
+test('uses the real timeout race when a pending provider request outlives an injected short timeout', async () => {
+  let resolveProvider;
+  const pendingProvider = new Promise((resolve) => { resolveProvider = resolve; });
+  await withTranslationServer({
+    timeoutMs: 10,
+    createGeminiClient: () => ({ models: { generateContent: () => pendingProvider } }),
+  }, async ({ events, port }) => {
+    const request = postJson(port, { mode: 'translate', text: 'Please put the blocks away.' }, '203.0.113.25');
+    const firstResult = await Promise.race([
+      request.then((response) => ({ type: 'response', response })),
+      new Promise((resolve) => setTimeout(() => resolve({ type: 'guard' }), 100)),
+    ]);
+    if (firstResult.type === 'guard') {
+      resolveProvider(successfulSdkResponse());
+      await request;
+      assert.fail('the injected short timeout did not win the real request race');
+    }
+    const { response } = firstResult;
+
+    assert.equal(response.statusCode, 500);
+    assert.equal(response.responseCount, 1);
+    assert.deepEqual(JSON.parse(response.body), { error: 'AI translation unavailable.' });
+    assert.equal(events.length, 1);
+    assert.equal(events[0].outcome, 'timeout');
+
+    resolveProvider(successfulSdkResponse());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.equal(events.length, 1, 'a late provider resolution must not create a second completion event');
+    assert.equal(response.responseCount, 1, 'a late provider resolution must not create a second HTTP response');
+  });
 });
