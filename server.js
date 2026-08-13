@@ -9,6 +9,7 @@ import { buildThinkingConfig, resolveGeminiModelConfig } from './services/gemini
 import {
     classifyGeminiFailure,
     isGeminiResponseBlocked,
+    raceGeminiRequestWithTimeout,
     validateGeminiResponse,
 } from './services/geminiResponse.js';
 import { buildTranslationPrompt, buildVariationPrompt, systemInstruction } from './services/translationPrompt.js';
@@ -785,11 +786,6 @@ app.post('/api/translate', async (req, res) => {
         const ai = new GoogleGenAI({ apiKey });
         const requestStartedAt = Date.now();
 
-        // Race the API call against a 30-second timeout
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out. The AI service took too long to respond.')), 30000)
-        );
-
         const apiPromise = ai.models.generateContent({
             model: geminiModelConfig.model,
             contents: basePrompt,
@@ -810,7 +806,7 @@ app.post('/api/translate', async (req, res) => {
             },
         });
 
-        const response = await Promise.race([apiPromise, timeoutPromise]);
+        const response = await raceGeminiRequestWithTimeout(apiPromise, { timeoutMs: 30000 });
         const blocked = isGeminiResponseBlocked(response);
         const validation = validateGeminiResponse({
             responseText: blocked ? '' : response.text,

@@ -1,4 +1,14 @@
 const JSON_FENCE_PATTERN = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i;
+const CONTENT_BLOCKING_FINISH_REASONS = new Set([
+    'SAFETY',
+    'RECITATION',
+    'BLOCKLIST',
+    'PROHIBITED_CONTENT',
+    'SPII',
+    'IMAGE_SAFETY',
+    'IMAGE_PROHIBITED_CONTENT',
+    'IMAGE_RECITATION',
+]);
 
 function normalizeForComparison(value) {
     return value.trim().toLowerCase();
@@ -37,9 +47,12 @@ function getBlockedResponse(response) {
         return true;
     }
 
-    return response?.candidates?.some((candidate) => (
-        candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'BLOCKLIST'
-    )) ?? false;
+    return response?.candidates?.some((candidate) => {
+        const finishReason = typeof candidate?.finishReason === 'string'
+            ? candidate.finishReason.trim().toUpperCase()
+            : '';
+        return CONTENT_BLOCKING_FINISH_REASONS.has(finishReason);
+    }) ?? false;
 }
 
 export function classifyGeminiFailure(error) {
@@ -53,6 +66,24 @@ export function classifyGeminiFailure(error) {
 
 export function isGeminiResponseBlocked(response) {
     return getBlockedResponse(response);
+}
+
+export function raceGeminiRequestWithTimeout(request, {
+    timeoutMs,
+    setTimeoutFn = setTimeout,
+    clearTimeoutFn = clearTimeout,
+} = {}) {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeoutFn(
+            () => reject(new Error('Request timed out. The AI service took too long to respond.')),
+            timeoutMs,
+        );
+    });
+
+    return Promise.race([request, timeoutPromise]).finally(() => {
+        clearTimeoutFn(timeoutId);
+    });
 }
 
 export function validateGeminiResponse({
