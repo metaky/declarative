@@ -50,3 +50,89 @@ The automated evaluator is a triage tool and is not independently sufficient for
 ## Task 1 boundary
 
 Task 1 adds local controls and documents this baseline only. It does not deploy a revision, alter Cloud Run traffic, change a custom-domain mapping, create a secret, or change production behavior.
+
+## Task 2 secret-managed rollback baseline
+
+Status on 2026-08-13: `DONE_WITH_CONCERNS`. The required secret-managed Gemini 2.5 Flash rollback path is healthy and production is using the verified replacement Gemini credential. Upstash remains on its original active credential because a safe overlapping ACL token could not be completed through the available non-interactive control path.
+
+### Verified control plane
+
+- Active account: `kyle.wegner@gmail.com`
+- Explicit project on every operation: `gen-lang-client-0598048123`
+- Service and region: `declarative`, `us-west1`
+- Runtime service account: `1083695383503-compute@developer.gserviceaccount.com`
+- Secret Manager API: enabled and accessible
+- Starting production revision: `declarative-00102-5l7`
+- Final production revision: `declarative-gemini-rotation`
+
+The local gcloud default project pointed elsewhere, so it was not changed or relied on. Every read and mutation pinned the approved project and region explicitly.
+
+### Secret Manager state
+
+| Secret | Enabled numeric versions | Final production reference | Credential state |
+| --- | --- | --- | --- |
+| `declarative-gemini-api-key` | `1`, `2` | `2` | Version `2` is the verified replacement; version `1` remains active pending revocation. |
+| `declarative-upstash-redis-rest-url` | `1` | `1` | Active. |
+| `declarative-upstash-redis-rest-token` | `1` | `1` | Original default token remains active pending a separately safe overlap path. |
+
+The three version `1` values were transferred from the literal environment variables on `declarative-00102-5l7` through direct non-printing pipelines. No temporary secret material was created for that transfer. Gemini version `2` was transferred through an owner-only temporary location; the material was securely removed and cleanup was validated. All three secrets grant `roles/secretmanager.secretAccessor` only to the runtime service account listed above.
+
+Metadata inspection confirms that `declarative-gemini-rotation` contains no literal field for the three credential variables and pins these exact references:
+
+- `GEMINI_API_KEY=declarative-gemini-api-key:2`
+- `UPSTASH_REDIS_REST_URL=declarative-upstash-redis-rest-url:1`
+- `UPSTASH_REDIS_REST_TOKEN=declarative-upstash-redis-rest-token:1`
+
+No environment-variable secret reference uses `latest`.
+
+### Revision and behavior evidence
+
+`declarative-secret-baseline` was created at `2026-08-13T15:23:54.059635Z`, tagged `secret-baseline`, and kept at zero traffic while it was tested. It used secret version `1` for all three credentials. Its tagged checks passed:
+
+- Root returned HTTP 200.
+- A challenge was issued and rejected when reused.
+- Initial translation returned 3 non-empty suggestions.
+- More Ideas returned 3 non-empty suggestions distinct from supplied history.
+- `shorter`, `longer`, `warmer`, `more_straightforward`, and `more_playful` each returned exactly 2 deduplicated suggestions distinct from the source.
+- Interest Based without an interest returned HTTP 400 before challenge verification or a model call.
+- A bounded candidate-only variation burst returned the expected calm HTTP 429 on request 4 after 3 successes.
+
+Allowlisted structured logs for this revision contained 10 Gemini usage rows across `translate`, `moreIdeas`, and `variation`. Every row identified `gemini-2.5-flash`; no row reported positive thought tokens; and every token total equaled prompt plus candidate tokens. The deployed source pins `thinkingBudget: 0`.
+
+`declarative-gemini-rotation` was created at `2026-08-13T15:34:19.488611Z`, tagged `gemini-rotation`, and kept at zero traffic while the replacement Gemini credential was tested. Its complete tagged suite passed with 4 initial suggestions, 4 distinct More Ideas suggestions, exactly 2 deduplicated suggestions for every variation direction, the one-time challenge and missing-interest guards, and the calm request-4 HTTP 429. Its allowlisted logs contained 22 usage rows across all three modes, all on `gemini-2.5-flash`, with no positive thought-token rows and exact zero-thought token accounting.
+
+The runtime logger does not emit an explicit `thinking_budget` field. The zero-thinking claim therefore combines exact deployed-source inspection (`thinkingBudget: 0`) with the allowlisted runtime token accounting above; no log evidence was invented.
+
+### Traffic exercise and custom-domain checks
+
+| UTC window | Operation | Verified result |
+| --- | --- | --- |
+| `2026-08-13T15:30:05Z`–`15:30:15Z` | Promote `declarative-secret-baseline` | 100% traffic; custom-domain root, challenge, and 3-suggestion translation passed. |
+| `2026-08-13T15:30:28Z`–`15:30:38Z` | Roll back to `declarative-00102-5l7` | 100% traffic; custom-domain root, challenge, and 4-suggestion translation passed. |
+| `2026-08-13T15:30:47Z`–`15:30:59Z` | Restore `declarative-secret-baseline` | 100% traffic; custom-domain root, challenge, and 4-suggestion translation passed. |
+| `2026-08-13T15:38:12Z`–`15:38:23Z` | Promote `declarative-gemini-rotation` | 100% traffic; custom-domain root, challenge, and 3-suggestion translation passed. |
+
+The prior revisions remain available. No revision, Secret Manager secret, or historical secret version was deleted.
+
+### Gemini credential states
+
+- Replacement: `projects/1083695383503/locations/global/keys/5a8613d5-4ea3-4be1-b4e2-a0b2cee0d082` (`Declarative Gemini rollback 2026-08-13 v2`) is active, restricted to `generativelanguage.googleapis.com`, stored as secret version `2`, verified on the tagged revision, and serving production.
+- Previous: `projects/1083695383503/locations/global/keys/cef8e82b-b048-46b8-af88-5a417fbe8530` (`Declarative Gemini API2`) is active as secret version `1` and pending revocation. Revocation was not requested or performed.
+- Deleted throwaway: the first replacement key was generated and its value was printed by a synchronous provider operation into internal tool output despite a field projection. It was immediately deleted and was never stored, deployed, or used. Current provider metadata does not list it, and no active key was exposed.
+
+### Upstash overlap conclusion
+
+The live database accepts `ACL LIST`, confirming ACL capability and the possibility of separate ACL REST tokens in principle. The intended replacement policy was limited to `SET`, `EXISTS`, and `DEL` on `declarative:challenge:*`.
+
+Three isolated attempts to create that user failed safely when the live REST control path rejected the password assignment. Each partial user was deleted, final read-only inspection confirmed the user is absent, and no Upstash replacement token or secret version was created. The default database password was never reset. Production `/api/challenge` continued to pass after the attempts.
+
+Because there is no authenticated Upstash management CLI or management API credential in this environment, a safe overlap could not be proven without expanding to an interactive provider workflow. Upstash token version `1` therefore remains active and pending rotation/revocation; no immediate-invalidation operation was attempted.
+
+### Final production state and concerns
+
+- `declarative-gemini-rotation` is Ready and receives 100% of traffic.
+- `https://declarativeapp.org/` is healthy through root, challenge, and live translation behavior.
+- Model, prompts, SDK, and visible application behavior were not changed.
+- Concern: Upstash rotation remains pending for the reason above.
+- Concern: the structured runtime schema lacks an explicit `thinking_budget` field.
+- Incident: one deleted, never-used replacement Gemini key appeared in internal tool output; no active credential value was exposed.
