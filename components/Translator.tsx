@@ -111,6 +111,7 @@ const LOADING_MESSAGES = [
 ];
 
 const VARIATION_LABELS: Record<VariationKind, string> = {
+  similar: 'Similar',
   shorter: 'Shorter',
   longer: 'Longer',
   warmer: 'Warmer',
@@ -121,8 +122,8 @@ const VARIATION_LABELS: Record<VariationKind, string> = {
 const VARIATION_TOGGLE_TELEMETRY_WINDOW_MS = 120000;
 const VARIATION_TOGGLE_TELEMETRY_THRESHOLD = 30;
 
-const VARIATION_ORDER_DEFAULT: VariationKind[] = ['shorter', 'warmer', 'more_straightforward', 'more_playful'];
-const VARIATION_ORDER_FEWER_WORDS: VariationKind[] = ['longer', 'warmer', 'more_straightforward', 'more_playful'];
+const VARIATION_ORDER_DEFAULT: VariationKind[] = ['similar', 'shorter', 'warmer', 'more_straightforward', 'more_playful'];
+const VARIATION_ORDER_FEWER_WORDS: VariationKind[] = ['similar', 'longer', 'warmer', 'more_straightforward', 'more_playful'];
 
 const historyDateFormatter = new Intl.DateTimeFormat(undefined, {
   month: 'short',
@@ -192,7 +193,7 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
           aria-controls={variationPanelId}
           className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 ${isOpen ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
         >
-          {isOpen ? 'Hide variations' : 'Try a variation'}
+          {isOpen ? 'Hide variations' : 'More like this'}
         </button>
       </div>
 

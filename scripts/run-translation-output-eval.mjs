@@ -202,6 +202,7 @@ function normalizeVariationKind(kind) {
     .replace(/[-\s]+/g, '_');
 
   const aliases = {
+    similar: 'similar',
     shorter: 'shorter',
     warmer: 'warmer',
     more_straightforward: 'more_straightforward',

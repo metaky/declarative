@@ -36,6 +36,7 @@ const ai = new GoogleGenAI({ apiKey });
 const modelId = 'gemini-2.5-flash';
 
 const VARIATION_KIND_LABELS = {
+  similar: 'Similar',
   shorter: 'Shorter',
   longer: 'Longer',
   warmer: 'Warmer',
@@ -45,8 +46,8 @@ const VARIATION_KIND_LABELS = {
 
 function getVariationKinds(useFewerWords) {
   return useFewerWords
-    ? ['longer', 'warmer', 'more_straightforward', 'more_playful']
-    : ['shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'];
+    ? ['similar', 'longer', 'warmer', 'more_straightforward', 'more_playful']
+    : ['similar', 'shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'];
 }
 
 function normalizeText(text) {

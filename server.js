@@ -575,6 +575,10 @@ function buildMockVariationTranslations(sourceTranslation, variationKind, origin
     const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
 
     const variationTemplates = {
+        similar: [
+            `${source}, or phrased another way.`,
+            `${source}, with a slightly different wording.`,
+        ],
         shorter: buildShorterMockVariationTranslations(sourceTranslation, originalText).map(item => item.translation),
         longer: [
             `${source}, and there is room for it to happen in a calm way.`,
@@ -636,7 +640,7 @@ app.post('/api/translate', async (req, res) => {
             return res.status(400).json({ error: 'Missing or invalid source translation.' });
         }
 
-        if (!['shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
+        if (!['similar', 'shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
             return res.status(400).json({ error: 'Missing or invalid variation kind.' });
         }
     }
