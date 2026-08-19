@@ -574,7 +574,7 @@ app.post('/api/translate', createGeminiTranslationHandler({
     logRateLimitHit,
 }));
 
-app.get('/healthz', (req, res) => {
+app.get('/api/healthz', (req, res) => {
     res.status(200).json({ status: 'ok', configuration: 'ready' });
 });
 

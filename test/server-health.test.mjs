@@ -68,10 +68,10 @@ async function stopServer(child) {
   await stopped;
 }
 
-test('serves the exact non-model readiness response before static serving', async () => {
+test('serves the exact non-model readiness response on the public API path before static serving', async () => {
   const { child, port } = await startMockServer();
   try {
-    const response = await requestJson(port, '/healthz');
+    const response = await requestJson(port, '/api/healthz');
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(JSON.parse(response.body), { status: 'ok', configuration: 'ready' });
