@@ -179,6 +179,26 @@ test('does not emit a model completion event when mock mode returns local transl
   });
 });
 
+test('accepts the Similar variation direction introduced by the current feature release', async () => {
+  const variationText = '[{"translation":"The blocks can go on the shelf."},{"translation":"The shelf is a place for the blocks."}]';
+  await withTranslationServer({
+    createGeminiClient: () => ({ models: { generateContent: () => Promise.resolve(successfulSdkResponse({ text: variationText })) } }),
+  }, async ({ events, port }) => {
+    const response = await postJson(port, {
+      mode: 'variation',
+      text: 'Please put the blocks away.',
+      sourceTranslation: { translation: 'The blocks have a spot on the shelf.' },
+      variationKind: 'similar',
+    }, '203.0.113.26');
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(JSON.parse(response.body).length, 2);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].outcome, 'success');
+    assert.equal(events[0].variationKind, 'similar');
+  });
+});
+
 test('keeps a successful model response successful when telemetry logging throws once', async () => {
   let attempts = 0;
   await withTranslationServer({

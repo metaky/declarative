@@ -320,6 +320,7 @@ export function buildVariationPrompt({
     const contextInstruction = buildContextInstruction(text, tone, interest);
 
     const variationInstructions = {
+        similar: `Variation direction: "Similar". Create 2 alternative declarative rewrites that preserve the exact same intent, core message, and low-pressure declarative angle as the source suggestion, with natural variation in wording, structure, and phrasing. Keep the tone family and meaning identical.`,
         shorter: `Variation direction: "Shorter". Preserve core meaning: action, safety, location, sequence, destination. Compact the same source angle; no weaker/vaguer switch. If already short, make a different compact version, not a deletion. Do not become clipped, abrupt, or bossy.`,
         longer: `Variation direction: "Longer". Make both rewrites a little fuller and smoother than the source suggestion. Add only enough context or connective tissue to improve flow. Do not add new demands, emotional pressure, or invented details.`,
         warmer: `Variation direction: "Warmer". Make both rewrites slightly softer and more connecting than the source suggestion. Keep them grounded and low-pressure. Do not become sweeter, more reassuring, more parent-centered, or emotionally loaded.`,

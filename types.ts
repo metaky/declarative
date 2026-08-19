@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 
 export type RequestMode = 'translate' | 'moreIdeas' | 'variation';
-export type VariationKind = 'shorter' | 'longer' | 'warmer' | 'more_straightforward' | 'more_playful';
+export type VariationKind = 'similar' | 'shorter' | 'longer' | 'warmer' | 'more_straightforward' | 'more_playful';
 
 export interface Translation {
   id: string;

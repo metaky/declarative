@@ -36,6 +36,7 @@ Rate each variation kind for each case as `Pass`, `Borderline`, or `Fail` across
 - Does the pair avoid making every rewrite depend on the same question pattern?
 
 ### 3. Direction Fidelity
+- `Similar`: alternative wording with identical intent, action, and tone family, offering natural variation in sentence shape rather than tiny synonym swaps or near-duplicate clones
 - `Shorter`: clearly tighter without losing meaning. It fails if compacting removes the core action, safety meaning, location, sequence, or destination.
 - `Longer`: clearly fuller and smoother without adding emotional load
 - `Warmer`: softer and more connecting without becoming sweeter or more parent-centered

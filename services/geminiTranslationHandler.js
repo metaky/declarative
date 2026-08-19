@@ -89,7 +89,7 @@ export function createGeminiTranslationHandler({
       if (!sourceTranslation || typeof sourceTranslation.translation !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid source translation.' });
       }
-      if (!['shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
+      if (!['similar', 'shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
         return res.status(400).json({ error: 'Missing or invalid variation kind.' });
       }
     }

@@ -528,6 +528,10 @@ function buildMockVariationTranslations(sourceTranslation, variationKind, origin
     const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
 
     const variationTemplates = {
+        similar: [
+            `${source}, or phrased another way.`,
+            `${source}, with a slightly different wording.`,
+        ],
         shorter: buildShorterMockVariationTranslations(sourceTranslation, originalText).map(item => item.translation),
         longer: [
             `${source}, and there is room for it to happen in a calm way.`,
