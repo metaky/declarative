@@ -21,6 +21,8 @@ output/
 # Generated eval run artifacts. Commit curated reports intentionally with git add -f.
 evals/results/*-[0-9][0-9][0-9][0-9]-*.json
 evals/results/*-[0-9][0-9][0-9][0-9]-*.md
+evals/results/gemini-migration/**
+!evals/results/gemini-migration/phase-3-spend.json
 
 # Editor directories and files
 .vscode/*

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 5,
+  "phase": "gemini-model-migration-phase-3",
+  "currency": "USD",
+  "unit": "nano-usd",
+  "budgetNanoUsd": 10000000000,
+  "generation": {
+    "calls": 0,
+    "spendNanoUsd": 0
+  },
+  "evaluation": {
+    "calls": 0,
+    "spendNanoUsd": 0
+  },
+  "totalSpendNanoUsd": 0,
+  "reservedNanoUsd": 0,
+  "pendingReservations": [],
+  "completedCalls": {},
+  "updatedAt": null
+}

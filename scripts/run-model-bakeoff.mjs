@@ -2,89 +2,66 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
-import { buildTranslationPrompt, systemInstruction } from '../services/translationPrompt.js';
+import {
+  buildThinkingConfig,
+  listEvaluationConfigurations,
+} from '../services/geminiConfig.js';
+import {
+  buildTranslationPrompt,
+  buildVariationPrompt,
+  systemInstruction,
+} from '../services/translationPrompt.js';
 import {
   applyCalibratedDecision,
   normalizeVerdict,
 } from './evaluator-calibration-utils.mjs';
-import { evaluateTranslationSet } from './translation-set-evaluator.mjs';
+import {
+  buildTranslationEvaluationPrompt,
+  evaluateTranslationSet,
+  translationEvaluationResponseSchema,
+} from './translation-set-evaluator.mjs';
+import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
+  buildArtifactPaths,
+  buildEvaluationPlan,
+  buildScoringCheckpointPath,
+  calculateAggregateGates,
+  calculateAggregateMetrics,
+  calculateUsageCost,
+  captureConfigurationMetadata,
+  getProviderDurationMs,
+  loadEnvFile,
+  loadMigrationCorpus,
+  parseCliOptions,
+  readSpendLedger,
+  resolveCanonicalSpendLedgerPath,
+  runBudgetedCall,
+  scoreRowsWithCheckpoint,
+  summarizeSpendLedger,
+  atomicWritePrivateText,
+  writePrivateMigrationArtifactSet,
+} from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const envPath = path.join(repoRoot, '.env.local');
 const calibrationPath = path.join(repoRoot, 'evals', 'human-calibration-set.json');
-const resultsDir = path.join(repoRoot, 'evals', 'results');
+const historicalResultsDir = path.join(repoRoot, 'evals', 'results');
+const migrationResultsDir = path.join(historicalResultsDir, 'gemini-migration');
+const defaultCorpusPath = path.join(repoRoot, 'evals', 'gemini-migration-prompt-set.json');
+const defaultSpendLedgerPath = path.join(repoRoot, CANONICAL_SPEND_LEDGER_RELATIVE_PATH);
 
-const MODEL_CANDIDATES = [
-  {
-    id: 'gemini-3.5-flash',
-    model: 'gemini-3.5-flash',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.75,
-    outputUsdPerMillion: 4.50,
-    pricingNote: 'Current stable Gemini 3.5 Flash pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-3.1-flash-lite',
-    model: 'gemini-3.1-flash-lite',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.25,
-    outputUsdPerMillion: 1.50,
-    pricingNote: 'Current stable Gemini 3.1 Flash-Lite pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-2.5-flash-baseline',
-    model: 'gemini-2.5-flash',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.30,
-    outputUsdPerMillion: 2.50,
-    pricingNote: 'Gemini 2.5 Flash standard paid pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-2.5-flash-thinking-256',
-    model: 'gemini-2.5-flash',
-    thinkingBudget: 256,
-    inputUsdPerMillion: 0.30,
-    outputUsdPerMillion: 2.50,
-    pricingNote: 'Same model as Flash baseline with a small thinking budget.',
-  },
-  {
-    id: 'gemini-2.5-pro',
-    model: 'gemini-2.5-pro',
-    thinkingBudget: null,
-    inputUsdPerMillion: 1.25,
-    outputUsdPerMillion: 10.00,
-    pricingNote: 'Gemini 2.5 Pro standard paid pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-3-flash-preview',
-    model: 'gemini-3-flash-preview',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.50,
-    outputUsdPerMillion: 3.00,
-    pricingNote: 'Preview model; standard paid pricing checked against official Gemini docs on 2026-06-02.',
-  },
-  {
-    id: 'gemini-2.5-flash-lite',
-    model: 'gemini-2.5-flash-lite',
-    thinkingBudget: 0,
-    inputUsdPerMillion: 0.10,
-    outputUsdPerMillion: 0.40,
-    pricingNote: 'Low-cost candidate supported in current docs; checked against official Gemini docs on 2026-06-02.',
-  },
-];
+const MODEL_CANDIDATES = listEvaluationConfigurations();
 
-function loadEnv() {
-  if (!fs.existsSync(envPath)) return;
-  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const [key, ...valueParts] = trimmed.split('=');
-    if (key && !process.env[key]) {
-      process.env[key] = valueParts.join('=').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
-    }
-  }
+function normalizeBakeoffPayloadForCurrentRegistry(payload) {
+  const currentIds = new Set(MODEL_CANDIDATES.map((candidate) => candidate.id));
+  return {
+    ...payload,
+    candidates: MODEL_CANDIDATES,
+    results: (payload.results ?? []).filter((result) => currentIds.has(result.candidateId)),
+  };
 }
 
 function getArg(name, fallback) {
@@ -93,6 +70,31 @@ function getArg(name, fallback) {
   return value ? value.slice(prefix.length) : fallback;
 }
 
+const HELP = `Gemini migration model bakeoff
+
+Usage:
+  node scripts/run-model-bakeoff.mjs --configurations=<id,id|all> [options]
+
+Required migration options:
+  --configurations=...   Explicit allow-listed configuration IDs (or "all")
+
+Options:
+  --corpus=<path>        Corpus manifest (default: evals/gemini-migration-prompt-set.json)
+  --repeats=<n>          Repetitions per case/configuration (default: 1)
+  --limit=<n>            Limit corpus cases before expansion
+  --seed=<integer>       Deterministic plan seed (default: 20260813)
+  --phase-budget-usd=<n> Cumulative Phase 3 cap, maximum 10 (default: 10)
+  --spend-ledger=<path>  Persistent cumulative spend ledger
+  --score                 Explicitly run the automated evaluator
+  --help                  Show this help without loading credentials or calling Gemini
+
+Approved IDs:
+  gemini-2.5-flash-baseline
+  gemini-3.5-flash-lite-minimal
+  gemini-3.6-flash-minimal
+  gemini-3.6-flash-medium
+`;
+
 function getNumericArg(name, fallback) {
   const parsed = Number(getArg(name, fallback));
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
@@ -100,6 +102,15 @@ function getNumericArg(name, fallback) {
 
 function hasFlag(name) {
   return process.argv.includes(`--${name}`);
+}
+
+async function writeMigrationReportArtifacts({ artifactPaths, payload, markdown }) {
+  await writePrivateMigrationArtifactSet({ artifactPaths, payload, markdown });
+}
+
+async function writeRebuiltLatestArtifacts({ jsonPath, markdownPath, payload, markdown }) {
+  await atomicWritePrivateText(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
+  await atomicWritePrivateText(markdownPath, markdown);
 }
 
 function getCandidateFilter() {
@@ -123,13 +134,6 @@ function getSelectedCandidates() {
     throw new Error(`Unknown model candidate(s): ${missing.join(', ')}`);
   }
   return selected;
-}
-
-function refreshCandidateMetadata(candidates = []) {
-  return candidates.map((candidate) => {
-    const current = MODEL_CANDIDATES.find((item) => item.id === candidate.id || item.model === candidate.model);
-    return current ? { ...candidate, ...current } : candidate;
-  });
 }
 
 function loadCases(limit) {
@@ -169,12 +173,6 @@ function parseJsonArray(text) {
   }
 }
 
-function estimateUsd(candidate, usageMetadata) {
-  const promptTokens = usageMetadata?.promptTokenCount ?? 0;
-  const outputTokens = usageMetadata?.candidatesTokenCount ?? 0;
-  return Number((((promptTokens / 1_000_000) * candidate.inputUsdPerMillion) + ((outputTokens / 1_000_000) * candidate.outputUsdPerMillion)).toFixed(6));
-}
-
 function addWordCounts(translations = []) {
   return translations.map((item) => ({
     ...item,
@@ -182,10 +180,76 @@ function addWordCounts(translations = []) {
   }));
 }
 
-async function generate(ai, candidate, testCase) {
-  const prompt = buildTranslationPrompt(testCase);
+function buildRunPrompt(testCase, run, existingTranslations) {
+  if (run.operation === 'variation') {
+    return buildVariationPrompt({
+      text: testCase.text,
+      sourceTranslation: testCase.sourceTranslation,
+      variationKind: run.variationKind,
+      tone: testCase.tone,
+      interest: testCase.interest,
+      useFewerWords: testCase.useFewerWords,
+    });
+  }
+  return buildTranslationPrompt({
+    ...testCase,
+    existingTranslations: run.operation === 'moreIdeas'
+      ? existingTranslations
+      : (testCase.existingTranslations ?? []),
+  });
+}
+
+function responseSafetyFlags(response) {
+  return (response?.candidates ?? [])
+    .map(({ finishReason }) => finishReason)
+    .filter((finishReason) => finishReason && !['STOP', 'MAX_TOKENS'].includes(finishReason));
+}
+
+function parseTranslations(responseText, operation) {
+  const raw = String(responseText ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { translations: [], parseError: true, contractError: false };
+  }
+  if (!Array.isArray(parsed)) {
+    return { translations: [], parseError: false, contractError: true };
+  }
+  const valid = parsed.every((item) => (
+    item
+    && typeof item === 'object'
+    && Object.keys(item).length === 1
+    && typeof item.translation === 'string'
+    && item.translation.trim()
+  ));
+  const expectedCount = operation === 'variation'
+    ? parsed.length === 2
+    : parsed.length >= 3 && parsed.length <= 4;
+  if (!valid || !expectedCount) {
+    return { translations: [], parseError: false, contractError: true };
+  }
+  return {
+    translations: addWordCounts(parsed.map(({ translation }) => ({ translation: translation.trim() }))),
+    parseError: false,
+    contractError: false,
+  };
+}
+
+function findInterestLeakage(testCase, translations) {
+  if (!testCase.interest) return false;
+  const otherInterestTerms = ['minecraft', 'train', 'disney', 'pokemon', 'pokémon', 'dinosaur', 'cooking']
+    .filter((term) => !String(testCase.interest).toLowerCase().includes(term));
+  const pattern = new RegExp(`\\b(?:${otherInterestTerms.join('|')})\\b`, 'i');
+  return translations.some(({ translation }) => pattern.test(translation));
+}
+
+async function generate(ai, candidate, testCase, run, options) {
+  const existingTranslations = options.existingTranslations ?? [];
+  const prompt = buildRunPrompt(testCase, run, existingTranslations);
   const startedAt = Date.now();
   const config = {
+    maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
     systemInstruction,
     responseMimeType: 'application/json',
     responseSchema: {
@@ -199,39 +263,89 @@ async function generate(ai, candidate, testCase) {
       },
     },
   };
-  if (candidate.thinkingBudget !== null) {
-    config.thinkingConfig = {
-      thinkingBudget: candidate.thinkingBudget,
-    };
-  }
+  config.thinkingConfig = buildThinkingConfig(candidate);
   const baseResult = {
+    runId: run.runId,
     candidateId: candidate.id,
     model: candidate.model,
-    thinkingBudget: candidate.thinkingBudget,
+    thinkingConfig: config.thinkingConfig,
     caseId: testCase.id,
+    operation: run.operation,
+    variationKind: run.variationKind,
+    round: run.round,
+    repeat: run.repeat,
+    tone: testCase.tone,
+    interest: testCase.interest,
+    useFewerWords: Boolean(testCase.useFewerWords),
+    provenance: testCase.provenance,
+    isCalibrationCase: testCase.provenance?.some(({ source }) => source === 'evals/human-calibration-set.json') ?? false,
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model: candidate.model,
-      contents: prompt,
-      config,
+    const response = await runBudgetedCall({
+      repoRoot,
+      ledgerPath: options.ledgerPath,
+      budgetUsd: options.budgetUsd,
+      type: 'generation',
+      runId: run.runId,
+      configuration: candidate,
+      tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+      request: {
+        model: candidate.model,
+        contents: prompt,
+        config,
+      },
+      requestContext: {
+        harnessVersion: 'task-6-request-v1',
+        schemaVersion: 'translation-array-v1',
+        corpusSourceIdentity: options.corpusIdentity,
+        caseId: testCase.id,
+        provenance: testCase.provenance,
+        repeat: run.repeat,
+        direction: run.variationKind ?? null,
+        moreIdeasRound: run.round ?? null,
+        operation: run.operation,
+      },
+      call: (request) => ai.models.generateContent(request),
+      serializeResult: (value) => ({
+        text: value.text,
+        usageMetadata: value.usageMetadata,
+        candidates: value.candidates,
+      }),
     });
+    const parsed = parseTranslations(response.text, run.operation);
+    const generationUsd = calculateUsageCost(candidate, response.usageMetadata);
 
     return {
       ...baseResult,
-      durationMs: Date.now() - startedAt,
+      status: 'success',
+      durationMs: getProviderDurationMs(response),
       usageMetadata: response.usageMetadata ?? null,
-      estimatedUsd: estimateUsd(candidate, response.usageMetadata),
-      translations: addWordCounts(parseJsonArray(response.text).map((item) => ({ translation: item.translation }))),
+      estimatedUsd: generationUsd,
+      generationUsd,
+      evaluatorUsd: 0,
+      safetyFlags: responseSafetyFlags(response),
+      ...parsed,
+      fewerWordsCompliant: testCase.useFewerWords
+        ? parsed.translations.every(({ wordCount }) => wordCount <= 12)
+        : null,
+      interestLeakage: findInterestLeakage(testCase, parsed.translations),
+      interestGrounded: null,
     };
   } catch (error) {
+    if (/Phase 3 budget stop/i.test(error instanceof Error ? error.message : String(error))) throw error;
     return {
       ...baseResult,
+      status: 'error',
       durationMs: Date.now() - startedAt,
       usageMetadata: null,
       estimatedUsd: 0,
+      generationUsd: 0,
+      evaluatorUsd: 0,
       translations: [],
+      parseError: false,
+      contractError: false,
+      safetyFlags: [],
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -245,24 +359,44 @@ function shouldExcludeFromAggregate(testCase) {
   return testCase.tone === 'Interest Based' && !testCase.interest;
 }
 
-async function scoreResults(ai, payload) {
-  const rows = [];
-  for (const result of payload.results) {
+async function scoreResults(ai, payload, options) {
+  const evaluatorConfiguration = MODEL_CANDIDATES.find(({ id }) => id === 'gemini-2.5-flash-baseline');
+  const checkpointPath = buildScoringCheckpointPath({
+    resultsDir: migrationResultsDir,
+    payload,
+  });
+  return scoreRowsWithCheckpoint({
+    payload,
+    checkpointPath,
+    getCompletedCall: async (callId) => {
+      const ledger = await readSpendLedger({
+        repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
+      });
+      return ledger.completedCalls[callId] ?? null;
+    },
+    getCheckpointMetadata: async () => ({
+      cumulativeSpend: summarizeSpendLedger(await readSpendLedger({
+        repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
+      })),
+    }),
+    scoreRow: async (result) => {
     const testCase = getCaseById(payload, result.caseId);
     const excludedFromAggregate = shouldExcludeFromAggregate(testCase);
     const aggregateExclusionReason = excludedFromAggregate
       ? 'Guardrail case only: production blocks Interest Based requests without an entered interest.'
       : null;
 
-    if (result.error || !result.translations?.length) {
-      rows.push({
-        ...result,
-        excludedFromAggregate,
-        aggregateExclusionReason,
-        postprocessedVerdict: 'Error',
-        postprocessReasons: result.error ? [result.error] : ['no translations returned'],
-      });
-      continue;
+    if (result.localOnly || result.error || result.parseError || result.contractError || !result.translations?.length) {
+      return {
+        scoredRow: {
+          ...result,
+          excludedFromAggregate,
+          aggregateExclusionReason,
+          postprocessedVerdict: 'Error',
+          postprocessReasons: result.error ? [result.error] : ['no translations returned'],
+        },
+        completedCall: null,
+      };
     }
     console.log(`- scoring ${result.candidateId}: ${result.caseId}`);
     const evaluationInput = {
@@ -270,8 +404,52 @@ async function scoreResults(ai, payload) {
       id: `${result.candidateId}-${result.caseId}`,
       translations: addWordCounts(result.translations),
     };
-    const { evaluation, usageMetadata, evaluatorModel } = await evaluateTranslationSet(ai, evaluationInput);
+    const evaluatorRequest = {
+      model: evaluatorConfiguration.model,
+      contents: buildTranslationEvaluationPrompt(evaluationInput),
+      config: {
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: MIGRATION_TOKEN_LIMITS.evaluation.maxOutputTokens,
+        responseMimeType: 'application/json',
+        responseSchema: translationEvaluationResponseSchema(),
+      },
+    };
+    const evaluatorRunId = `${result.runId}:evaluation`;
+    const { evaluation, usageMetadata, evaluatorModel } = await runBudgetedCall({
+      repoRoot,
+      ledgerPath: options.ledgerPath,
+      budgetUsd: options.budgetUsd,
+      type: 'evaluation',
+      runId: evaluatorRunId,
+      configuration: evaluatorConfiguration,
+      tokenLimits: MIGRATION_TOKEN_LIMITS.evaluation,
+      request: evaluatorRequest,
+      requestContext: {
+        harnessVersion: 'task-6-request-v1',
+        evaluatorVersion: 'translation-set-evaluator-v1',
+        schemaVersion: 'translation-evaluation-response-v1',
+        corpusSourceIdentity: payload.corpus ?? 'historical-bakeoff',
+        sourceRunId: result.runId,
+        repeat: result.repeat ?? 1,
+        direction: result.variationKind ?? null,
+        moreIdeasRound: result.round ?? null,
+        operation: 'evaluation',
+      },
+      call: (request) => evaluateTranslationSet(ai, evaluationInput, {
+        model: request.model,
+        thinkingBudget: 0,
+        maxOutputTokens: request.config.maxOutputTokens,
+      }),
+      serializeResult: (value) => value,
+      actualUsd: (value) => calculateUsageCost(evaluatorConfiguration, value.usageMetadata),
+    });
     const calibratedVerdict = normalizeVerdict(evaluation?.setSummary?.setVerdict ?? evaluation?.verdict);
+    const evaluatorUsd = calculateUsageCost(evaluatorConfiguration, usageMetadata);
+    const shouldNotShowCount = evaluation?.setSummary?.shouldNotShowOptionCount ?? 0;
+    const safetyFlags = [
+      ...(result.safetyFlags ?? []),
+      ...Array.from({ length: shouldNotShowCount }, () => 'EVALUATOR_SHOULD_NOT_SHOW'),
+    ];
     const scoredRow = {
       ...result,
       translations: evaluationInput.translations,
@@ -279,6 +457,11 @@ async function scoreResults(ai, payload) {
       rawCalibratedVerdict: calibratedVerdict,
       evaluatorUsageMetadata: usageMetadata,
       evaluatorModel,
+      evaluatorUsd,
+      safetyFlags,
+      interestGrounded: result.interest
+        ? (evaluation?.setSummary?.seriousMismatchOptionCount ?? 0) === 0
+        : null,
     };
     const postprocess = applyCalibratedDecision({
       ...evaluationInput,
@@ -286,20 +469,26 @@ async function scoreResults(ai, payload) {
       calibratedVerdict,
       interestMissing: evaluationInput.tone === 'Interest Based' && !evaluationInput.interest,
     });
-    rows.push({
-      ...scoredRow,
-      excludedFromAggregate,
-      aggregateExclusionReason,
-      postprocessedVerdict: postprocess.verdict,
-      postprocessReasons: postprocess.reasons,
+    const completedLedger = await readSpendLedger({
+      repoRoot, ledgerPath: options.ledgerPath, budgetUsd: options.budgetUsd,
     });
-  }
-  return {
-    ...payload,
+    const completedCall = completedLedger.completedCalls[`evaluation:${evaluatorRunId}`];
+    if (!completedCall) throw new Error(`Missing durable evaluator call entry for ${evaluatorRunId}.`);
+    return {
+      scoredRow: {
+        ...scoredRow,
+        excludedFromAggregate,
+        aggregateExclusionReason,
+        postprocessedVerdict: postprocess.verdict,
+        postprocessReasons: postprocess.reasons,
+      },
+      completedCall,
+    };
+    },
+  }).then((scoredPayload) => ({
+    ...scoredPayload,
     scoredAt: new Date().toISOString(),
-    qualityScored: true,
-    results: rows,
-  };
+  }));
 }
 
 function verdictCounts(items, selector) {
@@ -314,7 +503,7 @@ function formatVerdicts(counts) {
   return `Pass ${counts.Pass ?? 0}, Borderline ${counts.Borderline ?? 0}, Fail ${counts.Fail ?? 0}`;
 }
 
-function renderMarkdown(payload) {
+function renderBakeoffMarkdown(payload) {
   const lines = [];
   lines.push('# Gemini Model Bakeoff');
   lines.push('');
@@ -333,21 +522,37 @@ function renderMarkdown(payload) {
   lines.push('| Candidate | Model | Thinking | Input $/1M | Output $/1M | Note |');
   lines.push('|---|---|---:|---:|---:|---|');
   for (const candidate of payload.candidates) {
-    lines.push(`| ${candidate.id} | ${candidate.model} | ${candidate.thinkingBudget} | ${candidate.inputUsdPerMillion} | ${candidate.outputUsdPerMillion} | ${candidate.pricingNote} |`);
+    lines.push(`| ${candidate.id} | ${candidate.model} | ${JSON.stringify(buildThinkingConfig(candidate))} | ${candidate.inputUsdPerMillion} | ${candidate.outputUsdPerMillion} | ${candidate.pricingNote} |`);
+  }
+  lines.push('');
+  lines.push('Exact effective configuration metadata:');
+  for (const candidate of payload.candidates) {
+    lines.push(`- ${candidate.id}: \`${JSON.stringify(captureConfigurationMetadata(candidate))}\``);
   }
   lines.push('');
   lines.push('## Summary');
   lines.push('');
-  lines.push('| Candidate | Runs | Aggregate Runs | Excluded | Errors | Avg Latency ms | Prompt Tokens | Output Tokens | Estimated USD | Postprocessed Verdicts | Avg Usable | Avg Excellent | Should-Not-Show |');
-  lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|');
+  lines.push('| Candidate | Runs | Aggregate Runs | Excluded | Errors | Avg Latency ms | Prompt Tokens | Visible Candidate Tokens | Thought Tokens | Billed Output Tokens (Candidates + Thoughts) | Estimated USD | Postprocessed Verdicts | Avg Usable | Avg Excellent | Should-Not-Show | Median ms | p95 ms | Total Tokens | Cost / Successful Request USD | Evaluator USD | Total Gen + Eval USD | Parse Errors | Contract Errors | Safety Flags |');
+  lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
   for (const summary of payload.summary) {
-    lines.push(`| ${summary.candidateId} | ${summary.runs} | ${summary.aggregateRuns ?? summary.runs} | ${summary.excludedFromAggregate ?? 0} | ${summary.errors ?? 0} | ${summary.avgLatencyMs} | ${summary.promptTokens} | ${summary.outputTokens} | ${summary.estimatedUsd} | ${summary.postprocessedVerdicts ?? 'not scored'} | ${summary.avgUsableOptions ?? 'n/a'} | ${summary.avgExcellentOptions ?? 'n/a'} | ${summary.shouldNotShowOptions ?? 'n/a'} |`);
+    lines.push(`| ${summary.candidateId} | ${summary.runs} | ${summary.aggregateRuns ?? summary.runs} | ${summary.excludedFromAggregate ?? 0} | ${summary.errors ?? 0} | ${summary.avgLatencyMs} | ${summary.promptTokens} | ${summary.candidateOutputTokens} | ${summary.thoughtTokens} | ${summary.billedOutputTokens} | ${summary.estimatedUsd} | ${summary.postprocessedVerdicts ?? 'not scored'} | ${summary.avgUsableOptions ?? 'n/a'} | ${summary.avgExcellentOptions ?? 'n/a'} | ${summary.shouldNotShowOptions ?? 'n/a'} | ${summary.medianLatencyMs ?? 0} | ${summary.p95LatencyMs ?? 0} | ${summary.totalTokens ?? 0} | ${summary.costPerSuccessfulRequestUsd ?? 0} | ${summary.evaluatorUsd ?? 0} | ${summary.totalGenerationAndEvaluationUsd ?? summary.estimatedUsd} | ${summary.parseErrors ?? 0} | ${summary.contractErrors ?? 0} | ${summary.safetyFlags ?? 0} |`);
+  }
+  lines.push('');
+  lines.push(`Aggregate counts and gates: ${JSON.stringify(payload.aggregate ?? {})}`);
+  lines.push(`Per-repeat automated gates: ${JSON.stringify(payload.gates ?? [])}`);
+  lines.push(`Local-only guardrails: ${payload.localChecks?.length ?? 0}; model/evaluator calls: 0.`);
+  if (payload.cumulativeSpend) {
+    const spend = payload.cumulativeSpend;
+    lines.push(`Cumulative settled spend: generation $${spend.generation.settledUsd}; evaluation $${spend.evaluation.settledUsd}; total $${spend.settledUsd}.`);
+    lines.push(`Pending liabilities: generation $${spend.generation.totalLiabilityUsd} (reserved $${spend.generation.reservedLiabilityUsd}, dispatched $${spend.generation.dispatchedLiabilityUsd}, unresolved $${spend.generation.unresolvedLiabilityUsd}); evaluation $${spend.evaluation.totalLiabilityUsd} (reserved $${spend.evaluation.reservedLiabilityUsd}, dispatched $${spend.evaluation.dispatchedLiabilityUsd}, unresolved $${spend.evaluation.unresolvedLiabilityUsd}); total $${spend.liabilityUsd}.`);
+    lines.push(`Total committed $${spend.totalCommittedUsd} of $${spend.budgetUsd}; remaining capacity $${spend.remainingCapacityUsd}; pending ${spend.pendingCounts.total} (generation ${spend.pendingCounts.generation}, evaluation ${spend.pendingCounts.evaluation}).`);
   }
   if (payload.qualityScored) {
     const evaluatorPromptTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.promptTokenCount ?? 0), 0);
-    const evaluatorOutputTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.candidatesTokenCount ?? 0), 0);
+    const evaluatorCandidateOutputTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.candidatesTokenCount ?? 0), 0);
+    const evaluatorThoughtTokens = payload.results.reduce((sum, item) => sum + (item.evaluatorUsageMetadata?.thoughtsTokenCount ?? 0), 0);
     lines.push('');
-    lines.push(`Evaluator token use: prompt ${evaluatorPromptTokens}, output ${evaluatorOutputTokens}. This is eval-only cost, not production translation cost.`);
+    lines.push(`Evaluator token use: prompt ${evaluatorPromptTokens}, visible candidates ${evaluatorCandidateOutputTokens}, thoughts ${evaluatorThoughtTokens}, billed output (candidates + thoughts) ${evaluatorCandidateOutputTokens + evaluatorThoughtTokens}. This is eval-only cost, not production translation cost.`);
   }
   lines.push('');
   lines.push('## Outputs');
@@ -356,7 +561,15 @@ function renderMarkdown(payload) {
     lines.push(`### ${result.candidateId} / ${result.caseId}`);
     lines.push('');
     lines.push(`- Latency: ${result.durationMs} ms`);
+    lines.push(`- Run: ${result.runId ?? 'historical'}; operation ${result.operation ?? 'translation'}; repeat ${result.repeat ?? 1}${result.round ? `; More Ideas round ${result.round}` : ''}${result.variationKind ? `; variation ${result.variationKind}` : ''}`);
+    const candidateOutputTokens = result.usageMetadata?.candidatesTokenCount ?? 0;
+    const thoughtTokens = result.usageMetadata?.thoughtsTokenCount ?? 0;
+    lines.push(`- Tokens: prompt ${result.usageMetadata?.promptTokenCount ?? 0}; visible candidates ${candidateOutputTokens}; thoughts ${thoughtTokens}; billed output (candidates + thoughts) ${candidateOutputTokens + thoughtTokens}`);
     lines.push(`- Estimated USD: ${result.estimatedUsd}`);
+    lines.push(`- Evaluator USD: ${result.evaluatorUsd ?? 0}; total generation + evaluation USD: ${Number(((result.generationUsd ?? result.estimatedUsd ?? 0) + (result.evaluatorUsd ?? 0)).toFixed(6))}`);
+    lines.push(`- Parse error: ${Boolean(result.parseError)}; contract error: ${Boolean(result.contractError)}; safety flags: ${(result.safetyFlags ?? []).join(', ') || 'none'}`);
+    if (result.useFewerWords) lines.push(`- Fewer Words compliance: ${result.fewerWordsCompliant ?? 'not scored'}`);
+    if (result.interest) lines.push(`- Interest leakage: ${result.interestLeakage ?? 'not scored'}; grounding: ${result.interestGrounded ?? 'not scored'}`);
     if (result.error) {
       lines.push(`- Error: ${result.error}`);
     }
@@ -380,10 +593,15 @@ function renderMarkdown(payload) {
   return `${lines.join('\n')}\n`;
 }
 
-function summarize(results, candidates = MODEL_CANDIDATES) {
+function summarizeBakeoffResults(results, candidates = MODEL_CANDIDATES) {
   return candidates.map((candidate) => {
     const items = results.filter((result) => result.candidateId === candidate.id);
     const aggregateItems = items.filter((item) => !item.excludedFromAggregate);
+    const aggregateMetrics = calculateAggregateMetrics(aggregateItems.map((item) => ({
+      ...item,
+      status: item.status ?? (item.error ? 'error' : 'success'),
+      generationUsd: item.generationUsd ?? item.estimatedUsd ?? 0,
+    })));
     const sum = (selector) => aggregateItems.reduce((total, item) => total + selector(item), 0);
     const qualitySummaries = aggregateItems.map((item) => item.qualityEvaluation?.setSummary).filter(Boolean);
     const errorCount = items.filter((item) => item.error).length;
@@ -397,9 +615,23 @@ function summarize(results, candidates = MODEL_CANDIDATES) {
       aggregateRuns: aggregateItems.length,
       excludedFromAggregate: items.length - aggregateItems.length,
       avgLatencyMs: aggregateItems.length ? Math.round(sum((item) => item.durationMs) / aggregateItems.length) : 0,
+      medianLatencyMs: aggregateMetrics.latencyMs.median,
+      p95LatencyMs: aggregateMetrics.latencyMs.p95,
       promptTokens: sum((item) => item.usageMetadata?.promptTokenCount ?? 0),
-      outputTokens: sum((item) => item.usageMetadata?.candidatesTokenCount ?? 0),
+      candidateOutputTokens: sum((item) => item.usageMetadata?.candidatesTokenCount ?? 0),
+      thoughtTokens: sum((item) => item.usageMetadata?.thoughtsTokenCount ?? 0),
+      billedOutputTokens: sum((item) => (item.usageMetadata?.candidatesTokenCount ?? 0) + (item.usageMetadata?.thoughtsTokenCount ?? 0)),
+      totalTokens: sum((item) => item.usageMetadata?.totalTokenCount ?? 0),
       estimatedUsd: Number(sum((item) => item.estimatedUsd).toFixed(6)),
+      successfulRequestUsd: aggregateMetrics.spendUsd.successfulRequests,
+      costPerSuccessfulRequestUsd: aggregateMetrics.spendUsd.costPerSuccessfulRequest,
+      evaluatorUsd: aggregateMetrics.spendUsd.evaluator,
+      totalGenerationAndEvaluationUsd: aggregateMetrics.spendUsd.generationAndEvaluation,
+      parseErrors: aggregateMetrics.parseErrors,
+      contractErrors: aggregateMetrics.contractErrors,
+      safetyFlags: aggregateMetrics.safetyFlags,
+      fewerWords: aggregateMetrics.fewerWords,
+      interestChecks: aggregateMetrics.interest,
       postprocessedVerdicts: qualitySummaries.length ? formatVerdicts(counts) : null,
       avgUsableOptions: avg((item) => item.bestOptionCount ?? 0),
       avgExcellentOptions: avg((item) => item.excellentOptionCount ?? 0),
@@ -409,91 +641,166 @@ function summarize(results, candidates = MODEL_CANDIDATES) {
   });
 }
 
-loadEnv();
-const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
-if (!apiKey) {
-  console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this bakeoff.');
-  process.exit(1);
-}
-
-const ai = new GoogleGenAI({ apiKey });
-
-if (hasFlag('score-latest')) {
-  const latestJsonPath = path.join(resultsDir, 'latest-model-bakeoff.json');
-  const existingPayload = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
-  const payload = {
-    ...existingPayload,
-    candidates: refreshCandidateMetadata(existingPayload.candidates),
-  };
-  const scoredPayload = await scoreResults(ai, payload);
-  scoredPayload.summary = summarize(scoredPayload.results, scoredPayload.candidates);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const jsonPath = path.join(resultsDir, `model-bakeoff-${timestamp}.json`);
-  const markdownPath = path.join(resultsDir, `model-bakeoff-${timestamp}.md`);
-  const latestMarkdownPath = path.join(resultsDir, 'latest-model-bakeoff.md');
-  fs.writeFileSync(jsonPath, `${JSON.stringify(scoredPayload, null, 2)}\n`);
-  fs.writeFileSync(markdownPath, renderMarkdown(scoredPayload));
-  fs.writeFileSync(latestJsonPath, `${JSON.stringify(scoredPayload, null, 2)}\n`);
-  fs.writeFileSync(latestMarkdownPath, renderMarkdown(scoredPayload));
-  console.log(`Wrote ${markdownPath}`);
-  process.exit(0);
-}
-
-if (hasFlag('rebuild-latest')) {
-  const latestJsonPath = path.join(resultsDir, 'latest-model-bakeoff.json');
-  const latestMarkdownPath = path.join(resultsDir, 'latest-model-bakeoff.md');
-  const existingPayload = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
-  const payload = {
-    ...existingPayload,
-    candidates: refreshCandidateMetadata(existingPayload.candidates),
-  };
-  payload.summary = summarize(payload.results, payload.candidates);
-  fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-  fs.writeFileSync(latestMarkdownPath, renderMarkdown(payload));
-  console.log(`Updated latest JSON at ${latestJsonPath}`);
-  console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
-  process.exit(0);
-}
-
-const limit = getNumericArg('limit', hasFlag('full') ? 40 : 8);
-const cases = loadCases(limit);
-const selectedCandidates = getSelectedCandidates();
-const results = [];
-
-console.log(`Running model bakeoff for ${cases.length} case(s) across ${selectedCandidates.length} candidate(s).`);
-for (const candidate of selectedCandidates) {
-  for (const testCase of cases) {
-    console.log(`- ${candidate.id}: ${testCase.id}`);
-    results.push(await generate(ai, candidate, testCase));
-  }
-}
-
-let payload = {
-  generatedAt: new Date().toISOString(),
-  sourceDocs: [
-    'https://ai.google.dev/gemini-api/docs/models',
-    'https://ai.google.dev/gemini-api/docs/pricing',
-  ],
-  candidates: selectedCandidates,
-  cases,
-  summary: summarize(results, selectedCandidates),
-  results,
+export {
+  normalizeBakeoffPayloadForCurrentRegistry,
+  renderBakeoffMarkdown,
+  summarizeBakeoffResults,
+  writeMigrationReportArtifacts,
+  writeRebuiltLatestArtifacts,
 };
 
-if (hasFlag('score')) {
-  payload = await scoreResults(ai, payload);
-  payload.summary = summarize(payload.results, payload.candidates);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (hasFlag('help')) {
+    console.log(HELP);
+    process.exit(0);
+  }
+
+  if (hasFlag('rebuild-latest')) {
+    const latestJsonPath = path.join(historicalResultsDir, 'latest-model-bakeoff.json');
+    const latestMarkdownPath = path.join(historicalResultsDir, 'latest-model-bakeoff.md');
+    const existingPayload = JSON.parse(fs.readFileSync(latestJsonPath, 'utf8'));
+    const payload = normalizeBakeoffPayloadForCurrentRegistry(existingPayload);
+    payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
+    await writeRebuiltLatestArtifacts({
+      jsonPath: latestJsonPath,
+      markdownPath: latestMarkdownPath,
+      payload,
+      markdown: renderBakeoffMarkdown(payload),
+    });
+    console.log(`Updated latest JSON at ${latestJsonPath}`);
+    console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
+    process.exit(0);
+  }
+
+  const options = parseCliOptions(process.argv.slice(2));
+  const corpusPath = path.resolve(repoRoot, options.corpus ?? defaultCorpusPath);
+  const ledgerPath = await resolveCanonicalSpendLedgerPath({
+    repoRoot,
+    requestedPath: options.ledgerPath ?? defaultSpendLedgerPath,
+  });
+  const corpus = await loadMigrationCorpus(corpusPath);
+  const cases = options.limit ? corpus.cases.slice(0, options.limit) : corpus.cases;
+  const casesById = new Map(cases.map((item) => [item.id, item]));
+  const candidatesById = new Map(options.configurations.map((item) => [item.id, item]));
+
+  loadEnvFile(envPath);
+  const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+  if (!apiKey) {
+    console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running this bakeoff.');
+    process.exit(1);
+  }
+  const ai = new GoogleGenAI({ apiKey });
+
+  if (hasFlag('score-latest')) {
+    const artifactPaths = buildArtifactPaths({ resultsDir: migrationResultsDir, baseName: 'model-bakeoff' });
+    const existingPayload = JSON.parse(fs.readFileSync(artifactPaths.latestJson, 'utf8'));
+    const selectedIds = new Set(options.configurations.map(({ id }) => id));
+    let payload = {
+      ...existingPayload,
+      candidates: options.configurations,
+      results: existingPayload.results.filter(({ candidateId }) => selectedIds.has(candidateId)),
+    };
+    payload = await scoreResults(ai, payload, { ledgerPath, budgetUsd: options.budgetUsd });
+    payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
+    payload.aggregate = calculateAggregateMetrics(payload.results);
+    payload.gates = calculateAggregateGates(payload.results);
+    payload.cumulativeSpend = summarizeSpendLedger(await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd }));
+    await writeMigrationReportArtifacts({
+      artifactPaths,
+      payload,
+      markdown: renderBakeoffMarkdown(payload),
+    });
+    console.log(`Wrote ${artifactPaths.markdown}`);
+    process.exit(0);
+  }
+
+  const plan = buildEvaluationPlan({
+    cases,
+    configurations: options.configurations,
+    repeats: options.repeats,
+    seed: options.seed,
+  });
+  const results = [];
+  const moreIdeasState = new Map();
+  let stoppedBeforeCap = null;
+
+  console.log(`Running migration bakeoff for ${cases.length} case(s), ${plan.calls.length} planned model call(s), and ${options.configurations.length} configuration(s).`);
+  for (const run of plan.calls) {
+    const candidate = candidatesById.get(run.configurationId);
+    const testCase = casesById.get(run.caseId);
+    const stateKey = `${run.configurationId}:${run.caseId}:repeat-${run.repeat}`;
+    const existingTranslations = moreIdeasState.get(stateKey) ?? testCase.existingTranslations ?? [];
+    console.log(`- ${run.runId}`);
+    try {
+      const result = await generate(ai, candidate, testCase, run, {
+        ledgerPath,
+        budgetUsd: options.budgetUsd,
+        existingTranslations,
+        corpusIdentity: {
+          path: path.relative(repoRoot, corpusPath),
+          importedCount: corpus.importedCount,
+          caseCount: cases.length,
+        },
+      });
+      results.push(result);
+      if (run.operation === 'moreIdeas' && result.translations.length) {
+        moreIdeasState.set(stateKey, [...existingTranslations, ...result.translations]);
+      }
+    } catch (error) {
+      stoppedBeforeCap = {
+        runId: run.runId,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+      break;
+    }
+  }
+
+  let payload = {
+    generatedAt: new Date().toISOString(),
+    sourceDocs: [
+      'https://ai.google.dev/gemini-api/docs/models',
+      'https://ai.google.dev/gemini-api/docs/pricing',
+    ],
+    corpus: {
+      path: path.relative(repoRoot, corpusPath),
+      seed: options.seed,
+      importedCount: corpus.importedCount,
+      totalCases: cases.length,
+      provenance: corpus.imports,
+    },
+    repeats: options.repeats,
+    plannedCalls: plan.calls.length,
+    completedCalls: results.length,
+    stoppedBeforeCap,
+    candidates: options.configurations,
+    effectiveConfigurations: options.configurations.map(captureConfigurationMetadata),
+    cases,
+    localChecks: plan.localChecks,
+    qualityScored: false,
+    results,
+  };
+
+  if (options.score && !stoppedBeforeCap) {
+    try {
+      payload = await scoreResults(ai, payload, { ledgerPath, budgetUsd: options.budgetUsd });
+    } catch (error) {
+      payload.stoppedBeforeCap = {
+        stage: 'evaluation',
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+  payload.summary = summarizeBakeoffResults(payload.results, payload.candidates);
+  payload.aggregate = calculateAggregateMetrics(payload.results);
+  payload.gates = calculateAggregateGates(payload.results);
+  payload.cumulativeSpend = summarizeSpendLedger(await readSpendLedger({ repoRoot, ledgerPath, budgetUsd: options.budgetUsd }));
+
+  const artifactPaths = buildArtifactPaths({ resultsDir: migrationResultsDir, baseName: 'model-bakeoff' });
+  await writeMigrationReportArtifacts({
+    artifactPaths,
+    payload,
+    markdown: renderBakeoffMarkdown(payload),
+  });
+
+  console.log(`Wrote ${artifactPaths.markdown}`);
 }
-
-fs.mkdirSync(resultsDir, { recursive: true });
-const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const jsonPath = path.join(resultsDir, `model-bakeoff-${timestamp}.json`);
-const markdownPath = path.join(resultsDir, `model-bakeoff-${timestamp}.md`);
-const latestJsonPath = path.join(resultsDir, 'latest-model-bakeoff.json');
-const latestMarkdownPath = path.join(resultsDir, 'latest-model-bakeoff.md');
-fs.writeFileSync(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(markdownPath, renderMarkdown(payload));
-fs.writeFileSync(latestJsonPath, `${JSON.stringify(payload, null, 2)}\n`);
-fs.writeFileSync(latestMarkdownPath, renderMarkdown(payload));
-
-console.log(`Wrote ${markdownPath}`);

@@ -2,10 +2,10 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, Type } from '@google/genai';
 import { Redis } from '@upstash/redis';
 import { v4 as uuidv4 } from 'uuid';
-import { buildTranslationPrompt, buildVariationPrompt, systemInstruction } from './services/translationPrompt.js';
+import { buildThinkingConfig, resolveGeminiModelConfig } from './services/geminiConfig.js';
+import { createGeminiTranslationHandler } from './services/geminiTranslationHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +24,12 @@ if (fs.existsSync(envPath)) {
         }
     }
 }
+
+const geminiModelConfig = resolveGeminiModelConfig({
+    nodeEnv: process.env.NODE_ENV,
+    configId: process.env.GEMINI_MODEL_CONFIG,
+});
+const geminiThinkingConfig = buildThinkingConfig(geminiModelConfig);
 
 const app = express();
 app.use(express.json());
@@ -59,59 +65,6 @@ function logRateLimitHit(endpoint, waitSeconds, details = {}) {
         endpoint,
         wait_seconds: waitSeconds,
         ...details,
-        timestamp: new Date().toISOString(),
-    }));
-}
-
-function logGeminiUsageMetadata({
-    model,
-    mode,
-    variationKind,
-    tone,
-    useFewerWords,
-    existingTranslationsCount,
-    textLength,
-    durationMs,
-    usageMetadata,
-}) {
-    if (!usageMetadata) {
-        console.info(JSON.stringify({
-            event: 'gemini_usage_metadata',
-            source: 'server',
-            model,
-            mode,
-            variation_kind: variationKind ?? null,
-            tone: tone || 'Default',
-            use_fewer_words: Boolean(useFewerWords),
-            existing_translations_count: existingTranslationsCount,
-            text_length: textLength,
-            duration_ms: durationMs,
-            usage_metadata_available: false,
-            timestamp: new Date().toISOString(),
-        }));
-        return;
-    }
-
-    console.info(JSON.stringify({
-        event: 'gemini_usage_metadata',
-        source: 'server',
-        model,
-        mode,
-        variation_kind: variationKind ?? null,
-        tone: tone || 'Default',
-        use_fewer_words: Boolean(useFewerWords),
-        existing_translations_count: existingTranslationsCount,
-        text_length: textLength,
-        duration_ms: durationMs,
-        usage_metadata_available: true,
-        prompt_token_count: usageMetadata.promptTokenCount ?? null,
-        candidates_token_count: usageMetadata.candidatesTokenCount ?? null,
-        thoughts_token_count: usageMetadata.thoughtsTokenCount ?? null,
-        total_token_count: usageMetadata.totalTokenCount ?? null,
-        cached_content_token_count: usageMetadata.cachedContentTokenCount ?? null,
-        cache_tokens_details: usageMetadata.cacheTokensDetails ?? null,
-        prompt_tokens_details: usageMetadata.promptTokensDetails ?? null,
-        candidates_tokens_details: usageMetadata.candidatesTokensDetails ?? null,
         timestamp: new Date().toISOString(),
     }));
 }
@@ -606,222 +559,23 @@ function buildMockVariationTranslations(sourceTranslation, variationKind, origin
 }
 
 // --- API Endpoint ---
-app.post('/api/translate', async (req, res) => {
-    const {
-        mode = 'translate',
-        text,
-        existingTranslations = [],
-        tone,
-        interest,
-        useFewerWords,
-        sourceTranslation,
-        variationKind,
-    } = req.body;
-    if (!text || typeof text !== 'string') {
-        return res.status(400).json({ error: 'Missing or invalid "text" field.' });
-    }
+app.post('/api/translate', createGeminiTranslationHandler({
+    geminiApiKey,
+    geminiModelConfig,
+    geminiThinkingConfig,
+    redis,
+    isMockTranslationMode,
+    isDevChallengeBypassEnabled,
+    buildMockTranslations,
+    buildMockVariationTranslations,
+    translateRequestLog,
+    variationBurstRequestLog,
+    checkRateLimitFn: checkRateLimit,
+    logRateLimitHit,
+}));
 
-    if (text.length > 500) {
-        return res.status(400).json({ error: 'Input text exceeds the maximum limit of 500 characters.' });
-    }
-
-    if (!['translate', 'moreIdeas', 'variation'].includes(mode)) {
-        return res.status(400).json({ error: 'Missing or invalid "mode" field.' });
-    }
-
-    const normalizedInterest = typeof interest === 'string' ? interest.trim() : '';
-
-    if (tone === 'Interest Based' && !normalizedInterest) {
-        return res.status(400).json({ error: 'Interest Based ideas need an entered interest.' });
-    }
-
-    if (mode === 'variation') {
-        if (!sourceTranslation || typeof sourceTranslation.translation !== 'string') {
-            return res.status(400).json({ error: 'Missing or invalid source translation.' });
-        }
-
-        if (!['similar', 'shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
-            return res.status(400).json({ error: 'Missing or invalid variation kind.' });
-        }
-    }
-
-    // 1. Challenge Token Verification (Primary Bot Defense)
-    if (!isDevChallengeBypassEnabled) {
-        const challengeId = req.headers['x-challenge-id'];
-
-        if (!challengeId || !redis) {
-            console.warn("Request missing challenge ID or Redis not configured");
-            return res.status(403).json({ error: "Access denied. Please use the official website." });
-        }
-
-        try {
-            const challengeKey = `declarative:challenge:${challengeId}`;
-            const isValid = await redis.exists(challengeKey);
-
-            if (!isValid) {
-                console.warn(`Invalid or expired challenge ID: ${challengeId}`);
-                return res.status(403).json({ error: "Invalid or expired session. Please refresh the page." });
-            }
-
-            // Single-use: Delete the token immediately after verification
-            await redis.del(challengeKey);
-        } catch (err) {
-            console.error("Challenge verification failed:", err);
-            // Fail closed for security - strictly require challenge token
-            return res.status(403).json({ error: "Security verification failed." });
-        }
-    }
-
-    // req.ip works reliably here because 'trust proxy' is set to true
-    const clientIp = req.ip;
-    if (mode === 'variation') {
-        const variationLimit = checkRateLimit(
-            translateRequestLog,
-            `${clientIp}:variation`,
-            MAX_VARIATION_REQUESTS_PER_WINDOW,
-            TRANSLATE_RATE_LIMIT_WINDOW_MS
-        );
-
-        if (variationLimit.limited) {
-            logRateLimitHit('/api/translate', variationLimit.wait, {
-                mode,
-                variation_kind: variationKind,
-                window_ms: TRANSLATE_RATE_LIMIT_WINDOW_MS,
-                max_requests_per_window: MAX_VARIATION_REQUESTS_PER_WINDOW,
-            });
-            return res.status(429).json({
-                error: `A lot of versions were tried quickly. Another try will be ready in ${variationLimit.wait} seconds.`
-            });
-        }
-
-        const variationBurstLimit = checkRateLimit(
-            variationBurstRequestLog,
-            clientIp,
-            MAX_VARIATION_REQUESTS_PER_BURST,
-            VARIATION_BURST_WINDOW_MS
-        );
-
-        if (variationBurstLimit.limited) {
-            logRateLimitHit('/api/translate', variationBurstLimit.wait, {
-                mode,
-                variation_kind: variationKind,
-                window_ms: VARIATION_BURST_WINDOW_MS,
-                max_requests_per_window: MAX_VARIATION_REQUESTS_PER_BURST,
-            });
-            return res.status(429).json({
-                error: `A lot of versions were tried quickly. Another try will be ready in ${variationBurstLimit.wait} seconds.`
-            });
-        }
-    } else {
-        const limit = checkRateLimit(
-            translateRequestLog,
-            `${clientIp}:translate`,
-            MAX_TRANSLATE_REQUESTS_PER_WINDOW,
-            TRANSLATE_RATE_LIMIT_WINDOW_MS
-        );
-        if (limit.limited) {
-            logRateLimitHit('/api/translate', limit.wait, {
-                mode,
-                window_ms: TRANSLATE_RATE_LIMIT_WINDOW_MS,
-                max_requests_per_window: MAX_TRANSLATE_REQUESTS_PER_WINDOW,
-            });
-            return res.status(429).json({
-                error: `Rate limit reached. Please wait ${limit.wait} seconds before trying again.`
-            });
-        }
-    }
-
-    const apiKey = geminiApiKey;
-    if (isMockTranslationMode) {
-        if (mode === 'variation') {
-            return res.json(buildMockVariationTranslations(sourceTranslation.translation, variationKind, text));
-        }
-
-        return res.json(buildMockTranslations(text, tone, normalizedInterest, useFewerWords, existingTranslations));
-    }
-
-    if (!apiKey) {
-        return res.status(500).json({ error: 'API key not configured on server.' });
-    }
-
-    const basePrompt = mode === 'variation'
-        ? buildVariationPrompt({
-            text,
-            sourceTranslation: sourceTranslation.translation,
-            variationKind,
-            tone,
-            interest: normalizedInterest,
-            useFewerWords,
-        })
-        : buildTranslationPrompt({
-            text,
-            existingTranslations,
-            tone,
-            interest: normalizedInterest,
-            useFewerWords,
-        });
-
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        const requestStartedAt = Date.now();
-
-        // Race the API call against a 30-second timeout
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out. The AI service took too long to respond.')), 30000)
-        );
-
-        const apiPromise = ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: basePrompt,
-            config: {
-                thinkingConfig: {
-                    thinkingBudget: 0,
-                },
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            translation: { type: Type.STRING },
-                        },
-                        required: ['translation'],
-                    },
-                },
-            },
-        });
-
-        const response = await Promise.race([apiPromise, timeoutPromise]);
-        const responseText = response.text;
-        if (!responseText) {
-            return res.status(500).json({ error: 'Empty response from AI.' });
-        }
-
-        const translations = JSON.parse(responseText.trim());
-        const normalizedTranslations = mode === 'variation'
-            ? dedupeVariationTranslations(translations, sourceTranslation.translation).slice(0, 2)
-            : translations;
-        logGeminiUsageMetadata({
-            model: 'gemini-2.5-flash',
-            mode,
-            variationKind,
-            tone,
-            useFewerWords,
-            existingTranslationsCount: existingTranslations.length,
-            textLength: text.length,
-            durationMs: Date.now() - requestStartedAt,
-            usageMetadata: response.usageMetadata,
-        });
-        return res.json(normalizedTranslations);
-    } catch (error) {
-        console.error('Gemini API Error:', error);
-        const message = error instanceof Error ? error.message : 'AI translation unavailable.';
-        if (message.includes('API key not valid')) {
-            return res.status(500).json({ error: 'API Key is not valid. Please check server configuration.' });
-        }
-        return res.status(500).json({ error: message });
-    }
+app.get('/api/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok', configuration: 'ready' });
 });
 
 // --- Static File Serving ---
@@ -860,6 +614,14 @@ app.get('{*path}', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
+    console.info(JSON.stringify({
+        event: 'gemini_model_config',
+        source: 'server',
+        config_id: geminiModelConfig.id,
+        model: geminiModelConfig.model,
+        thinking_config: geminiThinkingConfig,
+        pricing_verified_on: geminiModelConfig.pricingVerifiedOn,
+    }));
     if (isDevChallengeBypassEnabled) {
         console.warn('⚠️  DEV_BYPASS_CHALLENGE=true - local dev requests can call /api/translate without challenge verification.');
     }

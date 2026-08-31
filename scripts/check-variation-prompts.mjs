@@ -2,38 +2,32 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { buildThinkingConfig } from '../services/geminiConfig.js';
 import { buildVariationPrompt, systemInstruction } from '../services/translationPrompt.js';
+import {
+  CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  MIGRATION_TOKEN_LIMITS,
+  buildArtifactPaths,
+  calculateUsageCost,
+  captureConfigurationMetadata,
+  getProviderDurationMs,
+  parseCliOptions,
+  resolveCanonicalSpendLedgerPath,
+  runBudgetedCall,
+  writePrivateMigrationArtifactSet,
+} from './gemini-migration-eval-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const envPath = path.join(repoRoot, '.env.local');
-
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const [key, ...valueParts] = trimmed.split('=');
-    if (key && !process.env[key]) {
-      process.env[key] = valueParts.join('=').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
-    }
-  }
-}
-
-const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
-if (!apiKey) {
-  console.error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running the variation prompt comparison.');
-  process.exit(1);
-}
-
 const evalPath = path.join(repoRoot, 'evals', 'variation-prompt-set.json');
-const promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'));
-const resultsDir = path.join(repoRoot, 'evals', 'results');
-fs.mkdirSync(resultsDir, { recursive: true });
-
-const ai = new GoogleGenAI({ apiKey });
-const modelId = 'gemini-2.5-flash';
+const resultsDir = path.join(repoRoot, 'evals', 'results', 'gemini-migration');
+let options;
+let configuration;
+let ledgerPath;
+let promptSet;
+let ai;
 
 const VARIATION_KIND_LABELS = {
   similar: 'Similar',
@@ -113,28 +107,50 @@ async function runVariation(promptCase, variationKind) {
     useFewerWords: promptCase.useFewerWords,
   });
 
-  const startedAt = Date.now();
-
-  const response = await ai.models.generateContent({
-    model: modelId,
-    contents: prompt,
-    config: {
-      thinkingConfig: {
-        thinkingBudget: 0,
-      },
-      systemInstruction,
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            translation: { type: Type.STRING },
+  const response = await runBudgetedCall({
+    repoRoot,
+    ledgerPath,
+    budgetUsd: options.budgetUsd,
+    type: 'generation',
+    runId: `${configuration.id}:${promptCase.id}:${variationKind}`,
+    configuration,
+    tokenLimits: MIGRATION_TOKEN_LIMITS.generation,
+    request: {
+      model: configuration.model,
+      contents: prompt,
+      config: {
+        maxOutputTokens: MIGRATION_TOKEN_LIMITS.generation.maxOutputTokens,
+        thinkingConfig: buildThinkingConfig(configuration),
+        systemInstruction,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              translation: { type: Type.STRING },
+            },
+            required: ['translation'],
           },
-          required: ['translation'],
         },
       },
     },
+    requestContext: {
+      harnessVersion: 'task-6-request-v1',
+      schemaVersion: 'translation-array-v1',
+      corpusSourceIdentity: 'evals/variation-prompt-set.json',
+      caseId: promptCase.id,
+      repeat: 1,
+      direction: variationKind,
+      moreIdeasRound: null,
+      operation: 'variation',
+    },
+    call: (request) => ai.models.generateContent(request),
+    serializeResult: (value) => ({
+      text: value.text,
+      usageMetadata: value.usageMetadata,
+      candidates: value.candidates,
+    }),
   });
 
   let translations;
@@ -150,9 +166,11 @@ async function runVariation(promptCase, variationKind) {
   return {
     variationKind,
     label: VARIATION_KIND_LABELS[variationKind],
-    durationMs: Date.now() - startedAt,
+    durationMs: getProviderDurationMs(response),
     prompt,
+    effectiveConfiguration: captureConfigurationMetadata(configuration),
     usageMetadata: response.usageMetadata ?? null,
+    generationUsd: calculateUsageCost(configuration, response.usageMetadata),
     translations,
     heuristics,
     pairHeuristics,
@@ -241,7 +259,37 @@ function buildMarkdown(results, timestamp) {
   return `${lines.join('\n')}\n`;
 }
 
+export async function writeVariationArtifacts({ artifactPaths, payload, markdown }) {
+  await writePrivateMigrationArtifactSet({ artifactPaths, payload, markdown });
+}
+
 async function main() {
+  options = parseCliOptions(process.argv.slice(2));
+  if (options.configurations.length !== 1) {
+    throw new Error('Variation migration checks require exactly one explicit --configuration.');
+  }
+  configuration = options.configurations[0];
+  ledgerPath = await resolveCanonicalSpendLedgerPath({
+    repoRoot,
+    requestedPath: options.ledgerPath ?? CANONICAL_SPEND_LEDGER_RELATIVE_PATH,
+  });
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && !process.env[key]) {
+        process.env[key] = valueParts.join('=').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+      }
+    }
+  }
+  const apiKey = process.env.GEMINI_API_KEY?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
+  if (!apiKey) throw new Error('Missing GEMINI_API_KEY. Set it in .env.local or the environment before running the variation prompt comparison.');
+  promptSet = JSON.parse(fs.readFileSync(evalPath, 'utf8'))
+    .filter((item) => !(item.tone === 'Interest Based' && !item.interest));
+  ai = new GoogleGenAI({ apiKey });
+
   const startedAt = Date.now();
   console.log(`Running ${promptSet.length} variation prompt cases...`);
 
@@ -261,26 +309,35 @@ async function main() {
     });
   }
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const jsonPath = path.join(resultsDir, `variation-prompt-review-${timestamp}.json`);
-  const markdownPath = path.join(resultsDir, `variation-prompt-review-${timestamp}.md`);
-  const latestJsonPath = path.join(resultsDir, 'latest-variation-prompt-review.json');
-  const latestMarkdownPath = path.join(resultsDir, 'latest-variation-prompt-review.md');
+  const artifactPaths = buildArtifactPaths({ resultsDir, baseName: 'variation-prompt-review' });
+  const timestamp = new Date().toISOString();
 
-  fs.writeFileSync(jsonPath, JSON.stringify(results, null, 2));
-  fs.writeFileSync(markdownPath, buildMarkdown(results, timestamp));
-  fs.writeFileSync(latestJsonPath, JSON.stringify(results, null, 2));
-  fs.writeFileSync(latestMarkdownPath, buildMarkdown(results, timestamp));
+  await writeVariationArtifacts({
+    artifactPaths,
+    payload: results,
+    markdown: buildMarkdown(results, timestamp),
+  });
 
   console.log('');
-  console.log(`Wrote JSON results to ${jsonPath}`);
-  console.log(`Wrote Markdown review report to ${markdownPath}`);
-  console.log(`Updated latest JSON at ${latestJsonPath}`);
-  console.log(`Updated latest Markdown at ${latestMarkdownPath}`);
+  console.log(`Wrote JSON results to ${artifactPaths.json}`);
+  console.log(`Wrote Markdown review report to ${artifactPaths.markdown}`);
+  console.log(`Updated latest JSON at ${artifactPaths.latestJson}`);
+  console.log(`Updated latest Markdown at ${artifactPaths.latestMarkdown}`);
   console.log(`Completed in ${Date.now() - startedAt} ms`);
 }
 
-main().catch((error) => {
-  console.error('Variation prompt review failed:', error);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes('--help')) {
+    console.log(`Gemini variation prompt comparison
+
+Usage:
+  node scripts/check-variation-prompts.mjs --configuration=<id> [options]
+
+Use one explicit allow-listed configuration. This help path does not load credentials or call Gemini.`);
+    process.exit(0);
+  }
+  main().catch((error) => {
+    console.error('Variation prompt review failed:', error);
+    process.exit(1);
+  });
+}
