@@ -4,7 +4,8 @@ import { trackEvent } from '../services/analytics';
 import { cloneTranslations, cloneVariationCache, countSavedVariationSets, createEntityId } from '../services/translationUtils';
 import type { HistoryEntryInput, HistoryItem, Translation, VariationCache, VariationKind, VariationHistoryMap } from '../types';
 import { CopyIcon, CheckIcon, SpeechBubbleIcon, AlignLeftIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon, QuestionMarkCircleIcon } from './icons/Icons';
-import { DonationCallout } from './DonationCallout';
+import { InFeedSupporterCard } from './InFeedSupporterCard';
+import { incrementLifetimeTranslationCount } from '../services/supporterCardStorage';
 
 interface TranslatorProps {
   history: HistoryItem[];
@@ -535,6 +536,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
         useFewerWords,
       });
       setTranslations(results);
+      incrementLifetimeTranslationCount();
       setCurrentRunId(nextRunId);
       saveRunState(nextRunId, results);
     } catch (e: unknown) {
@@ -827,8 +829,6 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
           Enter a statement you want to say, and get gentle, declarative alternatives.
         </p>
       </div>
-
-      <DonationCallout />
 
       <div className="relative w-full bg-white p-6 md:p-8 rounded-3xl border border-gray-200 shadow-xl shadow-sky-100/50">
         <div className="flex flex-col space-y-6">
@@ -1131,19 +1131,23 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
         <div ref={resultsRef} className="w-full space-y-4 pt-4 md:pt-6 scroll-mt-48">
           <h3 className="text-xl md:text-2xl font-bold text-center text-gray-800">Here are a few ideas:</h3>
           <div className="space-y-4 pt-4">
-            {translations.map((item) => (
-              <TranslationItem
-                key={item.id}
-                item={item}
-                isOpen={openVariationSourceId === item.id}
-                onToggleOpen={() => handleToggleVariationPanel(item.id)}
-                variationKinds={variationKinds}
-                variationCache={variationCache[item.id] || {}}
-                variationState={variationStates[item.id]}
-                onVariationSelect={handleVariationSelect}
-                disableVariationControls={isInterestBasedMissingInterest}
-                variationDisabledMessage={isInterestBasedMissingInterest ? 'Add an interest to try variations for Interest Based ideas.' : undefined}
-              />
+            {translations.map((item, index) => (
+              <React.Fragment key={item.id}>
+                <TranslationItem
+                  item={item}
+                  isOpen={openVariationSourceId === item.id}
+                  onToggleOpen={() => handleToggleVariationPanel(item.id)}
+                  variationKinds={variationKinds}
+                  variationCache={variationCache[item.id] || {}}
+                  variationState={variationStates[item.id]}
+                  onVariationSelect={handleVariationSelect}
+                  disableVariationControls={isInterestBasedMissingInterest}
+                  variationDisabledMessage={isInterestBasedMissingInterest ? 'Add an interest to try variations for Interest Based ideas.' : undefined}
+                />
+                {((index === 1 && translations.length >= 2) || (index === 0 && translations.length === 1)) && (
+                  <InFeedSupporterCard />
+                )}
+              </React.Fragment>
             ))}
           </div>
           {!isLoading && (
