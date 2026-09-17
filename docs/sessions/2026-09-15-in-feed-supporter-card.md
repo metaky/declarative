@@ -66,7 +66,7 @@
 * **Unit Tests**: `node --test` runs 168 tests (168 passed, 0 failed).
 * **TypeScript**: `tsc` passed with zero diagnostics.
 * **Production Build**: `vite build` completed cleanly in 4.08s.
-* **Production Deployment**: Shipped via `gcloud run deploy` to Cloud Run revision `declarative-35lite-morelike-health` serving 100% of traffic. Verified via `/api/healthz` (`200 OK`).
+* **Production Deployment**: Shipped via `gcloud run deploy` to Cloud Run revision `declarative-00112-fw5`. On Sep 17, 2026, traffic routing was updated via `gcloud run services update-traffic declarative --to-latest` to unpin from the legacy `declarative-35lite-morelike-health` canary and direct 100% of production traffic to `LATEST` (`declarative-00112-fw5`). Verified live on `https://declarativeapp.org`.
 
 ---
 
