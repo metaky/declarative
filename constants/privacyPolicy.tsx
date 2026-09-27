@@ -10,30 +10,31 @@ export const PRIVACY_POLICY_CONTENT = (
 
         <h2>1. Information We Collect</h2>
         <p>
-            We may collect information about you in a variety of ways. The information we may collect via the Application includes:
+            We collect information about you in the following ways when you use the Application:
         </p>
-        <h3>Automatically Collected Information</h3>
+        <h3>AI Translation (Google Gemini)</h3>
         <p>
-            When you use our application, we automatically collect certain information to help us understand usage patterns and improve our services. This is done through a third-party analytics service called PostHog. The information collected includes:
+            The text you enter into the input box is sent to Google's Gemini API to generate declarative translation suggestions. For details on how Google processes and protects this data, please see the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">Google Gemini API Terms of Service</a>.
+        </p>
+        <h3>Analytics and Session Recordings (PostHog)</h3>
+        <p>
+            We collect anonymous usage analytics via PostHog (such as page views, clicks, and feature usage via autocapture) plus session recordings that show on-screen content, including the AI-generated translation suggestions. Text typed into the input box is masked and is not visible in recordings. We collect this data for the purpose of understanding usage and improving translation quality. Users are anonymous (no accounts are created or required). The data collected includes:
         </p>
         <ul>
-            <li><strong>Usage Data:</strong> We collect information about your interactions with the app, such as the features you use, buttons you click, and pages you view.</li>
-            <li><strong>Session Replays:</strong> To improve the application’s usability and identify issues, we may record your sessions. These recordings capture your interactions with the user interface, such as clicks, scrolls, and navigation. We take care to ensure that sensitive information is not captured in these recordings.</li>
-            <li><strong>Device Information:</strong> We may collect basic information about your device, such as browser type and operating system, to help us troubleshoot issues.</li>
+            <li><strong>Usage Analytics:</strong> Anonymous information about your interactions with the app, such as the features you use, buttons you click, and pages you view via autocapture.</li>
+            <li><strong>Session Recordings:</strong> Visual replays of on-screen user interface interactions and generated translation suggestions. Any text typed into the input box is masked and is not visible in recordings.</li>
+            <li><strong>Device Information:</strong> Basic device and browser information (such as browser type and operating system) to help troubleshoot technical issues.</li>
         </ul>
-        <h3>User Identification</h3>
-        <p>
-            If and when user accounts are implemented, we will use PostHog to associate your usage data with a unique, anonymous user ID. This helps us understand user journeys and provide better support. This ID is not linked to your personal name or email address unless you provide it to us for support purposes.
-        </p>
 
         <h2>2. How We Use Your Information</h2>
         <p>
-            Having accurate information permits us to provide you with a smooth, efficient, and customized experience. Specifically, we use information collected via our analytics provider, PostHog, to:
+            Having accurate information permits us to provide you with a smooth, efficient, and customized experience. Specifically, we use information collected to:
         </p>
         <ul>
+            <li>Generate declarative translation suggestions via Google's Gemini API.</li>
+            <li>Understand usage patterns and improve translation quality.</li>
             <li>Monitor and analyze usage and trends to improve your experience with the Application.</li>
             <li>Identify and troubleshoot bugs and errors.</li>
-            <li>Understand which features are most popular to guide future development.</li>
         </ul>
 
         <h2>3. Disclosure of Your Information</h2>
@@ -42,10 +43,14 @@ export const PRIVACY_POLICY_CONTENT = (
         </p>
         <ul>
             <li>
-                <strong>By Law or to Protect Rights:</strong> If we believe the release of information about you is necessary to respond to legal process, to investigate or remedy potential violations of our policies, or to protect the rights, property, and safety of others, we may share your information as permitted or required by any applicable law, rule, or regulation.
+                <strong>Third-Party Service Providers:</strong> We share information with third-party service providers that enable core application functionality and analytics:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Google Gemini API:</strong> The text you enter into the input box is sent to Google's Gemini API to generate translation suggestions. Please see the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">Google Gemini API Terms of Service</a> for data-use details.</li>
+                    <li><strong>PostHog:</strong> We share anonymous usage analytics and session recordings with PostHog to analyze how the app is used. PostHog's use of your information is governed by their privacy policy.</li>
+                </ul>
             </li>
             <li>
-                <strong>Third-Party Service Providers:</strong> We share usage data with our analytics provider, PostHog, which helps us analyze how the app is used. PostHog's use of your information is governed by their privacy policy.
+                <strong>By Law or to Protect Rights:</strong> If we believe the release of information about you is necessary to respond to legal process, to investigate or remedy potential violations of our policies, or to protect the rights, property, and safety of others, we may share your information as permitted or required by any applicable law, rule, or regulation.
             </li>
         </ul>
 

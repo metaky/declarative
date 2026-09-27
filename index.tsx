@@ -10,6 +10,7 @@ try {
   posthog.init('phc_pvFdBKNfNPtBnedh7BuUFSNW2hYqbjb2N6kWgRdagOg', {
     api_host: 'https://us.i.posthog.com',
     autocapture: true, // Enable autocapture as requested
+    respect_dnt: true,
   });
 } catch (error) {
   console.warn('PostHog initialization failed or was blocked:', error);
