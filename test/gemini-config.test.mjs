@@ -16,6 +16,8 @@ const EXPECTED_CONFIGURATIONS = [
     thinking: { thinkingBudget: 0 },
     inputUsdPerMillion: 0.30,
     outputUsdPerMillion: 2.50,
+    productionAllowed: false,
+    deprecated: true,
   },
   {
     id: 'gemini-3.5-flash-lite-minimal',
@@ -23,6 +25,7 @@ const EXPECTED_CONFIGURATIONS = [
     thinking: { thinkingLevel: 'minimal' },
     inputUsdPerMillion: 0.30,
     outputUsdPerMillion: 2.50,
+    productionAllowed: true,
   },
   {
     id: 'gemini-3.6-flash-minimal',
@@ -30,6 +33,7 @@ const EXPECTED_CONFIGURATIONS = [
     thinking: { thinkingLevel: 'minimal' },
     inputUsdPerMillion: 1.50,
     outputUsdPerMillion: 7.50,
+    productionAllowed: true,
   },
   {
     id: 'gemini-3.6-flash-medium',
@@ -37,6 +41,7 @@ const EXPECTED_CONFIGURATIONS = [
     thinking: { thinkingLevel: 'medium' },
     inputUsdPerMillion: 1.50,
     outputUsdPerMillion: 7.50,
+    productionAllowed: true,
   },
 ];
 
@@ -74,16 +79,23 @@ test('keeps every production-selectable configuration aligned with the approved 
     assert.equal(configuration.inputUsdPerMillion, expected.inputUsdPerMillion, `${expected.id} would misbill prompt tokens`);
     assert.equal(configuration.outputUsdPerMillion, expected.outputUsdPerMillion, `${expected.id} would misbill output tokens`);
     assert.equal(configuration.pricingVerifiedOn, '2026-08-13', `${expected.id} would have unverified pricing metadata`);
-    assert.equal(configuration.productionAllowed, true, `${expected.id} would be unavailable to an explicit production rollout`);
+    assert.equal(configuration.productionAllowed, expected.productionAllowed, `${expected.id} has incorrect productionAllowed status`);
   }
 });
 
-test('uses the unchanged 2.5 Flash zero-thinking baseline when local development does not select a configuration', () => {
+test('uses the 3.5 Flash-Lite minimal baseline when local development does not select a configuration', () => {
   const configuration = resolveGeminiModelConfig({ nodeEnv: 'development', configId: undefined });
 
-  assert.equal(configuration.id, 'gemini-2.5-flash-baseline');
-  assert.equal(configuration.model, 'gemini-2.5-flash');
-  assert.deepEqual(buildThinkingConfig(configuration), { thinkingBudget: 0 });
+  assert.equal(configuration.id, 'gemini-3.5-flash-lite-minimal');
+  assert.equal(configuration.model, 'gemini-3.5-flash-lite');
+  assert.deepEqual(buildThinkingConfig(configuration), { thinkingLevel: 'minimal' });
+});
+
+test('rejects deprecated gemini-2.5-flash-baseline in production', () => {
+  assert.throws(
+    () => resolveGeminiModelConfig({ nodeEnv: 'production', configId: 'gemini-2.5-flash-baseline' }),
+    /GEMINI_MODEL_CONFIG is unknown or not allowed in production: gemini-2.5-flash-baseline/i,
+  );
 });
 
 test('rejects a missing production configuration before the server can bind', () => {
@@ -122,6 +134,18 @@ test('stops the production server before it binds when GEMINI_MODEL_CONFIG is ab
   assert.notEqual(result.exitCode, 0, 'server reported a successful startup with a missing production configuration');
   assert.doesNotMatch(result.output, /Server listening on port/, 'server bound a port before rejecting the missing production configuration');
   assert.match(result.output, /GEMINI_MODEL_CONFIG.*required.*production/i, 'server did not explain the missing production configuration error');
+});
+
+test('stops the production server before it binds when GEMINI_MODEL_CONFIG is deprecated gemini-2.5-flash-baseline', async () => {
+  const result = await startServerWithEnvironment({
+    NODE_ENV: 'production',
+    GEMINI_MODEL_CONFIG: 'gemini-2.5-flash-baseline',
+  });
+
+  assert.equal(result.timedOut, false, 'server kept running instead of rejecting deprecated configuration in production');
+  assert.notEqual(result.exitCode, 0, 'server reported a successful startup with a deprecated configuration');
+  assert.doesNotMatch(result.output, /Server listening on port/, 'server bound a port with deprecated configuration');
+  assert.match(result.output, /GEMINI_MODEL_CONFIG is unknown or not allowed in production/i, 'server did not explain disallowed configuration');
 });
 
 test('charges visible output and thought tokens once at the output rate without using totalTokenCount', () => {

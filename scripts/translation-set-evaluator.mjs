@@ -1,6 +1,6 @@
 import { Type } from '@google/genai';
 
-export const DEFAULT_EVALUATOR_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_EVALUATOR_MODEL = 'gemini-3.5-flash-lite';
 
 export const scoreKeys = [
   'authenticity',

@@ -7,9 +7,9 @@ import express from 'express';
 import { createGeminiTranslationHandler } from '../services/geminiTranslationHandler.js';
 
 const MODEL_CONFIG = {
-  id: 'gemini-2.5-flash-baseline',
-  model: 'gemini-2.5-flash',
-  thinkingBudget: 0,
+  id: 'gemini-3.5-flash-lite-minimal',
+  model: 'gemini-3.5-flash-lite',
+  thinkingLevel: 'minimal',
 };
 const VALID_TEXT = '[{"translation":"The blocks have a spot on the shelf."},{"translation":"The shelf is ready for the blocks."},{"translation":"The blocks can head to their shelf."}]';
 
@@ -159,7 +159,7 @@ for (const [index, scenario] of COMPLETION_CASES.entries()) {
       }
       assert.equal(events.length, 1);
       assert.equal(events[0].outcome, scenario.wantOutcome);
-      assert.equal(events[0].config.id, 'gemini-2.5-flash-baseline');
+      assert.equal(events[0].config.id, 'gemini-3.5-flash-lite-minimal');
       assert.equal(events[0].mode, 'translate');
     });
   });

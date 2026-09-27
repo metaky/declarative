@@ -1,15 +1,16 @@
-const BASELINE_CONFIG_ID = 'gemini-2.5-flash-baseline';
+const BASELINE_CONFIG_ID = 'gemini-3.5-flash-lite-minimal';
 
 const GEMINI_MODEL_CONFIGURATIONS = Object.freeze([
   Object.freeze({
-    id: BASELINE_CONFIG_ID,
+    id: 'gemini-2.5-flash-baseline',
     model: 'gemini-2.5-flash',
     thinkingBudget: 0,
     inputUsdPerMillion: 0.30,
     outputUsdPerMillion: 2.50,
     pricingVerifiedOn: '2026-08-13',
-    pricingNote: 'Gemini 2.5 Flash standard paid pricing verified against official Gemini docs on 2026-08-13.',
-    productionAllowed: true,
+    pricingNote: 'Deprecated: Gemini 2.5 Flash shutdown scheduled for 2026-10-16. Not allowed in production.',
+    productionAllowed: false,
+    deprecated: true,
   }),
   Object.freeze({
     id: 'gemini-3.5-flash-lite-minimal',
@@ -59,6 +60,10 @@ export function resolveGeminiModelConfig({ nodeEnv, configId }) {
   const config = getGeminiModelConfig(configId);
   if (!config || (nodeEnv === 'production' && !config.productionAllowed)) {
     throw new Error(`GEMINI_MODEL_CONFIG is unknown or not allowed in production: ${configId}`);
+  }
+
+  if (config.deprecated) {
+    console.warn(`⚠️  Warning: Gemini model configuration '${config.id}' is deprecated and scheduled for shutdown on 2026-10-16.`);
   }
 
   return config;
