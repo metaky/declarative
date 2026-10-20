@@ -67,6 +67,7 @@ export function createGeminiTranslationHandler({
       useFewerWords,
       sourceTranslation,
       variationKind,
+      demandSignals = [],
     } = req.body;
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid "text" field.' });
@@ -191,6 +192,7 @@ export function createGeminiTranslationHandler({
         tone,
         interest: normalizedInterest,
         useFewerWords,
+        demandSignals: Array.isArray(demandSignals) ? demandSignals : [],
       });
 
     let requestStartedAt = null;

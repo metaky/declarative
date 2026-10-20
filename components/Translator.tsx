@@ -6,6 +6,8 @@ import type { HistoryEntryInput, HistoryItem, Translation, VariationCache, Varia
 import { CopyIcon, CheckIcon, SpeechBubbleIcon, AlignLeftIcon, LaughingFaceIcon, BalanceScaleIcon, StarIcon, HistoryIcon, TrashIcon, CloseIcon, ShareIcon, QuestionMarkCircleIcon } from './icons/Icons';
 import { InFeedSupporterCard } from './InFeedSupporterCard';
 import { incrementLifetimeTranslationCount } from '../services/supporterCardStorage';
+import { DemandRadarPanel } from './DemandRadarPanel';
+import { useDemandRadar } from '../hooks/useDemandRadar';
 
 interface TranslatorProps {
   history: HistoryItem[];
@@ -308,6 +310,16 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   const [variationCache, setVariationCache] = useState<VariationHistoryMap>({});
   const [variationStates, setVariationStates] = useState<Record<string, VariationPanelState>>({});
   const [openVariationSourceId, setOpenVariationSourceId] = useState<string | null>(null);
+  const [submittedRadarText, setSubmittedRadarText] = useState('');
+  const {
+    radarResult,
+    liveRadarResult,
+    ignoreSignal,
+    analyzeSubmittedText,
+    isLoadingAI: isRadarLoadingAI,
+  } = useDemandRadar(inputValue, submittedRadarText, 300);
+  const radarSignalsRef = useRef(liveRadarResult.signals);
+  radarSignalsRef.current = liveRadarResult.signals;
 
   const [interest, setInterest] = useState(() => {
     try {
@@ -518,6 +530,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     if (!getCurrentRequestText() || isLoading || isInterestBasedMissingInterest) return;
 
     const requestText = getCurrentRequestText();
+    setSubmittedRadarText(requestText);
+    void analyzeSubmittedText(requestText);
     const nextRunId = createEntityId('history');
     setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
     setIsLoading(true);
@@ -534,6 +548,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
         tone,
         interest: getCurrentInterest(),
         useFewerWords,
+        demandSignals: radarSignalsRef.current.map((s) => s.category),
       });
       setTranslations(results);
       incrementLifetimeTranslationCount();
@@ -565,6 +580,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
         tone,
         interest: getCurrentInterest(),
         useFewerWords,
+        demandSignals: radarSignalsRef.current.map((s) => s.category),
       });
       const combinedTranslations = [...translations, ...results];
       setTranslations(combinedTranslations);
@@ -606,6 +622,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
 
   const handleSelectHistory = (item: HistoryItem) => {
     setInputValue(item.imperativeText);
+    setSubmittedRadarText(item.imperativeText);
     setTranslations(cloneTranslations(item.translations));
     setTone(item.tone || TONE_OPTIONS[0].name);
     setInterest(item.interest || '');
@@ -1112,24 +1129,36 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
         </div>
       )}
 
-      {isLoading && (
-        <div className="flex flex-col items-center justify-center space-y-3 text-gray-600 pt-8">
-          <svg className="animate-spin h-8 w-8 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <span className="text-lg">{loadingMessage}</span>
-        </div>
-      )}
-      {error && (
-        <div className="w-full p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl">
-          <p><span className="font-bold">Oops!</span> {error}</p>
-        </div>
-      )}
+      {(isLoading || translations.length > 0 || error) && (
+        <div ref={resultsRef} className="w-full space-y-4 pt-2 md:pt-4 scroll-mt-6">
+          {submittedRadarText && (
+            <DemandRadarPanel
+              result={radarResult}
+              inputText={submittedRadarText}
+              onIgnoreSignal={ignoreSignal}
+              isLoadingAI={isRadarLoadingAI}
+            />
+          )}
 
-      {translations.length > 0 && !isLoading && (
-        <div ref={resultsRef} className="w-full space-y-4 pt-4 md:pt-6 scroll-mt-48">
-          <h3 className="text-xl md:text-2xl font-bold text-center text-gray-800">Here are a few ideas:</h3>
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center space-y-3 text-gray-600 py-8 bg-white/70 rounded-2xl border border-gray-100">
+              <svg className="animate-spin h-8 w-8 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-lg">{loadingMessage}</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="w-full p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl">
+              <p><span className="font-bold">Oops!</span> {error}</p>
+            </div>
+          )}
+
+          {translations.length > 0 && !isLoading && (
+            <>
+              <h3 className="text-xl md:text-2xl font-bold text-center text-gray-800 pt-2">Here are a few ideas:</h3>
           <div className="space-y-4 pt-4">
             {translations.map((item, index) => (
               <React.Fragment key={item.id}>
@@ -1170,6 +1199,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
                 {hasCopiedShareLink ? 'Link Copied!' : 'Recommend this tool'}
               </button>
             </div>
+          )}
+            </>
           )}
         </div>
       )}

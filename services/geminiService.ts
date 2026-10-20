@@ -12,6 +12,7 @@ interface TranslateRequestOptions {
   sourceTranslation?: Translation;
   variationKind?: VariationKind;
   signal?: AbortSignal;
+  demandSignals?: string[];
 }
 
 interface ClientRateLimitState {
@@ -167,6 +168,7 @@ const buildRequestBody = (options: TranslateRequestOptions) => {
     tone: options.tone,
     interest: options.interest,
     useFewerWords: options.useFewerWords,
+    demandSignals: options.demandSignals,
   };
 };
 

@@ -6,6 +6,7 @@ import { Redis } from '@upstash/redis';
 import { v4 as uuidv4 } from 'uuid';
 import { buildThinkingConfig, resolveGeminiModelConfig } from './services/geminiConfig.js';
 import { createGeminiTranslationHandler } from './services/geminiTranslationHandler.js';
+import { createGeminiDemandRadarHandler } from './services/geminiDemandRadarHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -572,6 +573,15 @@ app.post('/api/translate', createGeminiTranslationHandler({
     variationBurstRequestLog,
     checkRateLimitFn: checkRateLimit,
     logRateLimitHit,
+}));
+
+app.post('/api/demand-radar', createGeminiDemandRadarHandler({
+    geminiApiKey,
+    geminiModelConfig,
+    geminiThinkingConfig,
+    isMockTranslationMode,
+    translateRequestLog,
+    checkRateLimitFn: checkRateLimit,
 }));
 
 app.get('/api/healthz', (req, res) => {

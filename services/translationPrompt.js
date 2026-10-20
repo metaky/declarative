@@ -293,6 +293,7 @@ export function buildTranslationPrompt({
     tone,
     interest,
     useFewerWords,
+    demandSignals = [],
 }) {
     const toneInstruction = getToneInstruction(tone, interest);
     const contextInstruction = buildContextInstruction(text, tone, interest);
@@ -303,7 +304,11 @@ export function buildTranslationPrompt({
         ? `\nCovered angles: ${followUpCoverage.usedAngles}. Used openings: ${followUpCoverage.openingPatterns.join('; ')}. Underused angles to lean on next: ${followUpCoverage.underusedAngles}. Write 3-4 genuinely new alternatives. Treat those angles, openings, and sentence shapes as used. Favor the underused angles first, start each suggestion differently from the earlier set, and avoid stock frames or recycled sentence skeletons.`
         : '';
 
-    return `Rewrite into 3-4 declarative alternatives that preserve full meaning while reducing pressure: "${text}". Address all parts.${contextInstruction} Tone: ${toneInstruction}${lengthInstruction}
+    const demandInstruction = Array.isArray(demandSignals) && demandSignals.length > 0
+        ? ` Detected demand patterns: ${demandSignals.join(', ')}. Specifically soften and dismantle these demand triggers (e.g. replace urgency with autonomy, shift imperatives to shared wonderings or factual setup, and eliminate threats).`
+        : '';
+
+    return `Rewrite into 3-4 declarative alternatives that preserve full meaning while reducing pressure: "${text}". Address all parts.${contextInstruction} Tone: ${toneInstruction}${lengthInstruction}${demandInstruction}
 
 Privately draft more candidates than you need, then return only the best 3-4. Keep the winners varied. A winning set should include at least 1-2 options a real caregiver could use immediately. Reject candidates that sound like rules, vague captions, hidden commands, gimmicks, emotional pressure, generic AI phrasing, or tone-mismatched filler. If the tone is Interest Based and an interest was entered, reject every candidate that does not use the interest or a recognizable element from it in a way that logically connects to the task, and reject candidates that incorporate the interest by falsely renaming the real task objects. Return only the JSON array.${followUpInstruction}`;
 }
@@ -315,6 +320,7 @@ export function buildVariationPrompt({
     tone,
     interest,
     useFewerWords,
+    demandSignals = [],
 }) {
     const toneInstruction = getToneInstruction(tone, interest);
     const contextInstruction = buildContextInstruction(text, tone, interest);
