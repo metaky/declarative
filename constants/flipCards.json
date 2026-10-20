@@ -1,0 +1,162 @@
+[
+  {
+    "id": "shoes-by-door",
+    "category": "Mornings",
+    "before": "Put your shoes on now!",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "Shoes are waiting by the door.",
+    "whyItWorks": "Notices what's ready instead of commanding — nothing to push against.",
+    "demandBefore": 75,
+    "demandAfter": 8
+  },
+  {
+    "id": "stop-yelling",
+    "category": "Siblings & Big Feelings",
+    "before": "Stop yelling!",
+    "beforeSignals": ["negative", "imperative"],
+    "after": "Sounds like the volume got turned all the way up.",
+    "whyItWorks": "Describes what you hear; 'stop' usually raises the volume.",
+    "demandBefore": 75,
+    "demandAfter": 10
+  },
+  {
+    "id": "clean-your-room",
+    "category": "School & Chores",
+    "before": "Clean your room!",
+    "beforeSignals": ["imperative"],
+    "after": "The floor's getting hard to walk across.",
+    "whyItWorks": "States the problem and lets them decide the fix.",
+    "demandBefore": 65,
+    "demandAfter": 12
+  },
+  {
+    "id": "eat-your-dinner",
+    "category": "Mealtimes",
+    "before": "Eat your dinner.",
+    "beforeSignals": ["imperative"],
+    "after": "Dinner's on the table and getting cold.",
+    "whyItWorks": "Shares information; hunger does the persuading.",
+    "demandBefore": 60,
+    "demandAfter": 10
+  },
+  {
+    "id": "hurry-up-late",
+    "category": "Mornings",
+    "before": "Hurry up, we're late!",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "The car leaves in five minutes.",
+    "whyItWorks": "Gives the fact without the pressure — urgency backfires with demand-sensitive kids.",
+    "demandBefore": 85,
+    "demandAfter": 15
+  },
+  {
+    "id": "because-i-said-so",
+    "category": "Siblings & Big Feelings",
+    "before": "Because I said so!",
+    "beforeSignals": ["imperative", "absolute"],
+    "after": "This one's my call as the parent.",
+    "whyItWorks": "Owns the decision calmly instead of pulling rank.",
+    "demandBefore": 80,
+    "demandAfter": 18
+  },
+  {
+    "id": "stop-fighting-sister",
+    "category": "Siblings & Big Feelings",
+    "before": "Stop fighting with your sister!",
+    "beforeSignals": ["negative", "imperative"],
+    "after": "Two kids, one toy — tricky situation.",
+    "whyItWorks": "Names what you see; takes you out of the referee role.",
+    "demandBefore": 78,
+    "demandAfter": 10
+  },
+  {
+    "id": "go-to-bed-now",
+    "category": "Bedtime",
+    "before": "Go to bed right now.",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "Bedtime's here — teeth, book, lights.",
+    "whyItWorks": "Lists the routine like a checklist, not a command.",
+    "demandBefore": 80,
+    "demandAfter": 14
+  },
+  {
+    "id": "do-homework-now",
+    "category": "School & Chores",
+    "before": "Do your homework right now.",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "Homework's on the desk for after snack.",
+    "whyItWorks": "Sequences the routine instead of demanding — 'after snack' gives a when without the pressure.",
+    "demandBefore": 78,
+    "demandAfter": 12
+  },
+  {
+    "id": "brush-your-teeth",
+    "category": "Bedtime",
+    "before": "Go brush your teeth!",
+    "beforeSignals": ["imperative"],
+    "after": "Toothbrushes are waiting on the sink.",
+    "whyItWorks": "Same information, zero command — the sink does the asking.",
+    "demandBefore": 65,
+    "demandAfter": 5
+  },
+  {
+    "id": "turn-off-immediately",
+    "category": "Screens & Transitions",
+    "before": "Turn that off immediately!",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "Screens go off at seven — ten minutes left.",
+    "whyItWorks": "States the boundary and the time; 'immediately' just starts a negotiation.",
+    "demandBefore": 85,
+    "demandAfter": 15
+  },
+  {
+    "id": "get-dressed-leaving",
+    "category": "Mornings",
+    "before": "Get dressed, we're leaving!",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "Clothes are laid out on the bed.",
+    "whyItWorks": "Points to what's ready; getting dressed becomes their idea.",
+    "demandBefore": 75,
+    "demandAfter": 8
+  },
+  {
+    "id": "stop-whining",
+    "category": "Siblings & Big Feelings",
+    "before": "Stop whining!",
+    "beforeSignals": ["negative", "imperative"],
+    "after": "I can hear you're upset. I understand regular voices best.",
+    "whyItWorks": "Acknowledges the feeling and states what works for you — no attack on how they sound.",
+    "demandBefore": 75,
+    "demandAfter": 12
+  },
+  {
+    "id": "help-set-table",
+    "category": "Mealtimes",
+    "before": "Help me set the table this instant!",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "Table needs setting — plates are by the dishwasher.",
+    "whyItWorks": "Names the job and where things are; 'help me' as a command invites refusal.",
+    "demandBefore": 82,
+    "demandAfter": 12
+  },
+  {
+    "id": "come-here-now",
+    "category": "Screens & Transitions",
+    "before": "Come here right now!",
+    "beforeSignals": ["imperative", "urgency"],
+    "after": "I'm in the kitchen when you're ready.",
+    "whyItWorks": "Says where you are instead of summoning — summons trip the demand alarm.",
+    "demandBefore": 80,
+    "demandAfter": 6
+  },
+  {
+    "id": "say-youre-sorry",
+    "category": "Siblings & Big Feelings",
+    "before": "Say you're sorry!",
+    "beforeSignals": ["imperative"],
+    "after": "Your brother's crying — check if he's okay.",
+    "whyItWorks": "Points to the impact instead of forcing the words; forced apologies teach nothing.",
+    "demandBefore": 72,
+    "demandAfter": 16
+  }
+]

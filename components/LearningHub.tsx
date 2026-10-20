@@ -1,7 +1,7 @@
-
 import React from 'react';
 import type { View } from '../App';
 import { BrainIcon, ShieldIcon, CheckCircleIcon, CloseIcon, HeartIcon, SpeechBubbleIcon } from './icons/Icons';
+import { BeforeAfterFlipCards } from './BeforeAfterFlipCards';
 
 interface LearningHubProps {
   onNavigate: (view: View) => void;
@@ -76,8 +76,8 @@ export const LearningHub: React.FC<LearningHubProps> = ({ onNavigate }) => {
         </InfoCard>
       </div>
 
-      {/* Visual Comparison */}
-      <div className="w-full bg-white border border-gray-200 rounded-3xl p-8 shadow-subtle">
+      {/* Visual Comparison: The Shift + Interactive Before/After Flip Cards */}
+      <div className="w-full bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-subtle">
         <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">The Shift</h3>
         <div className="grid md:grid-cols-2 gap-8">
           
@@ -110,6 +110,9 @@ export const LearningHub: React.FC<LearningHubProps> = ({ onNavigate }) => {
           </div>
 
         </div>
+
+        {/* Before/After Flip Cards Practice Deck */}
+        <BeforeAfterFlipCards />
       </div>
 
       {/* Why This App Section */}
