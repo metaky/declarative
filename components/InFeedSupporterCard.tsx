@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { CloseIcon } from './icons/Icons';
 import {
   FOURTEEN_DAYS_MS,
+  SUPPORT_LINKS,
   THIRTY_DAYS_MS,
   markShownThisSession,
   shouldShowSupporterCard,
   snoozeSupporterCard,
 } from '../services/supporterCardStorage';
-
-const SUPPORT_LINKS = {
-  monthly: 'https://buy.stripe.com/8x2bIU7KS2yXdQ54w5fw405',
-};
 
 export const InFeedSupporterCard: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);

@@ -7,6 +7,9 @@ import {
   SNOOZE_KEY,
   SHOWN_SESSION_KEY,
   TRANSLATION_COUNT_KEY,
+  BANNER_SNOOZE_KEY,
+  BANNER_DISMISSED_SESSION_KEY,
+  SUPPORT_LINKS,
   getSnoozedUntil,
   isSupporterCardSnoozed,
   snoozeSupporterCard,
@@ -15,6 +18,13 @@ import {
   getLifetimeTranslationCount,
   incrementLifetimeTranslationCount,
   shouldShowSupporterCard,
+  getBannerSnoozedUntil,
+  isDonationBannerSnoozed,
+  isBannerDismissedThisSession,
+  dismissDonationBannerForSession,
+  snoozeDonationBanner,
+  restoreDonationBannerSession,
+  shouldShowDonationBanner,
 } from '../services/supporterCardStorage.ts';
 
 class MockStorage {
@@ -125,4 +135,58 @@ test('supporterCardStorage: Increments translation count reliably', () => {
   local.setItem(TRANSLATION_COUNT_KEY, 'not_a_number');
   assert.equal(getLifetimeTranslationCount(local), 0);
   assert.equal(incrementLifetimeTranslationCount(local), 1);
+});
+
+test('donationBanner: Shows to all home page visitors by default and coordinates with InFeedSupporterCard', () => {
+  const local = new MockStorage();
+  const session = new MockStorage();
+
+  // Shows even when translation count is 0
+  assert.equal(shouldShowDonationBanner({ localStorage: local, sessionStorage: session }), true);
+
+  // Dismissing for session hides the banner for this session and also suppresses the in-feed supporter card
+  dismissDonationBannerForSession(session);
+  assert.equal(isBannerDismissedThisSession(session), true);
+  assert.equal(shouldShowDonationBanner({ localStorage: local, sessionStorage: session }), false);
+
+  local.setItem(TRANSLATION_COUNT_KEY, '5');
+  assert.equal(shouldShowSupporterCard({ localStorage: local, sessionStorage: session }), false);
+
+  // Undo session dismiss restores the banner
+  restoreDonationBannerSession(session);
+  assert.equal(isBannerDismissedThisSession(session), false);
+  assert.equal(shouldShowDonationBanner({ localStorage: local, sessionStorage: session }), true);
+});
+
+test('donationBanner: Dismiss for 30 days snoozes both top banner and in-feed supporter card', () => {
+  const local = new MockStorage();
+  const session = new MockStorage();
+  local.setItem(TRANSLATION_COUNT_KEY, '10');
+  const now = 1700000000000;
+
+  const targetTime = snoozeDonationBanner(THIRTY_DAYS_MS, now, local, session);
+  assert.equal(targetTime, now + THIRTY_DAYS_MS);
+  assert.equal(getBannerSnoozedUntil(local), now + THIRTY_DAYS_MS);
+  assert.equal(local.getItem(BANNER_SNOOZE_KEY), String(now + THIRTY_DAYS_MS));
+  assert.equal(local.getItem(SNOOZE_KEY), String(now + THIRTY_DAYS_MS));
+  assert.equal(session.getItem(BANNER_DISMISSED_SESSION_KEY), 'true');
+
+  // New session 15 days later: both top banner and in-feed card remain snoozed
+  const nextSession = new MockStorage();
+  const fifteenDaysLater = now + (15 * 24 * 60 * 60 * 1000);
+  assert.equal(isDonationBannerSnoozed(fifteenDaysLater, local), true);
+  assert.equal(shouldShowDonationBanner({ currentTime: fifteenDaysLater, localStorage: local, sessionStorage: nextSession }), false);
+  assert.equal(shouldShowSupporterCard({ currentTime: fifteenDaysLater, localStorage: local, sessionStorage: nextSession }), false);
+
+  // Exactly 30 days later: snooze expires in a fresh session
+  const thirtyDaysLater = now + THIRTY_DAYS_MS;
+  assert.equal(isDonationBannerSnoozed(thirtyDaysLater, local), false);
+  assert.equal(shouldShowDonationBanner({ currentTime: thirtyDaysLater, localStorage: local, sessionStorage: nextSession }), true);
+});
+
+test('donationBanner: Exposes canonical Stripe support links', () => {
+  assert.ok(SUPPORT_LINKS.monthly.startsWith('https://buy.stripe.com/'));
+  assert.ok(SUPPORT_LINKS.oneTime.small.startsWith('https://buy.stripe.com/'));
+  assert.ok(SUPPORT_LINKS.oneTime.large.startsWith('https://donate.stripe.com/'));
+  assert.ok(SUPPORT_LINKS.oneTime.custom.startsWith('https://buy.stripe.com/'));
 });

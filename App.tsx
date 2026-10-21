@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useHashRouter } from './hooks/useHashRouter';
 import { useSEO } from './hooks/useSEO';
 import { Header } from './components/Header';
+import { DonationBanner } from './components/DonationBanner';
 import { Translator } from './components/Translator';
 import { LearningHub } from './components/LearningHub';
 import { OtherTools } from './components/OtherTools';
@@ -82,7 +83,12 @@ const App: React.FC = () => {
       {/* Maintenance Banner Removed */}
       <Header currentView={currentView} setCurrentView={setCurrentView} />
       <main className="flex-grow container mx-auto p-4 md:p-8 lg:p-10 w-full max-w-4xl">
-        {currentView === 'translator' && <Translator history={history} onHistorySave={handleHistorySave} onClearHistory={handleClearHistory} />}
+        {currentView === 'translator' && (
+          <div className="space-y-5 md:space-y-7">
+            {!showOnboarding && <DonationBanner />}
+            <Translator history={history} onHistorySave={handleHistorySave} onClearHistory={handleClearHistory} />
+          </div>
+        )}
         {currentView === 'learn' && <LearningHub onNavigate={setCurrentView} />}
         {currentView === 'other-tools' && <OtherTools />}
         {currentView === 'coffee' && (

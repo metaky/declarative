@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GiftIcon, HeartIcon, ShieldIcon } from './icons/Icons';
-
-const SUPPORT_LINKS = {
-  oneTime: {
-    small: 'https://buy.stripe.com/9B628kghogpNcM10fPfw402',
-    large: 'https://donate.stripe.com/7sY4gs7KS2yXaDT8Mlfw403',
-    custom: 'https://buy.stripe.com/4gM00ce9g2yX9zPbYxfw400',
-  },
-  monthly: 'https://buy.stripe.com/8x2bIU7KS2yXdQ54w5fw405',
-  manageMonthly: 'https://billing.stripe.com/p/login/4gM00ce9g2yX9zPbYxfw400',
-};
+import { SUPPORT_LINKS, THIRTY_DAYS_MS, snoozeDonationBanner } from '../services/supporterCardStorage';
 
 interface CoffeePageProps {
   onShowPrivacy: () => void;
@@ -57,11 +48,13 @@ export const CoffeePage: React.FC<CoffeePageProps> = ({ onShowPrivacy, onShowTer
 
     const link = SUPPORT_LINKS.oneTime[selectedOption];
     if (link) {
+      snoozeDonationBanner(THIRTY_DAYS_MS);
       openExternalLink(link);
     }
   };
 
   const handleMonthlySupportClick = () => {
+    snoozeDonationBanner(THIRTY_DAYS_MS);
     openExternalLink(SUPPORT_LINKS.monthly);
   };
 

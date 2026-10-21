@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+:root {
+  interpolate-size: allow-keywords;
+}
+
 /* Custom animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
@@ -8,6 +12,26 @@
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
+}
+
+.banner-expandable {
+  block-size: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: block-size 220ms ease-out, opacity 200ms ease-out;
+}
+
+.banner-expandable.is-expanded {
+  block-size: auto;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .banner-expandable {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 .shadow-subtle {
