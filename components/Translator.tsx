@@ -122,9 +122,6 @@ const VARIATION_LABELS: Record<VariationKind, string> = {
   more_playful: 'More playful',
 };
 
-const VARIATION_TOGGLE_TELEMETRY_WINDOW_MS = 120000;
-const VARIATION_TOGGLE_TELEMETRY_THRESHOLD = 30;
-
 const VARIATION_ORDER_DEFAULT: VariationKind[] = ['similar', 'shorter', 'warmer', 'more_straightforward', 'more_playful'];
 const VARIATION_ORDER_FEWER_WORDS: VariationKind[] = ['similar', 'longer', 'warmer', 'more_straightforward', 'more_playful'];
 
@@ -143,8 +140,6 @@ const getVariationKinds = (useFewerWords: boolean) => (
 
 interface TranslationItemProps {
   item: Translation;
-  isOpen: boolean;
-  onToggleOpen: () => void;
   variationKinds: VariationKind[];
   variationCache: VariationCache;
   variationState?: VariationPanelState;
@@ -155,8 +150,6 @@ interface TranslationItemProps {
 
 const TranslationItem: React.FC<TranslationItemProps> = ({
   item,
-  isOpen,
-  onToggleOpen,
   variationKinds,
   variationCache,
   variationState,
@@ -164,7 +157,6 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
   disableVariationControls = false,
   variationDisabledMessage,
 }) => {
-  const variationPanelId = `variation-panel-${item.id}`;
   const hasVariationResults = variationState?.displayKind
     ? Boolean(variationCache[variationState.displayKind]?.length)
     : false;
@@ -188,108 +180,80 @@ const TranslationItem: React.FC<TranslationItemProps> = ({
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-100">
-        <button
-          type="button"
-          onClick={onToggleOpen}
-          data-ph-no-autocapture
-          aria-expanded={isOpen}
-          aria-controls={variationPanelId}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 ${isOpen ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
-        >
-          {isOpen ? 'Hide variations' : 'More like this'}
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-gray-500 mr-1">Shift it:</span>
+          {variationKinds.map((kind) => {
+            const isSelected = variationState?.selectedKind === kind;
+            const isCached = Boolean(variationCache[kind]?.length);
 
-      {isOpen && (
-        <div
-          id={variationPanelId}
-          className="mt-4 pt-4 border-t border-sky-100 animate-fade-in"
-        >
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-gray-900">Refine this version</span>
-            <span className="text-xs text-gray-500">Try a quick rewrite without starting over.</span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {variationKinds.map((kind) => {
-              const isSelected = variationState?.selectedKind === kind;
-              const isCached = Boolean(variationCache[kind]?.length);
-
-              return (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => onVariationSelect(item, kind)}
-                  aria-pressed={isSelected}
-                  disabled={disableVariationControls}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-400 ${isSelected ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
-                >
-                  {isSelected && <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[10px] font-bold text-white">✓</span>}
-                  <span>{VARIATION_LABELS[kind]}</span>
-                  {isCached && !isSelected && <span className="text-[11px] text-sky-600">Saved</span>}
-                </button>
-              );
-            })}
-          </div>
-
-          {disableVariationControls && variationDisabledMessage && (
-            <p className="mt-3 text-xs text-gray-500" role="status">
-              {variationDisabledMessage}
-            </p>
-          )}
-
-          {variationState?.isLoading && (
-            <div
-              className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500"
-              role="status"
-              aria-live="polite"
-            >
-              <svg className="animate-spin h-4 w-4 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>
-                {variationState.selectedKind
-                  ? `Trying a ${VARIATION_LABELS[variationState.selectedKind].toLowerCase()} pass.`
-                  : 'Trying a new pass.'}
-              </span>
-              {isShowingPreviousResults && <span className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700">Updating results</span>}
-            </div>
-          )}
-
-          {variationState?.error && (
-            <div
-              className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-              role="alert"
-            >
-              {variationState.error}
-            </div>
-          )}
-
-          {!variationState?.isLoading && !variationState?.error && !hasVariationResults && (
-            <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500">
-              Pick a version to explore. Saved variation results for this card will appear here.
-            </div>
-          )}
-
-          {hasVariationResults && (
-            <div className={`mt-4 space-y-3 transition-opacity ${isShowingPreviousResults ? 'opacity-70' : 'opacity-100'}`}>
-              {activeResults.map((variation) => (
-                <div key={variation.id} className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="flex-grow text-base text-slate-700 leading-relaxed">{variation.translation}</p>
-                    <CopyButton
-                      text={variation.translation}
-                      label="Copy variation"
-                      className="w-9 h-9"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            return (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => onVariationSelect(item, kind)}
+                aria-pressed={isSelected}
+                disabled={disableVariationControls}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-400 ${isSelected ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'}`}
+              >
+                {isSelected && <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[10px] font-bold text-white">✓</span>}
+                <span>{VARIATION_LABELS[kind]}</span>
+                {isCached && !isSelected && <span className="text-[11px] text-sky-600">Saved</span>}
+              </button>
+            );
+          })}
         </div>
-      )}
+
+        {disableVariationControls && variationDisabledMessage && (
+          <p className="mt-3 text-xs text-gray-500" role="status">
+            {variationDisabledMessage}
+          </p>
+        )}
+
+        {variationState?.isLoading && (
+          <div
+            className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500"
+            role="status"
+            aria-live="polite"
+          >
+            <svg className="animate-spin h-4 w-4 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>
+              {variationState.selectedKind
+                ? `Trying a ${VARIATION_LABELS[variationState.selectedKind].toLowerCase()} pass.`
+                : 'Trying a new pass.'}
+            </span>
+            {isShowingPreviousResults && <span className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700">Updating results</span>}
+          </div>
+        )}
+
+        {variationState?.error && (
+          <div
+            className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+            role="alert"
+          >
+            {variationState.error}
+          </div>
+        )}
+
+        {hasVariationResults && (
+          <div className={`mt-4 space-y-3 transition-opacity animate-fade-in ${isShowingPreviousResults ? 'opacity-70' : 'opacity-100'}`}>
+            {activeResults.map((variation) => (
+              <div key={variation.id} className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="flex-grow text-base text-slate-700 leading-relaxed">{variation.translation}</p>
+                  <CopyButton
+                    text={variation.translation}
+                    label="Copy variation"
+                    className="w-9 h-9"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -309,7 +273,6 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [variationCache, setVariationCache] = useState<VariationHistoryMap>({});
   const [variationStates, setVariationStates] = useState<Record<string, VariationPanelState>>({});
-  const [openVariationSourceId, setOpenVariationSourceId] = useState<string | null>(null);
   const [submittedRadarText, setSubmittedRadarText] = useState('');
   const {
     radarResult,
@@ -348,10 +311,6 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     requestId: 0,
     sourceId: null,
     variationKind: null,
-  });
-  const variationToggleTelemetryRef = useRef({
-    timestamps: [] as number[],
-    lastReportedAt: 0,
   });
 
   useEffect(() => {
@@ -483,7 +442,6 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
 
   const resetVariationUi = useCallback((clearCache: boolean) => {
     cancelActiveVariationRequest(false);
-    setOpenVariationSourceId(null);
     setVariationStates({});
     if (clearCache) {
       setVariationCache({});
@@ -630,7 +588,6 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     setCurrentRunId(item.id);
     setVariationCache(cloneVariationCache(item.variations));
     setVariationStates({});
-    setOpenVariationSourceId(null);
     setError(null);
     setIsLoading(false);
     setIsGeneratingMore(false);
@@ -645,83 +602,59 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
     setIsHistoryModalOpen(false);
   };
 
-  const handleToggleVariationPanel = useCallback((sourceId: string) => {
-    const now = Date.now();
-    const recentToggleTimestamps = [
-      ...variationToggleTelemetryRef.current.timestamps.filter(
-        (timestamp) => now - timestamp < VARIATION_TOGGLE_TELEMETRY_WINDOW_MS
-      ),
-      now,
-    ];
-    variationToggleTelemetryRef.current.timestamps = recentToggleTimestamps;
-
-    if (
-      recentToggleTimestamps.length === VARIATION_TOGGLE_TELEMETRY_THRESHOLD &&
-      now - variationToggleTelemetryRef.current.lastReportedAt > VARIATION_TOGGLE_TELEMETRY_WINDOW_MS
-    ) {
-      trackEvent('variation_panel_toggle_burst', {
-        toggle_count: recentToggleTimestamps.length,
-        window_ms: VARIATION_TOGGLE_TELEMETRY_WINDOW_MS,
-        source_translation_id: sourceId,
-      });
-      variationToggleTelemetryRef.current.lastReportedAt = now;
-    }
-
-    setError(null);
-    setOpenVariationSourceId((current) => {
-      if (current === sourceId) {
-        if (activeVariationRequestRef.current.sourceId === sourceId) {
-          cancelActiveVariationRequest(true);
-          setVariationStates((previous) => ({
-            ...previous,
-            [sourceId]: {
-              ...(previous[sourceId] || { isLoading: false, error: null }),
-              isLoading: false,
-              pendingKind: undefined,
-              error: null,
-            },
-          }));
-        }
-        return null;
-      }
-
-      if (current && current !== sourceId && activeVariationRequestRef.current.sourceId === current) {
-        cancelActiveVariationRequest(true);
-        setVariationStates((previous) => ({
-          ...previous,
-          [current]: {
-            ...(previous[current] || { isLoading: false, error: null }),
-            isLoading: false,
-            pendingKind: undefined,
-          },
-        }));
-      }
-
-      return sourceId;
-    });
-  }, [cancelActiveVariationRequest]);
-
   const handleVariationSelect = useCallback(async (item: Translation, variationKind: VariationKind) => {
     if (!currentRunId || !getCurrentRequestText() || isInterestBasedMissingInterest) return;
 
-    setOpenVariationSourceId(item.id);
-    const currentVariationCache = variationCache[item.id] || {};
-    const cachedResults = currentVariationCache[variationKind];
-
-    if (cachedResults && cachedResults.length > 0) {
-      if (activeVariationRequestRef.current.controller) {
+    const previousState = variationStates[item.id];
+    if (previousState?.selectedKind === variationKind) {
+      if (activeVariationRequestRef.current.sourceId === item.id) {
         cancelActiveVariationRequest(true);
       }
       setVariationStates((previous) => ({
         ...previous,
         [item.id]: {
-          selectedKind: variationKind,
-          displayKind: variationKind,
+          selectedKind: undefined,
+          displayKind: undefined,
           pendingKind: undefined,
           isLoading: false,
           error: null,
         },
       }));
+      return;
+    }
+
+    const abortedSourceId = activeVariationRequestRef.current.controller
+      ? activeVariationRequestRef.current.sourceId
+      : null;
+
+    if (activeVariationRequestRef.current.controller) {
+      cancelActiveVariationRequest(true);
+    }
+
+    const currentVariationCache = variationCache[item.id] || {};
+    const cachedResults = currentVariationCache[variationKind];
+
+    if (cachedResults && cachedResults.length > 0) {
+      setVariationStates((previous) => {
+        const next = { ...previous };
+        if (abortedSourceId && abortedSourceId !== item.id && next[abortedSourceId]) {
+          next[abortedSourceId] = {
+            selectedKind: next[abortedSourceId].displayKind,
+            displayKind: next[abortedSourceId].displayKind,
+            pendingKind: undefined,
+            isLoading: false,
+            error: null,
+          };
+        }
+        next[item.id] = {
+          selectedKind: variationKind,
+          displayKind: variationKind,
+          pendingKind: undefined,
+          isLoading: false,
+          error: null,
+        };
+        return next;
+      });
       trackEvent('variation_cache_hit', {
         mode: 'variation',
         cache_hit: true,
@@ -731,13 +664,8 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
       return;
     }
 
-    const previousState = variationStates[item.id];
     const controller = new AbortController();
     const requestId = activeVariationRequestRef.current.requestId + 1;
-
-    if (activeVariationRequestRef.current.controller) {
-      cancelActiveVariationRequest(true);
-    }
 
     activeVariationRequestRef.current = {
       controller,
@@ -746,16 +674,26 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
       variationKind,
     };
 
-    setVariationStates((previous) => ({
-      ...previous,
-      [item.id]: {
+    setVariationStates((previous) => {
+      const next = { ...previous };
+      if (abortedSourceId && abortedSourceId !== item.id && next[abortedSourceId]) {
+        next[abortedSourceId] = {
+          selectedKind: next[abortedSourceId].displayKind,
+          displayKind: next[abortedSourceId].displayKind,
+          pendingKind: undefined,
+          isLoading: false,
+          error: null,
+        };
+      }
+      next[item.id] = {
         selectedKind: variationKind,
         displayKind: previousState?.displayKind,
         pendingKind: variationKind,
         isLoading: true,
         error: null,
-      },
-    }));
+      };
+      return next;
+    });
 
     try {
       const results = await getDeclarativeTranslations({
@@ -1164,8 +1102,6 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
               <React.Fragment key={item.id}>
                 <TranslationItem
                   item={item}
-                  isOpen={openVariationSourceId === item.id}
-                  onToggleOpen={() => handleToggleVariationPanel(item.id)}
                   variationKinds={variationKinds}
                   variationCache={variationCache[item.id] || {}}
                   variationState={variationStates[item.id]}

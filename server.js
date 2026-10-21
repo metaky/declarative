@@ -494,12 +494,32 @@ function buildMockTranslations(text, tone, interest, useFewerWords, existingTran
     return dedupeTranslations(mocked, existingTranslations).slice(0, 4);
 }
 
+function selectMockVariationPair(templates, sourceTranslation) {
+    const normalizedSource = sourceTranslation.trim().toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < normalizedSource.length; i += 1) {
+        hash = (hash * 31 + normalizedSource.charCodeAt(i)) >>> 0;
+    }
+    const offset = templates.length > 0 ? hash % templates.length : 0;
+    const rotated = [
+        ...templates.slice(offset),
+        ...templates.slice(0, offset),
+    ];
+
+    return dedupeVariationTranslations(
+        rotated.map((item) => (typeof item === 'string' ? { translation: item } : item)),
+        sourceTranslation
+    ).slice(0, 2);
+}
+
 function buildShorterMockVariationTranslations(sourceTranslation, originalText) {
     const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
     if (isSafetyRedirectionPrompt(originalText)) {
         return [
             { translation: 'Walking speed inside; running fits outside.' },
             { translation: 'Fast feet have more room outside.' },
+            { translation: 'Inside is for walking; outside has running space.' },
+            { translation: 'Running speed belongs in the yard.' },
         ];
     }
 
@@ -510,53 +530,196 @@ function buildShorterMockVariationTranslations(sourceTranslation, originalText) 
         return [
             { translation: `${sentenceItems} head ${destination}.` },
             { translation: `${sentenceItems} have a spot ${destination}.` },
+            { translation: `Next up: ${items} ${destination}.` },
+            { translation: `Reset time: ${items} go ${destination}.` },
         ];
     }
 
-    const words = source.split(/\s+/).filter(Boolean);
-    const compactLength = Math.max(6, Math.ceil(words.length * 0.7));
-    const shorterFragment = words.length <= 8
-        ? source
-        : words.slice(0, compactLength).join(' ');
+    if (isDinnerHandwashingPrompt(originalText)) {
+        return [
+            { translation: 'Downstairs first, then hands and dinner.' },
+            { translation: 'Hands at the sink downstairs, then dinner.' },
+            { translation: 'Dinner is ready downstairs after hands.' },
+            { translation: 'Next up: downstairs, sink, then dinner.' },
+        ];
+    }
+
+    const taskPhrases = buildTaskPhrases(originalText || source);
+    const joinedTasks = joinPhrases(taskPhrases.map(toLowerSentence));
+    const upperTasks = toUpperSentence(joinedTasks);
 
     return [
-        { translation: `${shorterFragment}.` },
-        { translation: words.length <= 8 ? `${source}, simply.` : `${shorterFragment.replace(/,.*$/, '')}.` },
+        { translation: `${upperTasks} comes next.` },
+        { translation: `Ready for ${joinedTasks} when you are.` },
+        { translation: `Next step: ${joinedTasks}.` },
+        { translation: `${upperTasks} is set when timing works.` },
     ];
 }
 
 function buildMockVariationTranslations(sourceTranslation, variationKind, originalText = '') {
     const source = sourceTranslation.trim().replace(/[.!?]+$/g, '');
+    const lowerSource = toLowerSentence(source);
+
+    if (variationKind === 'shorter') {
+        return selectMockVariationPair(
+            buildShorterMockVariationTranslations(sourceTranslation, originalText),
+            sourceTranslation
+        );
+    }
+
+    if (isDinnerHandwashingPrompt(originalText)) {
+        const dinnerTemplates = {
+            similar: [
+                'Coming downstairs, washing hands, and then heading to the table is the plan.',
+                'First comes heading downstairs for handwashing, and dinner is right after.',
+                'The order is downstairs, a quick wash at the sink, and then dinner.',
+                'Downstairs is where the sink and dinner are waiting next.',
+            ],
+            longer: [
+                'Everything is set for coming downstairs at your pace, getting hands washed at the sink, and settling in for dinner.',
+                'Dinner is waiting downstairs whenever you are ready to head down and give your hands a wash first.',
+                'There is plenty of time to head downstairs, stop by the sink for hands, and join the table for dinner.',
+                'Whenever this moment wraps up, the next steps are coming downstairs, washing hands, and sitting down to eat.',
+            ],
+            warmer: [
+                'We can take it easy heading downstairs, getting hands washed, and sitting down for dinner together.',
+                'Whenever you are ready to come down, the sink is open for hands and a warm dinner is waiting.',
+                'No rush on the transition—heading downstairs for hands and dinner can happen at a comfortable pace.',
+                'Food is ready downstairs whenever you feel set to come down and rinse your hands first.',
+            ],
+            more_straightforward: [
+                'The sequence is coming downstairs, washing hands, and eating dinner.',
+                'Dinner is set downstairs once hands are washed.',
+                'Heading downstairs and washing hands are the steps before dinner.',
+                'First is coming downstairs to wash hands, and next is dinner.',
+            ],
+            more_playful: [
+                'The dinner quest has three checkpoints: downstairs, a splash at the sink, and food at the table.',
+                'Hands get a quick VIP stop at the sink downstairs before dinner takes center stage.',
+                'First stop: downstairs sink. Next stop: dinner table.',
+                'The sink downstairs is queuing up for a quick hand rinse before dinner begins.',
+            ],
+        };
+        const templates = dinnerTemplates[variationKind] || dinnerTemplates.warmer;
+        return selectMockVariationPair(templates, sourceTranslation);
+    }
+
+    if (isSafetyRedirectionPrompt(originalText)) {
+        const safetyTemplates = {
+            similar: [
+                'Walking feet fit this room, and running speed has space outside.',
+                'The yard is open for fast movement while inside stays at walking pace.',
+                'Inside is set up for slower steps, and outside has room to run.',
+                'Fast movement works outdoors, while indoor rooms are for walking.',
+            ],
+            longer: [
+                'It looks like your body has a lot of fast energy right now—outside has plenty of open room for running, while inside stays at a walking pace.',
+                'There is space outside whenever fast feet need a turn, and the hallway inside works best with slower walking steps.',
+                'Running speed fits better outdoors where there is open room, and inside is ready for walking feet.',
+                'Whenever fast feet want to go full speed, the yard is open while indoor spaces stay at walking speed.',
+            ],
+            warmer: [
+                'Fast energy is completely okay—let us save the running part for outside where there is room to move freely.',
+                'We can keep inside calm with walking feet and take the big running energy outdoors.',
+                'Your body has big movement right now, and outside has the space to let those fast feet run.',
+                'Let us keep indoor steps gentle and bring the fast running energy out to the yard.',
+            ],
+            more_straightforward: [
+                'Walking pace works inside; running works outside.',
+                'Indoor space is for walking, and outdoor space is for running.',
+                'This room is set up for walking speed, and the yard is set up for running.',
+                'Slow steps fit inside; fast running fits outside.',
+            ],
+            more_playful: [
+                'Turbo mode belongs in the yard while indoor mode stays on cruise control.',
+                'Those fast feet have an outdoor ticket; inside is the slow-motion zone.',
+                'Zoom speed gets the backyard stage, and walking feet get the house.',
+                'Indoor mode is low-gear walking, and outdoor mode is full-speed running.',
+            ],
+        };
+        const templates = safetyTemplates[variationKind] || safetyTemplates.warmer;
+        return selectMockVariationPair(templates, sourceTranslation);
+    }
+
+    if (isCleanupDestinationPrompt(originalText)) {
+        const destination = inferCleanupDestination(originalText);
+        const items = inferCleanupItems(originalText);
+        const sentenceItems = toUpperSentence(items);
+        const cleanupTemplates = {
+            similar: [
+                `${sentenceItems} are ready to head ${destination} whenever the reset starts.`,
+                `The home spot for ${items} is ${destination}.`,
+                `Getting ${items} back ${destination} is the next part of the room reset.`,
+                `${sentenceItems} can land back ${destination} as part of wrapping up here.`,
+            ],
+            longer: [
+                `Whenever this part wraps up, ${items} have their spot waiting ${destination} so the floor has room again.`,
+                `There is no rush on how they get there, and ${items} are ready to land back ${destination}.`,
+                `The room reset is ready whenever you are, with ${items} heading back ${destination}.`,
+                `Taking ${items} back ${destination} will clear this space whenever the transition feels ready.`,
+            ],
+            warmer: [
+                `We can take our time helping ${items} find their way back ${destination}.`,
+                `Whenever you are ready for a reset, ${items} have a cozy spot waiting ${destination}.`,
+                `No rush at all—${items} can head back ${destination} at a pace that feels easy.`,
+                `We can team up or take it slow getting ${items} settled ${destination}.`,
+            ],
+            more_straightforward: [
+                `The next step is moving ${items} ${destination}.`,
+                `${sentenceItems} belong ${destination} when cleanup happens.`,
+                `Cleanup here means bringing ${items} ${destination}.`,
+                `The spot for ${items} is ${destination}.`,
+            ],
+            more_playful: [
+                `${sentenceItems} are ready for their return trip ${destination}.`,
+                `Mission control says ${items} have a landing zone ${destination}.`,
+                `Next stop on the map for ${items}: ${destination}.`,
+                `${sentenceItems} have a VIP parking spot waiting ${destination}.`,
+            ],
+        };
+        const templates = cleanupTemplates[variationKind] || cleanupTemplates.warmer;
+        return selectMockVariationPair(templates, sourceTranslation);
+    }
+
+    const taskPhrases = buildTaskPhrases(originalText || source);
+    const joinedTasks = joinPhrases(taskPhrases.map(toLowerSentence));
+    const upperTasks = toUpperSentence(joinedTasks);
 
     const variationTemplates = {
         similar: [
-            `${source}, or phrased another way.`,
-            `${source}, with a slightly different wording.`,
+            `Right now, ${joinedTasks} is the next part of the plan.`,
+            `Everything is set up for ${joinedTasks} when the timing feels right.`,
+            `Another way to frame it: ${lowerSource}.`,
+            `The next piece on the radar is ${joinedTasks}.`,
         ],
-        shorter: buildShorterMockVariationTranslations(sourceTranslation, originalText).map(item => item.translation),
         longer: [
-            `${source}, and there is room for it to happen in a calm way.`,
-            `${source}, with a little more space for the moment to unfold.`,
+            `There is room to take a breath here—${joinedTasks} is ready whenever it feels manageable to start.`,
+            `Looking at the next step, ${lowerSource}, with plenty of space for the transition to unfold calmly.`,
+            `Everything needed for ${joinedTasks} is in place, so there is no rush to jump in all at once.`,
+            `Whenever this moment wraps up, ${joinedTasks} is waiting with plenty of breathing room.`,
         ],
         warmer: [
-            `${source}, and the moment can stay gentle while it happens.`,
-            `${source}, with a little extra softness around the transition.`,
+            `We can ease into ${joinedTasks} at a gentle pace that feels comfortable.`,
+            `Whenever you feel ready, ${joinedTasks} is set up with no rush on the transition.`,
+            `There is plenty of softness around this next part—${joinedTasks} can happen when you are set.`,
+            `We can take ${joinedTasks} one small step at a time whenever it feels right.`,
         ],
         more_straightforward: [
-            `${source}.`,
-            `${source}, and that is the shape of this moment.`,
+            `The next step on the list is ${joinedTasks}.`,
+            `${upperTasks} is what is coming up next.`,
+            `Here is where things stand: ${lowerSource}.`,
+            `The plan from here is ${joinedTasks}.`,
         ],
         more_playful: [
-            `${source}, as if the moment has a light side note attached.`,
-            `${source}, with just a touch more lift in the wording.`,
+            `Up next on the radar: ${joinedTasks}, with a little breathing room built in.`,
+            `${upperTasks} is queuing up for its turn whenever the moment is right.`,
+            `Plot twist: ${joinedTasks} is ready in the wings when you want it.`,
+            `Next checkpoint on the map: ${joinedTasks}.`,
         ],
     };
 
     const templates = variationTemplates[variationKind] || variationTemplates.warmer;
-    return dedupeVariationTranslations(
-        templates.map((translation) => ({ translation })),
-        sourceTranslation
-    ).slice(0, 2);
+    return selectMockVariationPair(templates, sourceTranslation);
 }
 
 // --- API Endpoint ---
