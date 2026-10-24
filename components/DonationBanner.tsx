@@ -190,14 +190,14 @@ export const DonationBanner: React.FC = () => {
       <div className="mt-2 sm:pl-8.5">
         {/* Desktop full message */}
         <p className="hidden md:block text-sm text-gray-700 leading-relaxed text-pretty">
-          I&apos;m a dad who built Declarative for our community. Every translation costs real money to run, and my costs are now exceeding what I can personally cover. If you&apos;d like this tool to stay free for families like yours, please consider{' '}
+          I&apos;m a dad who built Declarative for our community. Every translation costs real money to run, and ongoing costs can easily exceed what one person can cover alone. By supporting the site, you keep it free for others who need it. Please consider{' '}
           <span className="font-semibold text-gray-900">$5/month</span> — or a one-time gift. It takes 30 seconds.
         </p>
 
         {/* Mobile compact summary + expandable full message */}
         <div className="md:hidden text-xs text-gray-700 leading-relaxed text-pretty">
           <p>
-            I&apos;m a dad who built Declarative for our community. Translation costs are now exceeding what I can personally cover.{' '}
+            I&apos;m a dad who built Declarative for our community. Every translation costs real money to run, and your support keeps it free for others who need it.{' '}
             <button
               type="button"
               onClick={handleMobileExpandToggle}
@@ -215,7 +215,7 @@ export const DonationBanner: React.FC = () => {
             className={`banner-expandable ${isMobileExpanded ? 'is-expanded mt-2 space-y-1.5 pt-2 border-t border-amber-200/60' : ''}`}
           >
             <p className="text-pretty">
-              Every translation costs real money to run, and my costs are now exceeding what I can personally cover. If you&apos;d like this tool to stay free for families like yours, please consider <span className="font-semibold text-gray-900">$5/month</span> — or a one-time gift. It takes 30 seconds.
+              Every translation costs real money to run, and ongoing costs can easily exceed what one person can cover alone. By supporting the site, you keep it free for others who need it. Please consider <span className="font-semibold text-gray-900">$5/month</span> — or a one-time gift. It takes 30 seconds.
             </p>
           </div>
         </div>
