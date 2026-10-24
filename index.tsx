@@ -3,14 +3,21 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { isAnalyticsOptedOut } from './services/analytics';
 import posthog from 'posthog-js';
 
 // Initialize PostHog for analytics safely
 try {
+  const optedOutByDefault = isAnalyticsOptedOut();
   posthog.init('phc_pvFdBKNfNPtBnedh7BuUFSNW2hYqbjb2N6kWgRdagOg', {
     api_host: 'https://us.i.posthog.com',
     autocapture: true, // Enable autocapture as requested
     respect_dnt: true,
+    opt_out_capturing_by_default: optedOutByDefault,
+    session_recording: {
+      maskAllInputs: true,
+      maskTextSelector: '[data-ph-mask]',
+    },
   });
 } catch (error) {
   console.warn('PostHog initialization failed or was blocked:', error);

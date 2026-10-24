@@ -277,9 +277,9 @@ for (const type of ['generation', 'evaluation']) {
       path.dirname(context.ledgerPath),
       settled.completedCalls[callId].resultCheckpoint.relativePath,
     );
-    assert.equal((await stat(path.dirname(context.ledgerPath))).mode & 0o777, 0o700);
-    assert.equal((await stat(path.dirname(checkpointPath))).mode & 0o777, 0o700);
-    assert.equal((await stat(checkpointPath)).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal((await stat(path.dirname(context.ledgerPath))).mode & 0o777, 0o700);
+    if (process.platform !== 'win32') assert.equal((await stat(path.dirname(checkpointPath))).mode & 0o777, 0o700);
+    if (process.platform !== 'win32') assert.equal((await stat(checkpointPath)).mode & 0o777, 0o600); else assert.equal((await stat(checkpointPath)).isFile(), true);
 
     const replayed = await runBudgetedCall(options(context, { type, runId: 'post-settlement', call }));
     assert.equal(replayed.text, `${type} private output`);

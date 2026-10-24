@@ -201,10 +201,10 @@ test('artifact names are timestamped under the migration directory with migratio
       now: new Date('2026-08-13T15:04:05.678Z'),
     }),
     {
-      json: '/repo/evals/results/gemini-migration/model-bakeoff-2026-08-13T15-04-05-678Z.json',
-      markdown: '/repo/evals/results/gemini-migration/model-bakeoff-2026-08-13T15-04-05-678Z.md',
-      latestJson: '/repo/evals/results/gemini-migration/latest-model-bakeoff.json',
-      latestMarkdown: '/repo/evals/results/gemini-migration/latest-model-bakeoff.md',
+      json: path.join('/repo/evals/results/gemini-migration', 'model-bakeoff-2026-08-13T15-04-05-678Z.json'),
+      markdown: path.join('/repo/evals/results/gemini-migration', 'model-bakeoff-2026-08-13T15-04-05-678Z.md'),
+      latestJson: path.join('/repo/evals/results/gemini-migration', 'latest-model-bakeoff.json'),
+      latestMarkdown: path.join('/repo/evals/results/gemini-migration', 'latest-model-bakeoff.md'),
     },
   );
 });

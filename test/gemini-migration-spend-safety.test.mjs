@@ -143,7 +143,15 @@ safetyTest('only the canonical Phase 3 ledger path is accepted', async (t) => {
 safetyTest('symlink aliases and a symlinked canonical ledger are rejected', async (t) => {
   const context = await fixture(t);
   const alias = path.join(context.repoRoot, 'ledger-alias.json');
-  await symlink(context.ledgerPath, alias);
+  try {
+    await symlink(context.ledgerPath, alias);
+  } catch (error) {
+    if (process.platform === 'win32' && error?.code === 'EPERM') {
+      t.skip('Windows file symlinks require Developer Mode or administrator privileges');
+      return;
+    }
+    throw error;
+  }
   await assert.rejects(
     resolveCanonicalSpendLedgerPath({ repoRoot: context.repoRoot, requestedPath: alias }),
     /canonical phase 3 spend ledger/i,

@@ -20,8 +20,8 @@ const entryPoints = [
 
 async function assertPrivateTree(artifactPaths) {
   for (const filePath of Object.values(artifactPaths)) {
-    assert.equal((await stat(path.dirname(filePath))).mode & 0o777, 0o700, filePath);
-    assert.equal((await stat(filePath)).mode & 0o777, 0o600, filePath);
+    if (process.platform !== 'win32') assert.equal((await stat(path.dirname(filePath))).mode & 0o777, 0o700, filePath);
+    if (process.platform !== 'win32') assert.equal((await stat(filePath)).mode & 0o777, 0o600, filePath); else assert.equal((await stat(filePath)).isFile(), true, filePath);
   }
   const directoryEntries = await readdir(path.dirname(artifactPaths.json));
   assert.equal(directoryEntries.some((entry) => entry.endsWith('.tmp')), false);

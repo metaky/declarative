@@ -2,7 +2,7 @@ import React from 'react';
 
 export const PRIVACY_POLICY_CONTENT = (
     <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed">
-        <p><strong>Last Updated:</strong> March 4, 2026</p>
+        <p><strong>Last Updated:</strong> October 23, 2026</p>
 
         <p>
             Welcome to Declarative. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
@@ -14,15 +14,15 @@ export const PRIVACY_POLICY_CONTENT = (
         </p>
         <h3>AI Translation (Google Gemini)</h3>
         <p>
-            The text you enter into the input box is sent to Google's Gemini API to generate declarative translation suggestions. For details on how Google processes and protects this data, please see the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">Google Gemini API Terms of Service</a>.
+            The text you enter into the input box is sent to Google's Gemini API to generate declarative translation suggestions and optional demand-signal coaching notes. For details on how Google processes and protects this data, please see the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">Google Gemini API Terms of Service</a>.
         </p>
         <h3>Analytics and Session Recordings (PostHog)</h3>
         <p>
-            We collect anonymous usage analytics via PostHog (such as page views, clicks, and feature usage via autocapture) plus session recordings that show on-screen content, including the AI-generated translation suggestions. Text typed into the input box is masked and is not visible in recordings. We collect this data for the purpose of understanding usage and improving translation quality. Users are anonymous (no accounts are created or required). The data collected includes:
+            We collect anonymous usage analytics via PostHog (such as page views, clicks, and feature usage via autocapture) plus session recordings that show on-screen content, including the AI-generated translation suggestions. Text typed into the input boxes, displayed in Demand Radar, or saved in Recent History is masked and excluded from autocapture so your personal statements are not visible in recordings. We collect this data for the purpose of understanding usage and improving translation quality. Users are anonymous (no accounts are created or required). The data collected includes:
         </p>
         <ul>
             <li><strong>Usage Analytics:</strong> Anonymous information about your interactions with the app, such as the features you use, buttons you click, and pages you view via autocapture.</li>
-            <li><strong>Session Recordings:</strong> Visual replays of on-screen user interface interactions and generated translation suggestions. Any text typed into the input box is masked and is not visible in recordings.</li>
+            <li><strong>Session Recordings:</strong> Visual replays of on-screen user interface interactions and generated translation suggestions. Any text typed into input fields or displayed from your input in Demand Radar and Recent History is masked and is not visible in recordings.</li>
             <li><strong>Device Information:</strong> Basic device and browser information (such as browser type and operating system) to help troubleshoot technical issues.</li>
         </ul>
 
@@ -64,7 +64,7 @@ export const PRIVACY_POLICY_CONTENT = (
             <li><strong>The right to erasure</strong> – You have the right to request that we erase your personal data, under certain conditions.</li>
             <li><strong>The right to restrict processing</strong> – You have the right to request that we restrict the processing of your personal data, under certain conditions.</li>
             <li><strong>The right to data portability</strong> – You have the right to request that we transfer the data that we have collected to another organization, or directly to you, under certain conditions.</li>
-            <li><strong>The right to opt-out</strong> - PostHog respects "Do Not Track" browser settings. You can also opt-out of PostHog tracking on this site by enabling it.</li>
+            <li><strong>The right to opt-out</strong> – PostHog respects "Do Not Track" browser settings, and you can also opt out of PostHog analytics and session recordings directly on this page using the Privacy Controls panel above.</li>
         </ul>
         <p>To exercise these rights, please contact us at the email address below.</p>
 

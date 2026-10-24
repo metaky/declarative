@@ -797,10 +797,17 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
               }
             }}
             placeholder="e.g., 'Brush your teeth'"
-            className="w-full p-4 text-lg bg-gray-50 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow placeholder:text-gray-400"
+            data-ph-mask="true"
+            maxLength={1000}
+            className="ph-no-capture w-full p-4 text-lg bg-gray-50 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow placeholder:text-gray-400"
             rows={3}
             disabled={isLoading}
           />
+          {inputValue.length >= 800 && (
+            <p className="text-right text-xs text-gray-500 -mt-1">
+              {inputValue.length} / 1,000 characters
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2 animate-fade-in overflow-hidden">
             <span className="text-sm text-gray-500 font-medium mr-1">Try:</span>
             {examplePrompts.map((prompt) => (
@@ -929,7 +936,9 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
                   disabled={isLoading}
                   placeholder="e.g. Minecraft"
                   aria-describedby={interestGuidanceId}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow bg-gray-50 placeholder-gray-400"
+                  maxLength={120}
+                  data-ph-mask="true"
+                  className="ph-no-capture w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-shadow bg-gray-50 placeholder-gray-400"
                 />
                 <p id={interestGuidanceId} className="text-xs text-gray-500 mt-2 ml-1">
                   {isInterestBasedMissingInterest
@@ -994,14 +1003,14 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
                       <li key={item.id}>
                         <button
                           onClick={() => handleSelectHistory(item)}
-                          className="w-full text-left p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:bg-sky-50 hover:border-sky-300 transition-all"
+                          className="ph-no-capture w-full text-left p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:bg-sky-50 hover:border-sky-300 transition-all"
                         >
                           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                             <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-sky-700 border border-sky-100">
                               {item.tone || 'Default'}
                             </span>
                             {item.interest && (
-                              <span className="rounded-full bg-white px-2.5 py-1 font-medium text-indigo-700 border border-indigo-100">
+                              <span data-ph-mask="true" className="ph-no-capture rounded-full bg-white px-2.5 py-1 font-medium text-indigo-700 border border-indigo-100">
                                 {item.interest}
                               </span>
                             )}
@@ -1017,7 +1026,7 @@ export const Translator: React.FC<TranslatorProps> = ({ history, onHistorySave, 
                             )}
                             <span>{formatHistoryTimestamp(item.updatedAt || item.createdAt)}</span>
                           </div>
-                          <p className="mt-3 font-semibold text-gray-800">{item.imperativeText}</p>
+                          <p data-ph-mask="true" className="ph-no-capture mt-3 font-semibold text-gray-800">{item.imperativeText}</p>
                           <p className="text-sm text-gray-600 mt-2 leading-relaxed">{item.translations[0]?.translation || 'No suggestions saved.'}</p>
                           <p className="text-sm text-gray-500 mt-3">{item.translations.length} suggestion{item.translations.length === 1 ? '' : 's'} saved in this run</p>
                         </button>

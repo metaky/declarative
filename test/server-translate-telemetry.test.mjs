@@ -320,3 +320,46 @@ test('uses the real timeout race when a pending provider request outlives an inj
     assert.equal(response.responseCount, 1, 'a late provider resolution must not create a second HTTP response');
   });
 });
+
+test('rejects oversized secondary input fields before calling Gemini', async () => {
+  await withTranslationServer({
+    createGeminiClient: () => { throw new Error('oversized secondary fields must not reach Gemini'); },
+  }, async ({ port }) => {
+    const oversizedInterest = await postJson(port, {
+      mode: 'translate',
+      text: 'Please put the blocks away.',
+      interest: 'x'.repeat(121),
+    }, '203.0.113.40');
+    assert.equal(oversizedInterest.statusCode, 400);
+
+    const oversizedSourceTranslation = await postJson(port, {
+      mode: 'variation',
+      text: 'Please put the blocks away.',
+      sourceTranslation: { translation: 'x'.repeat(1501) },
+    }, '203.0.113.41');
+    assert.equal(oversizedSourceTranslation.statusCode, 400);
+  });
+});
+
+test('enforces rate limits before consuming Redis challenge tokens', async () => {
+  let redisDelCalls = 0;
+  await withTranslationServer({
+    isDevChallengeBypassEnabled: false,
+    checkRateLimitFn: () => ({ limited: true, wait: 10 }),
+    redis: {
+      del: async () => {
+        redisDelCalls += 1;
+        return 1;
+      },
+    },
+    createGeminiClient: () => { throw new Error('rate-limited requests must not reach Gemini'); },
+  }, async ({ port }) => {
+    const response = await postJson(port, {
+      mode: 'translate',
+      text: 'Please put the blocks away.',
+      challengeId: 'valid-token',
+    }, '203.0.113.42');
+    assert.equal(response.statusCode, 429);
+    assert.equal(redisDelCalls, 0);
+  });
+});

@@ -43,9 +43,9 @@ test('migration report JSON, Markdown, latest files, and directories are private
     markdown: '# Private model output\n',
   });
 
-  assert.equal((await stat(resultsDir)).mode & 0o777, 0o700);
+  if (process.platform !== 'win32') assert.equal((await stat(resultsDir)).mode & 0o777, 0o700); else assert.equal((await stat(resultsDir)).isDirectory(), true);
   for (const artifactPath of Object.values(artifactPaths)) {
-    assert.equal((await stat(artifactPath)).mode & 0o777, 0o600, artifactPath);
+    if (process.platform !== 'win32') assert.equal((await stat(artifactPath)).mode & 0o777, 0o600, artifactPath); else assert.equal((await stat(artifactPath)).isFile(), true, artifactPath);
   }
 });
 
@@ -197,8 +197,8 @@ test('evaluator checkpoints each stable run and resumes without re-scoring compl
 
   assert.deepEqual(firstAttempted, ['stable-run-1', 'stable-run-2']);
   const partial = JSON.parse(await readFile(checkpointPath, 'utf8'));
-  assert.equal((await stat(checkpointDirectory)).mode & 0o777, 0o700);
-  assert.equal((await stat(checkpointPath)).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal((await stat(checkpointDirectory)).mode & 0o777, 0o700);
+  if (process.platform !== 'win32') assert.equal((await stat(checkpointPath)).mode & 0o777, 0o600); else assert.equal((await stat(checkpointPath)).isFile(), true);
   assert.equal(partial.qualityScored, false);
   assert.equal(partial.scoringIncomplete, true);
   assert.deepEqual(partial.completedRunIds, ['stable-run-1']);

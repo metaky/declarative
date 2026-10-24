@@ -33,7 +33,7 @@
     "quality:review-packet": "node scripts/build-quality-review-packet.mjs",
     "start": "node server.js",
     "start:api": "PORT=3002 node server.js",
-    "deploy": "gcloud run deploy declarative --source . --project gen-lang-client-0598048123 --region us-west1 --allow-unauthenticated"
+    "deploy": "gcloud run deploy declarative --source . --project gen-lang-client-0598048123 --region us-west1 --max-instances 5 --allow-unauthenticated"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",

@@ -10,6 +10,12 @@ const VALID_CATEGORIES = new Set([
   'rhetorical',
 ]);
 
+const MAX_DEMAND_RADAR_OUTPUT_TOKENS = 800;
+const POSITIVE_DECLARATIVE_REGEX =
+  /\b(is waiting|are waiting|is ready|are ready|'s ready|i wonder|i'm wondering|i am wondering|i notice|i'm noticing|i am noticing|it looks like|when you're ready|when you are ready|whenever you're ready|if you'd like|if you want|can wait|is open|are on the|is on the)\b/i;
+const NON_LATIN_REGEX =
+  /[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF\u0600-\u06FF\u0590-\u05FF\u0900-\u097F\u0E00-\u0E7F]/;
+
 const DEMAND_RADAR_SYSTEM_INSTRUCTION = `You are "Demand Radar," a PDA-aware (Pathological Demand Avoidance) linguistic coach for caregivers.
 Analyze the caregiver's statement and identify specific exact substrings (words or phrases) that carry demand pressure for a PDA nervous system.
 
@@ -26,6 +32,8 @@ Rules:
 2. If the statement is genuinely low-pressure and declarative (e.g. "Toothbrushes are waiting on the sink" or "Could you please put your shoes on when you're ready?"), return an empty array [].
 3. Keep "note" to 1-2 warm, non-judgmental sentences explaining why this phrase triggers a PDA nervous system's threat response. Never shame the parent.`;
 
+function noOpRateLimitLog() {}
+
 export function createGeminiDemandRadarHandler({
   geminiApiKey,
   geminiModelConfig,
@@ -33,12 +41,18 @@ export function createGeminiDemandRadarHandler({
   isMockTranslationMode = false,
   translateRequestLog = new Map(),
   checkRateLimitFn = null,
+  logRateLimitHit = noOpRateLimitLog,
   createGeminiClient = (apiKey) => new GoogleGenAI({ apiKey }),
   timeoutMs = 12_000,
 } = {}) {
   return async (req, res) => {
     const { text } = req.body || {};
-    if (!text || typeof text !== 'string' || text.length > 500) {
+    if (!text || typeof text !== 'string' || text.length > 1000) {
+      return res.status(400).json({ error: 'Invalid text.' });
+    }
+
+    const trimmed = text.trim();
+    if (!trimmed) {
       return res.status(400).json({ error: 'Invalid text.' });
     }
 
@@ -46,15 +60,26 @@ export function createGeminiDemandRadarHandler({
       const limit = checkRateLimitFn(
         translateRequestLog,
         `${req.ip}:demand-radar`,
-        15,
+        10,
         60_000
       );
       if (limit.limited) {
+        logRateLimitHit('/api/demand-radar', limit.wait, {
+          window_ms: 60_000,
+          max_requests_per_window: 10,
+        });
         return res.status(429).json({ signals: [] });
       }
     }
 
-    if (isMockTranslationMode || !geminiApiKey || geminiApiKey === 'PLACEHOLDER_API_KEY') {
+    // Server-side guard: skip AI call for non-English or clearly declarative inputs
+    if (
+      isMockTranslationMode ||
+      !geminiApiKey ||
+      geminiApiKey === 'PLACEHOLDER_API_KEY' ||
+      NON_LATIN_REGEX.test(trimmed) ||
+      POSITIVE_DECLARATIVE_REGEX.test(trimmed.replace(/[\u2018\u2019\u02BC`]/g, "'"))
+    ) {
       return res.json({ signals: [] });
     }
 
@@ -63,10 +88,11 @@ export function createGeminiDemandRadarHandler({
       const response = await raceGeminiRequestWithTimeout(
         ai.models.generateContent({
           model: geminiModelConfig.model,
-          contents: `Analyze demand signals in: "${text}"`,
+          contents: `Analyze demand signals in: "${trimmed}"`,
           config: {
             ...(geminiThinkingConfig ? { thinkingConfig: geminiThinkingConfig } : {}),
             systemInstruction: DEMAND_RADAR_SYSTEM_INSTRUCTION,
+            maxOutputTokens: MAX_DEMAND_RADAR_OUTPUT_TOKENS,
             responseMimeType: 'application/json',
             responseSchema: {
               type: Type.ARRAY,

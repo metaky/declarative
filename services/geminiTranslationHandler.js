@@ -14,6 +14,30 @@ const MAX_TRANSLATE_REQUESTS_PER_WINDOW = 10;
 const MAX_VARIATION_REQUESTS_PER_WINDOW = 12;
 const MAX_VARIATION_REQUESTS_PER_BURST = 3;
 
+const MAX_INPUT_TEXT_LENGTH = 1000;
+const MAX_TRANSLATION_ITEM_LENGTH = 1500;
+const MAX_INTEREST_LENGTH = 120;
+const MAX_EXISTING_TRANSLATIONS = 60;
+const MAX_PROMPT_EXISTING_TRANSLATIONS = 24;
+const MAX_TRANSLATION_OUTPUT_TOKENS = 1200;
+
+const ALLOWED_TONES = new Set([
+  'Default',
+  'Straightforward',
+  'Humorous',
+  'Equalizing',
+  'Interest Based',
+]);
+
+const ALLOWED_DEMAND_SIGNALS = new Set([
+  'imperative',
+  'urgency',
+  'absolute',
+  'threat',
+  'negative',
+  'rhetorical',
+]);
+
 function checkRateLimit(log, key, maxRequests, windowMs) {
   const now = Date.now();
   const timestamps = log.get(key) || [];
@@ -68,26 +92,49 @@ export function createGeminiTranslationHandler({
       sourceTranslation,
       variationKind,
       demandSignals = [],
-    } = req.body;
+    } = req.body || {};
+
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid "text" field.' });
     }
 
-    if (text.length > 500) {
-      return res.status(400).json({ error: 'Input text exceeds the maximum limit of 500 characters.' });
+    if (text.length > MAX_INPUT_TEXT_LENGTH) {
+      return res.status(400).json({ error: 'Input text exceeds the maximum limit of 1,000 characters.' });
     }
 
     if (!['translate', 'moreIdeas', 'variation'].includes(mode)) {
       return res.status(400).json({ error: 'Missing or invalid "mode" field.' });
     }
 
+    if (tone !== undefined && (typeof tone !== 'string' || !ALLOWED_TONES.has(tone))) {
+      return res.status(400).json({ error: 'Missing or invalid "tone" field.' });
+    }
+
     const normalizedInterest = typeof interest === 'string' ? interest.trim() : '';
+    if (normalizedInterest.length > MAX_INTEREST_LENGTH) {
+      return res.status(400).json({ error: 'Interest exceeds the maximum limit of 120 characters.' });
+    }
+
     if (tone === 'Interest Based' && !normalizedInterest) {
       return res.status(400).json({ error: 'Interest Based ideas need an entered interest.' });
     }
 
+    if (
+      !Array.isArray(existingTranslations) ||
+      existingTranslations.length > MAX_EXISTING_TRANSLATIONS ||
+      existingTranslations.some(
+        (item) => !item || typeof item.translation !== 'string' || item.translation.length > MAX_TRANSLATION_ITEM_LENGTH
+      )
+    ) {
+      return res.status(400).json({ error: 'Missing or invalid "existingTranslations" field.' });
+    }
+
     if (mode === 'variation') {
-      if (!sourceTranslation || typeof sourceTranslation.translation !== 'string') {
+      if (
+        !sourceTranslation ||
+        typeof sourceTranslation.translation !== 'string' ||
+        sourceTranslation.translation.length > MAX_TRANSLATION_ITEM_LENGTH
+      ) {
         return res.status(400).json({ error: 'Missing or invalid source translation.' });
       }
       if (!['similar', 'shorter', 'longer', 'warmer', 'more_straightforward', 'more_playful'].includes(variationKind)) {
@@ -95,27 +142,11 @@ export function createGeminiTranslationHandler({
       }
     }
 
-    if (!isDevChallengeBypassEnabled) {
-      const challengeId = req.headers['x-challenge-id'];
-      if (!challengeId || !redis) {
-        console.warn('Request missing challenge ID or Redis not configured');
-        return res.status(403).json({ error: 'Access denied. Please use the official website.' });
-      }
+    const sanitizedDemandSignals = Array.isArray(demandSignals)
+      ? [...new Set(demandSignals.filter((sig) => typeof sig === 'string' && ALLOWED_DEMAND_SIGNALS.has(sig)))].slice(0, 6)
+      : [];
 
-      try {
-        const challengeKey = `declarative:challenge:${challengeId}`;
-        const isValid = await redis.exists(challengeKey);
-        if (!isValid) {
-          console.warn(`Invalid or expired challenge ID: ${challengeId}`);
-          return res.status(403).json({ error: 'Invalid or expired session. Please refresh the page.' });
-        }
-        await redis.del(challengeKey);
-      } catch (error) {
-        console.error('Challenge verification failed:', error);
-        return res.status(403).json({ error: 'Security verification failed.' });
-      }
-    }
-
+    // Check rate limits BEFORE verifying/consuming Redis challenge tokens
     const clientIp = req.ip;
     if (mode === 'variation') {
       const variationLimit = checkRateLimitFn(
@@ -166,6 +197,30 @@ export function createGeminiTranslationHandler({
       }
     }
 
+    if (!isDevChallengeBypassEnabled) {
+      const challengeId = req.headers['x-challenge-id'];
+      if (!challengeId || typeof challengeId !== 'string' || challengeId.length > 64 || !redis) {
+        console.warn('Request missing challenge ID or Redis not configured');
+        return res.status(403).json({ error: 'Access denied. Please use the official website.' });
+      }
+
+      try {
+        const challengeKey = `declarative:challenge:${challengeId}`;
+        // Atomically consume the one-time challenge token in a single Redis operation
+        const deletedCount = typeof redis.del === 'function' ? await redis.del(challengeKey) : null;
+        const isValid = typeof deletedCount === 'number'
+          ? deletedCount > 0
+          : Boolean(await redis.exists?.(challengeKey));
+        if (!isValid) {
+          console.warn(`Invalid or expired challenge ID: ${challengeId}`);
+          return res.status(403).json({ error: 'Invalid or expired session. Please refresh the page.' });
+        }
+      } catch (error) {
+        console.error('Challenge verification failed:', error);
+        return res.status(403).json({ error: 'Security verification failed.' });
+      }
+    }
+
     if (isMockTranslationMode) {
       if (mode === 'variation') {
         return res.json(buildMockVariationTranslations(sourceTranslation.translation, variationKind, text));
@@ -188,11 +243,11 @@ export function createGeminiTranslationHandler({
       })
       : buildTranslationPrompt({
         text,
-        existingTranslations,
+        existingTranslations: existingTranslations.slice(-MAX_PROMPT_EXISTING_TRANSLATIONS),
         tone,
         interest: normalizedInterest,
         useFewerWords,
-        demandSignals: Array.isArray(demandSignals) ? demandSignals : [],
+        demandSignals: sanitizedDemandSignals,
       });
 
     let requestStartedAt = null;
@@ -205,6 +260,7 @@ export function createGeminiTranslationHandler({
         config: {
           thinkingConfig: geminiThinkingConfig,
           systemInstruction,
+          maxOutputTokens: MAX_TRANSLATION_OUTPUT_TOKENS,
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
@@ -222,7 +278,7 @@ export function createGeminiTranslationHandler({
       const validation = validateGeminiResponse({
         responseText: blocked ? '' : response.text,
         mode,
-        existingTranslations,
+        existingTranslations: existingTranslations.slice(-MAX_PROMPT_EXISTING_TRANSLATIONS),
         sourceTranslation,
         blocked,
       });

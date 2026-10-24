@@ -20,7 +20,7 @@ function requestJson(port, pathname) {
       let body = '';
       response.setEncoding('utf8');
       response.on('data', (chunk) => { body += chunk; });
-      response.on('end', () => resolve({ statusCode: response.statusCode, body }));
+      response.on('end', () => resolve({ statusCode: response.statusCode, headers: response.headers, body }));
     });
     request.on('error', reject);
   });
@@ -31,7 +31,7 @@ async function startMockServer() {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('..', import.meta.url),
     env: {
-      PATH: process.env.PATH,
+      ...process.env,
       PORT: String(port),
       NODE_ENV: 'development',
       DEV_USE_MOCK_TRANSLATIONS: 'true',
@@ -76,6 +76,11 @@ test('serves the exact non-model readiness response on the public API path befor
     assert.equal(response.statusCode, 200);
     assert.deepEqual(JSON.parse(response.body), { status: 'ok', configuration: 'ready' });
     assert.equal(response.body, '{"status":"ok","configuration":"ready"}');
+    assert.equal(response.headers['x-content-type-options'], 'nosniff');
+    assert.equal(response.headers['x-frame-options'], 'SAMEORIGIN');
+    assert.equal(response.headers['referrer-policy'], 'strict-origin-when-cross-origin');
+    assert.equal(response.headers['cross-origin-resource-policy'], 'same-origin');
+    assert.equal(response.headers['x-powered-by'], undefined);
   } finally {
     await stopServer(child);
   }
@@ -85,7 +90,7 @@ test('rejects missing production model configuration before serving traffic', as
   const port = await findAvailablePort();
   const child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('..', import.meta.url),
-    env: { PATH: process.env.PATH, PORT: String(port), NODE_ENV: 'production' },
+    env: { ...process.env, GEMINI_MODEL_CONFIG: '', PORT: String(port), NODE_ENV: 'production' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';

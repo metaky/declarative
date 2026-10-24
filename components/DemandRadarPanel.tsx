@@ -162,10 +162,10 @@ export const DemandRadarPanel: React.FC<DemandRadarPanelProps> = ({
               }
               onFocus={() => setActiveTooltipSignalId(sig.id)}
               onBlur={() => setActiveTooltipSignalId(null)}
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold text-sm md:text-base transition-all focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer ${meta.bgStyle} ${meta.underlineStyle}`}
+              className={`ph-no-capture inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold text-sm md:text-base transition-all focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer ${meta.bgStyle} ${meta.underlineStyle}`}
             >
               <CategoryIcon category={sig.category} className="w-3.5 h-3.5 inline-block opacity-85 flex-shrink-0" />
-              <span>{phrase}</span>
+              <span data-ph-mask="true">{phrase}</span>
             </button>
 
             {isTooltipOpen && (
@@ -268,7 +268,7 @@ export const DemandRadarPanel: React.FC<DemandRadarPanelProps> = ({
             )}
           </div>
 
-          <div className="text-sm md:text-base leading-relaxed break-words">
+          <div className="ph-no-capture text-sm md:text-base leading-relaxed break-words" data-ph-mask="true">
             {renderShowcaseSentence()}
           </div>
         </div>
@@ -319,7 +319,7 @@ export const DemandRadarPanel: React.FC<DemandRadarPanelProps> = ({
               >
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-bold text-gray-900 text-xs md:text-sm">
+                    <span className="ph-no-capture font-bold text-gray-900 text-xs md:text-sm" data-ph-mask="true">
                       &ldquo;{sig.phrase}&rdquo;
                     </span>
                     <span
@@ -344,8 +344,8 @@ export const DemandRadarPanel: React.FC<DemandRadarPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => onIgnoreSignal(sig)}
-                  className="self-end sm:self-center inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-white border border-transparent hover:border-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 flex-shrink-0"
-                  aria-label={`Ignore flag for "${sig.phrase}" this session`}
+                  className="ph-no-capture self-end sm:self-center inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-white border border-transparent hover:border-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 flex-shrink-0"
+                  aria-label="Ignore this flag for this session"
                 >
                   <IgnoreIcon className="w-3 h-3" />
                   <span>Ignore</span>

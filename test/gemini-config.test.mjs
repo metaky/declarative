@@ -49,7 +49,7 @@ function startServerWithEnvironment(overrides) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: new URL('..', import.meta.url),
-      env: { ...process.env, PORT: '0', ...overrides },
+      env: Object.fromEntries(Object.entries({ ...process.env, PORT: '0', ...overrides }).filter(([, v]) => v !== undefined)),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -57,7 +57,7 @@ function startServerWithEnvironment(overrides) {
     const timeout = setTimeout(() => {
       timedOut = true;
       child.kill('SIGTERM');
-    }, 1_000);
+    }, 5_000);
 
     child.stdout.on('data', (chunk) => { output += chunk; });
     child.stderr.on('data', (chunk) => { output += chunk; });

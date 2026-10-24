@@ -33,8 +33,33 @@ const geminiModelConfig = resolveGeminiModelConfig({
 const geminiThinkingConfig = buildThinkingConfig(geminiModelConfig);
 
 const app = express();
-app.use(express.json());
-app.set('trust proxy', true); // Trust the proxy (Cloud Run) to accurately determine req.ip
+app.disable('x-powered-by');
+app.use(express.json({ limit: '32kb' }));
+app.set('trust proxy', 1); // Trust the single proxy hop (Cloud Run) so clients cannot spoof X-Forwarded-For
+
+// --- Security & Resource Isolation Headers ---
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), accelerometer=(), focus-without-user-activation=()');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('Content-Security-Policy', "base-uri 'none'; object-src 'none'; frame-ancestors 'self'");
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+
+    if (req.path.startsWith('/api/') && req.path !== '/api/healthz') {
+        res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
+        const site = req.get('Sec-Fetch-Site');
+        if (site && !['same-origin', 'same-site', 'none'].includes(site)) {
+            return res.status(403).json({ error: 'Cross-site API requests are not permitted.' });
+        }
+    }
+
+    next();
+});
 
 // Initialize Redis for challenge storage
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/^"|"$/g, '')?.replace(/^'|'$/g, '');
@@ -103,7 +128,7 @@ setInterval(() => {
         if (valid.length === 0) variationBurstRequestLog.delete(key);
         else variationBurstRequestLog.set(key, valid);
     }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 // --- API Endpoints ---
 app.get('/api/challenge', async (req, res) => {
@@ -745,6 +770,7 @@ app.post('/api/demand-radar', createGeminiDemandRadarHandler({
     isMockTranslationMode,
     translateRequestLog,
     checkRateLimitFn: checkRateLimit,
+    logRateLimitHit,
 }));
 
 app.get('/api/healthz', (req, res) => {
@@ -764,7 +790,7 @@ app.use(express.static(path.join(__dirname, 'dist'), {
         if (localPath.endsWith('index.html')) {
             // Never cache index.html
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        } else if (localPath.includes('/assets/')) {
+        } else if (localPath.includes('/assets/') || localPath.includes('\\assets\\')) {
             // Aggressively cache hashed bundles for 1 year
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }

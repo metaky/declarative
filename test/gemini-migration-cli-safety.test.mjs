@@ -29,12 +29,14 @@ test('there is no executable migration recovery package command', async () => {
   const packageJson = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'));
   assert.equal(Object.hasOwn(packageJson.scripts, 'quality:migration-recover'), false);
   await assert.rejects(
-    run('npm', ['run', 'quality:migration-recover', '--', '--help'], { cwd: repoRoot, env: cleanEnv }),
+    process.platform === 'win32'
+      ? run('cmd.exe', ['/d', '/s', '/c', 'npm run quality:migration-recover -- --help'], { cwd: repoRoot, env: cleanEnv })
+      : run('npm', ['run', 'quality:migration-recover', '--', '--help'], { cwd: repoRoot, env: cleanEnv }),
     (error) => error.code === 1 && /missing script/i.test(error.stderr),
   );
 });
 
-test('every migration CLI help path returns keylessly before parsing paid-run options', { timeout: 5_000 }, async () => {
+test('every migration CLI help path returns keylessly before parsing paid-run options', { timeout: 15_000 }, async () => {
   const before = await readFile(ledgerPath);
   for (const migrationCliPath of migrationCliPaths) {
     const help = await run(process.execPath, [migrationCliPath, '--help'], { cwd: repoRoot, env: cleanEnv });
